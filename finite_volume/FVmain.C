@@ -2,12 +2,12 @@
 
 int main(void){
 
-	linearadvection LA(100, 1.0, 1.0, 0.9); //N, L, a, c
-	LA.initial_conditions_step();
-	LA.plotname(999);
+	euler test(100, 1.0, 1.0, 0.9); //N, L, a, c
+	test.initial_conditions_step();
+	test.plotname(999);
 
 	//loop conditions
-	int count = 0;
+	/*int count = 0;
 	double t = 0;
 	double tStop = 0.5;
 	do{
@@ -25,8 +25,10 @@ int main(void){
 		if (count%10 == 0){
 			LA.plotname(t);
 		}
-	}while (t<tStop);
+	}while (t<tStop);*/
 }
+
+
 
 
 
