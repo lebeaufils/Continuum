@@ -12,16 +12,16 @@
 
 const int N = 100; // number of cells
 const double L = 1.0;
-const double x0 = 0.3;
+const double x0 = 0.5;
 const double dx = L/N; //length of domain
 const double CFL = 0.9;
 const double y = 1.4; //heat capacity ratio Cp/Cv
-const double tstop = 0.2;
+const double tstop = 0.15;
 
-const Eigen::Vector3d initialL(1.0, 0.75, 1.0); //density, velocity, pressure
-const Eigen::Vector3d initialR(0.125, 0.0, 0.1); //left and right states
-//const Eigen::Vector3d initialL(1.0, -2.0, 0.4);
-//const Eigen::Vector3d initialR(1.0, 2.0, 0.4);
+//const Eigen::Vector3d initialL(1.0, 0.75, 1.0); //density, velocity, pressure
+//const Eigen::Vector3d initialR(0.125, 0.0, 0.1); //left and right states
+const Eigen::Vector3d initialL(1.0, -2.0, 0.4);
+const Eigen::Vector3d initialR(1.0, 2.0, 0.4);
 //const Eigen::Vector3d initialL(1.0, 0.0, 1000.0);
 //const Eigen::Vector3d initialR(1.0, 0.0, 0.01);
 //const Eigen::Vector3d initialL(5.99924, 19.5975, 460.894); //density, velocity, pressure
@@ -31,15 +31,15 @@ const Eigen::Vector3d initialR(0.125, 0.0, 0.1); //left and right states
 
 
 typedef Eigen::Matrix<double, N+4, 3> MatrixN3;
-typedef Eigen::Matrix<double, N+1, 3> MatrixN1;
+typedef Eigen::Matrix<double, N+2, 3> MatrixN1;
 typedef Eigen::Matrix<double, N+2, 1> VectorN2;
-typedef Eigen::Matrix<double, N+1, 1> VectorN1;
+//typedef Eigen::Matrix<double, N+1, 1> VectorN1;
 
 void boundary_conditions(MatrixN3 &U){
-	U.row(0) = U.row(1);
 	U.row(1) = U.row(2); //muscl requires an extra ghost cell
-	U.row(N) = U.row(N-1);
-	U.row(N+1) = U.row(N);
+	U.row(0) = U.row(1);
+	U.row(N+2) = U.row(N+1);
+	U.row(N+3) = U.row(N+2);
 }
 
 void initial_conditions(VectorN2 &X, MatrixN3 &U){
@@ -59,25 +59,17 @@ void initial_conditions(VectorN2 &X, MatrixN3 &U){
 	eulerL(2) = initialL(2)/(y-1) + 0.5*initialL(0)*initialL(1)*initialL(1);
 	eulerR(2) = initialR(2)/(y-1) + 0.5*initialR(0)*initialR(1)*initialR(1);
 
-	for (int i=0; i<N+1; i++){
+	for (int i=0; i<N+2; i++){
 		X(i) = i*dx;
 		if (X(i)  < x0){
-			U.row(i+2) = eulerL;
+			U.row(i+1) = eulerL;
 		}
-		else U.row(i+2) = eulerR;
+		else U.row(i+1) = eulerR;
 	}
 
 	boundary_conditions(U);
 }
 
-/*
-Eigen::Vector3d f(MatrixN2 U, int i){
-	Eigen::Vector3d flux(U(i, 1),
-			U(i, 1)*(U(i, 1)/U(i, 0))+(y-1)*(U(i, 2) - 0.5*U(i, 0)*pow((U(i, 1)/U(i, 0)),2.0)),
-			(U(i, 1)/U(i, 0))*(U(i, 2) + (y-1)*(U(i, 2) - 0.5*U(i, 0)*pow((U(i, 1)/U(i, 0)),2.0))));
-	return flux;
-}
-*/
 
 Eigen::Vector3d f(Eigen::Vector3d U){
 	Eigen::Vector3d flux;
@@ -115,14 +107,15 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 	MatrixN3 ULi;
 	MatrixN3 URi;
 
-	MatrixN1 F1;
+	MatrixN1 Ftmp;
+	MatrixN3 Utmp;
 
 	double dt = 0.01;
 	double t = 0.0;
 	int count = 0;
 	do{
 
-		for (int i=1; i<N+1; i++){
+		for (int i=1; i<N+3; i++){ //U goes from 0 to N+3
 
 			Eigen::Vector3d diMinus = U.row(i) - U.row(i-1);
 			Eigen::Vector3d diPlus = U.row(i+1) - U.row(i);
@@ -131,7 +124,7 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 			/*-----------------------------------------------
 			 * Slope limiter -- SuperBee
 			 ----------------------------------------------*/
-
+/*
 			Eigen::Vector3d epsiloni(1, 1, 1);
 			Eigen::Vector3d epsilonR(0, 0, 0);
 			Eigen::Vector3d ri(0, 0, 0);
@@ -154,7 +147,8 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 				}
 
 				else if (ri(j) >= 1){
-					epsilonR(j) = 2*2/(1+ri(j)); //need to refine beta using additional riemann problems
+					//epsilonR(j) = 2*(2/(1-ctmp(j)))/(1+ri(j));
+					epsilonR(j) = 2/(1+ri(j));
 					epsiloni(j) = fmin(fmin(ri(j), epsilonR(j)), 2.0);
 				}
 			}
@@ -165,11 +159,11 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 			}
 			//std::cout << diBar.transpose() << std::endl;
 
-
+*/
 			/*-----------------------------------------------
 			 * Slope limiter -- Van Leer
 			 ----------------------------------------------*/
-			/*
+
 			Eigen::Vector3d epsiloni(0, 0, 0);
 			Eigen::Vector3d epsilonR(0, 0, 0);
 			Eigen::Vector3d ri(0, 0, 0);
@@ -193,8 +187,9 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 			for (int j=0; j<3; j++){
 				 diBar(j) = epsiloni(j)*di(j);
 			}
-			*/
 
+
+			//make r = 0 to test first order
 			/*-----------------------------------------------
 			 * Slope limiter -- MinBee
 			 ----------------------------------------------*/
@@ -226,7 +221,6 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 			}
 			*/
 
-
 			/*-----------------------------------------------
 			 * Data Reconstruction
 			 ----------------------------------------------*/
@@ -239,15 +233,16 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 			/*-----------------------------------------------
 			 * Evolution by 1/2 time-step
 			 ----------------------------------------------*/
-		for (int i=1; i<N; i++){
+		for (int i=1; i<N+2; i++){
 
 			Eigen::Vector3d ULtmp = ULi.row(i);
 			Eigen::Vector3d URtmp = URi.row(i);
 			Eigen::Vector3d ULtmp1 = ULi.row(i+1);
 			Eigen::Vector3d URtmp1 = URi.row(i+1);
 
-			Eigen::Vector3d ULbar = ULtmp1 + 0.5*(dt/dx)*(f(ULtmp1) - f(URtmp1));
+			Eigen::Vector3d ULbar = ULtmp1 + 0.5*(dt/dx)*(f(ULtmp1) - f(URtmp1)); //UL(i+1)
 			Eigen::Vector3d URbar = URtmp + 0.5*(dt/dx)*(f(ULtmp) - f(URtmp));
+
 
 			/*-------------------------------------------------------
 			 * Solution of the piecewise constant Riemann problem pg 180
@@ -257,6 +252,8 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 			 -------------------------------------------------------*/
 			Eigen::Vector3d hllcUL = URbar;
 			Eigen::Vector3d hllcUR = ULbar;
+
+			//if (count == 1) std::cout << U.row(i) << std::endl;
 
 			//conservative variables
 				//density
@@ -280,6 +277,8 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 				//soundspeed
 				al = sqrt(y*(Pl/dl));
 				ar = sqrt(y*(Pr/dr));
+
+
 
 				/*---------------------------------------
 				 * pressure based wave speed estimate
@@ -313,7 +312,7 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 				if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
 				Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
-
+				//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
 				//initialize FL and FR for each timestep
 				Eigen::Vector3d FL(mvl, mvl*ul + Pl, ul*(El + Pl));
 				Eigen::Vector3d FR(mvr, mvr*ur + Pr, ur*(Er + Pr));
@@ -340,21 +339,24 @@ void MHM(MatrixN3 &U, double tstop, double CFL){
 				else if (0 >= SR){
 					F.row(i) = FR;
 				}
+				//if (count == 0) std::cout << F.row(i) << std::endl;
 		}
 		//end of domain loop
-
-		//updating U
-		for (int i=2; i<N; i++){
-			U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
-		}
-		boundary_conditions(U);
-
-
 		//set timestep
 		dt = CFL*(dx/Smax); //updates every timestep
 		if (t + dt > tstop) dt = tstop - t;
 		t += dt;
 		count += 1;
+
+		if (count == 0) std::cout << dt << std::endl;
+		//updating U
+		for (int i=2; i<N+2; i++){
+			//if (count == 0) std::cout << U.row(i) << '\t' << '\t';
+			U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
+			//if (count == 0) std::cout << U.row(i) << std::endl;
+		}
+		boundary_conditions(U);
+
 
 	}while (t<tstop);
 	std::cout << count << std::endl;
