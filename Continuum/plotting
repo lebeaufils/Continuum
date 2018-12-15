@@ -1,0 +1,5 @@
+#!/bin/bash
+
+gnuplot ploteuler
+ps2pdf Plots/plotHLLC.ps Plots/plotHLLC.pdf 
+open Plots/plotHLLC.pdf
