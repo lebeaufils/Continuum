@@ -4,6 +4,9 @@ CXXFLAGS = -O3 -Wall -Wextra -g
 RPsolvers/HLLC.o : RPsolvers/HLLC.C RPsolvers/HLLC.h
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
+RPsolvers/MUSCL.o : RPsolvers/MUSCL.C RPsolvers/MUSCL.h
+	${CXX} -c $< -o $@ ${CXXFLAGS}
+
 EOS/IG.o : EOS/IG.C EOS/IG.h
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
