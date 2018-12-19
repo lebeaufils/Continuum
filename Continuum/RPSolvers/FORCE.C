@@ -155,14 +155,14 @@ void FORCE::solver(IdealGas IG, eulerTests Test){
 
 void FORCE::solver(JWL MG, eulerTests Test){
 
-	double a; //soundspeed
+	double al, ar; //soundspeed
 	double ul, ur; //note u is the eigenvalue of the euler equation
 	double dl, dr;
 	double Pl, Pr;
 	double mvl, mvr;
 	double El, Er;
 
-	double Smax = 0; //max soundspeed
+	double Splus, Smax = 0; //max soundspeed
 
 	vector tmpl, tmpr;
 
@@ -190,10 +190,19 @@ void FORCE::solver(JWL MG, eulerTests Test){
 			ul = U(i, 1)/U(i, 0);
 			ur = U(i+1, 1)/U(i+1, 0);
 			//soundspeed
-			a = MG.soundspeed(U, i);
+			al = MG.soundspeed(U, i);
+			ar = MG.soundspeed(U, i+1);
 
+			/*--------------------------------------------------------------
+			 * Davies wave speed estimate
+			 *--------------------------------------------------------------*/
 
-			if ((fabs(ul) + a) > Smax) Smax = (fabs(ul) + a);
+			//S+ = max{| uL | +aL,| uR | +aR} .
+			Splus = std::max(abs(ul) + al, abs(ur) + ar);
+
+			//finding Smax for the whole domain (for each timestep)
+			if (Splus > Smax) Smax = Splus;
+
 			/*-----------------------------------------------
 			 * Important for LxF Flux
 			 -----------------------------------------------*/
