@@ -52,6 +52,7 @@ public:
 	//------------------------
 
 	vector f(vector, IdealGas);
+	vector f(vector, JWL);
 	void solver(IdealGas, eulerTests);
 	void solver(JWL, eulerTests);
 	void output(IdealGas);

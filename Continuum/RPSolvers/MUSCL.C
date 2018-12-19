@@ -75,6 +75,14 @@ vector MUSCL::f(vector U, IdealGas IG){
 	return flux;
 }
 
+vector MUSCL::f(vector U, JWL MG){
+	vector flux;
+	flux(0) = U(1);
+	flux(1) = U(1)*(U(1)/U(0)) + MG.PressureScalar(U);
+	flux(2) = (U(1)/U(0))*(U(2) + MG.PressureScalar(U));
+	return flux;
+}
+
 vector MUSCL::superBee(int i){
 	//Calculating slope
 	vector diMinus = U.row(i) - U.row(i-1);
@@ -272,9 +280,7 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 
 	slopeLimiter a = getLimiter();
 
-	double dt = 0.01;
 	double t = 0.0;
-	int count = 0;
 	do{
 
 		for (int i=1; i<N+3; i++){ //U goes from 0 to N+3
@@ -436,6 +442,172 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 	std::cout << count << std::endl;
 }
 
+void MUSCL::solver(JWL MG, eulerTests Test){
+
+	double al, ar;
+
+	double ul, ur; //note u is the eigenvalue of the euler equation
+	double dl, dr;
+	double Pl, Pr;
+
+	double mvl, mvr;
+	double El, Er;
+
+	double SL, SR, Sstar;
+	double Splus, Smax = 0;
+
+	vector tmp;
+
+	//MUSCL
+	matrix ULi; ULi.resize(N+4, 3);
+	matrix URi; URi.resize(N+4, 3);
+
+	vector Utmp;
+
+	slopeLimiter a = getLimiter();
+
+	double t = 0.0;
+	do{
+
+		for (int i=1; i<N+3; i++){ //U goes from 0 to N+3
+
+			/*-----------------------------------------------
+			 * Data Reconstruction
+			 ----------------------------------------------*/
+			switch(a){
+			case MinBee:
+				Utmp = U.row(i);
+				ULi.row(i) = Utmp - 0.5*minBee(i);
+				URi.row(i) = Utmp + 0.5*minBee(i);
+				break;
+			case VanLeer:
+				Utmp = U.row(i);
+				ULi.row(i) = Utmp - 0.5*vanLeer(i);
+				URi.row(i) = Utmp + 0.5*vanLeer(i);
+				break;
+			case SuperBee:
+				Utmp = U.row(i);
+				ULi.row(i) = Utmp - 0.5*superBee(i);
+				URi.row(i) = Utmp + 0.5*superBee(i);
+				break;
+			case Quit:
+				exit(0);
+			}
+
+		}
+
+			/*-----------------------------------------------
+			 * Evolution by 1/2 time-step
+			 ----------------------------------------------*/
+		for (int i=1; i<N+2; i++){
+
+			vector ULtmp = ULi.row(i);
+			vector URtmp = URi.row(i);
+			vector ULtmp1 = ULi.row(i+1);
+			vector URtmp1 = URi.row(i+1);
+
+			vector ULbar = ULtmp1 + 0.5*(dt/dx)*(f(ULtmp1, MG) - f(URtmp1, MG)); //UL(i+1)
+			vector URbar = URtmp + 0.5*(dt/dx)*(f(ULtmp, MG) - f(URtmp, MG));
+
+
+			/*-------------------------------------------------------
+			 * Solution of the piecewise constant Riemann problem pg 180
+			 -------------------------------------------------------*/
+			/*-------------------------------------------------------
+			 * HLLC solver
+			 -------------------------------------------------------*/
+			vector hllcUL = URbar;
+			vector hllcUR = ULbar;
+
+			//if (count == 1) std::cout << U.row(i) << std::endl;
+
+			//conservative variables
+				//density
+				dl = hllcUL(0);
+				dr = hllcUR(0);
+				//momentum
+				mvl = hllcUL(1);
+				mvr = hllcUR(1);
+				//energy
+				El = hllcUL(2);
+				Er = hllcUR(2);
+
+				//Pressure
+				Pl = MG.PressureScalar(hllcUL);
+				Pr = MG.PressureScalar(hllcUR);
+
+				//velocity
+				ul = hllcUL(1)/hllcUL(0);
+				ur = hllcUR(1)/hllcUR(0);
+
+				//soundspeed
+				al = MG.soundspeedScalar(hllcUL);
+				ar = MG.soundspeedScalar(hllcUR);
+
+
+				/*---------------------------------------
+				 * Davies wave speed estimate
+				 ---------------------------------------*/
+				//S+ = max{| uL | +aL,| uR | +aR} .
+				Splus = std::max(abs(ul) + al, abs(ur) + ar);
+				SL = -Splus;
+				SR = Splus;
+
+				//finding Smax for the whole domain (for each timestep)
+				if (Splus > Smax) Smax = Splus;
+
+				Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
+				//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
+				//initialize FL and FR for each timestep
+				vector FL(mvl, mvl*ul + Pl, ul*(El + Pl));
+				vector FR(mvr, mvr*ur + Pr, ur*(Er + Pr));
+
+				if (0 <= SL){
+					F.row(i) = FL;
+				}
+
+				//non trivial, subsonic case, region between the 2 acoustic waves. Fhll.
+				else if (SL<=0 && Sstar>=0){
+					double tmpUstar = dl*((SL - ul)/(SL - Sstar));
+					vector UstarL(tmpUstar, tmpUstar*Sstar, tmpUstar*((El/dl) + (Sstar - ul)*(Sstar + (Pl/(dl*(SL - ul))))));
+					tmp = U.row(i);
+					F.row(i) = FL + SL*(UstarL - tmp);
+				}
+
+				else if (Sstar<=0 && SR>=0){
+					double tmpUstar = dr*((SR - ur)/(SR - Sstar));
+					vector UstarR(tmpUstar, tmpUstar*Sstar, tmpUstar*((Er/dr) + (Sstar - ur)*(Sstar + (Pr/(dr*(SR - ur))))));
+					tmp = U.row(i+1);
+					F.row(i) = FR + SR*(UstarR - tmp);
+				}
+
+				else if (0 >= SR){
+					F.row(i) = FR;
+				}
+				//if (count == 0) std::cout << F.row(i) << std::endl;
+		}
+		//end of domain loop
+
+		//set timestep
+		dt = CFL*(dx/Smax); //updates every timestep
+		if (t + dt > Test.tstop) dt = Test.tstop - t;
+		t += dt;
+		count += 1;
+
+		if (count == 0) std::cout << dt << std::endl;
+		//updating U
+		for (int i=2; i<N+2; i++){
+			//if (count == 0) std::cout << U.row(i) << '\t' << '\t';
+			U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
+			//if (count == 0) std::cout << U.row(i) << std::endl;
+		}
+		boundary_conditions();
+
+
+	}while (t<Test.tstop);
+	std::cout << count << std::endl;
+}
+
 void MUSCL::output(IdealGas IG){
 
 	std::ofstream outfile;
@@ -446,6 +618,23 @@ void MUSCL::output(IdealGas IG){
 		double u = U(i, 1)/U(i, 0);
 		double P = IG.Pressure(U, i);
 		double e = IG.internalE(U, i);
+
+		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
+				<< '\t' << P << '\t' << e << std::endl;
+	}
+	std::cout << "done" << std::endl;
+}
+
+void MUSCL::output(JWL MG){
+
+	std::ofstream outfile;
+	outfile.open("dataMUSCL.txt");
+
+	for (int i=2; i<N+3; i++){
+
+		double u = U(i, 1)/U(i, 0);
+		double P = MG.Pressure(U, i);
+		double e = MG.internalE(U, i);
 
 		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
