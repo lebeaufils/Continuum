@@ -19,5 +19,6 @@ Tests/eulerTests.o : Tests/eulerTests.C Tests/eulerTests.h
 main.o : main.C
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
-main : main.o RPsolvers/HLLC.o EOS/IG.o EOS/JWL.o Tests/eulerTests.o
+main : main.o RPsolvers/HLLC.o RPsolvers/MUSCL.o EOS/IG.o EOS/JWL.o Tests/eulerTests.o
 	g++ $^ -lm -o $@
+

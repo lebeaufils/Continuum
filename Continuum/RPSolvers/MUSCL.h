@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iomanip>
 #include <Eigen/Dense>
+#include <map>
 
 typedef Eigen::Vector3d vector;
 typedef Eigen::MatrixXd matrix;

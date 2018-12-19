@@ -196,6 +196,51 @@ vector MUSCL::minBee(int i){
 	return diBar;
 }
 
+enum slopeLimiter {MinBee, VanLeer, SuperBee, Quit};
+slopeLimiter getLimiter(){
+	//static std::map<char, slopeLimiter> theMap = {{"M", MinBee}, {"V", VanLeer}, {"S", SuperBee}};
+
+	static std::map<std::string, slopeLimiter> theMap;
+		theMap["m"] = MinBee;
+		theMap["v"] = VanLeer;
+		theMap["s"] = SuperBee;
+		theMap["q"] = Quit;
+
+	std::string str;
+	std::cout << "Slope limiter options" << std::endl
+			<< "Min Bee (M)" << std::endl
+			<< "Van Leer (V)" << std::endl
+			<< "Super Bee (S)" << std::endl
+			<< "enter (Q) to exit" << std::endl;
+	do{
+		std::cin >> str;
+		bool find = theMap.count(str);
+
+		if (find == 1){
+			slopeLimiter a = theMap[str];
+			switch(a){
+			case MinBee:
+				std::cout << "Min Bee slope-limiter" << std::endl;
+				break;
+			case VanLeer:
+				std::cout << "Van Leer slope-limiter" << std::endl;
+				break;
+			case SuperBee:
+				std::cout << "Super Bee slope-limiter" << std::endl;
+				break;
+			case Quit:
+				exit(0);
+			}
+			break;
+		}
+		else{
+			std::cout << "Invalid input, enter (M), (V) or (S). (Q) to exit." << std::endl;
+		}
+
+	}while(true);
+	return theMap[str];
+}
+
 void MUSCL::solver(IdealGas IG, eulerTests Test){
 
 	double al, ar;
@@ -221,8 +266,11 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 	//MUSCL
 	matrix ULi; ULi.resize(N+4, 3);
 	matrix URi; URi.resize(N+4, 3);
-	matrix Ftmp; Ftmp.resize(N+2, 3);
-	matrix Utmp; Utmp.resize(N+4, 3);
+	//matrix Ftmp; Ftmp.resize(N+2, 3);
+	//matrix Utmp; Utmp.resize(N+4, 3);
+	vector Utmp;
+
+	slopeLimiter a = getLimiter();
 
 	double dt = 0.01;
 	double t = 0.0;
@@ -234,10 +282,26 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 			/*-----------------------------------------------
 			 * Data Reconstruction
 			 ----------------------------------------------*/
+			switch(a){
+			case MinBee:
+				Utmp = U.row(i);
+				ULi.row(i) = Utmp - 0.5*minBee(i);
+				URi.row(i) = Utmp + 0.5*minBee(i);
+				break;
+			case VanLeer:
+				Utmp = U.row(i);
+				ULi.row(i) = Utmp - 0.5*vanLeer(i);
+				URi.row(i) = Utmp + 0.5*vanLeer(i);
+				break;
+			case SuperBee:
+				Utmp = U.row(i);
+				ULi.row(i) = Utmp - 0.5*superBee(i);
+				URi.row(i) = Utmp + 0.5*superBee(i);
+				break;
+			case Quit:
+				exit(0);
+			}
 
-			Eigen::Vector3d Utmp = U.row(i);
-			ULi.row(i) = Utmp - 0.5*vanLeer(i);
-			URi.row(i) = Utmp + 0.5*vanLeer(i);
 		}
 
 			/*-----------------------------------------------
@@ -245,13 +309,13 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 			 ----------------------------------------------*/
 		for (int i=1; i<N+2; i++){
 
-			Eigen::Vector3d ULtmp = ULi.row(i);
-			Eigen::Vector3d URtmp = URi.row(i);
-			Eigen::Vector3d ULtmp1 = ULi.row(i+1);
-			Eigen::Vector3d URtmp1 = URi.row(i+1);
+			vector ULtmp = ULi.row(i);
+			vector URtmp = URi.row(i);
+			vector ULtmp1 = ULi.row(i+1);
+			vector URtmp1 = URi.row(i+1);
 
-			Eigen::Vector3d ULbar = ULtmp1 + 0.5*(dt/dx)*(f(ULtmp1, IG) - f(URtmp1, IG)); //UL(i+1)
-			Eigen::Vector3d URbar = URtmp + 0.5*(dt/dx)*(f(ULtmp, IG) - f(URtmp, IG));
+			vector ULbar = ULtmp1 + 0.5*(dt/dx)*(f(ULtmp1, IG) - f(URtmp1, IG)); //UL(i+1)
+			vector URbar = URtmp + 0.5*(dt/dx)*(f(ULtmp, IG) - f(URtmp, IG));
 
 
 			/*-------------------------------------------------------
@@ -260,8 +324,8 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 			/*-------------------------------------------------------
 			 * HLLC solver
 			 -------------------------------------------------------*/
-			Eigen::Vector3d hllcUL = URbar;
-			Eigen::Vector3d hllcUR = ULbar;
+			vector hllcUL = URbar;
+			vector hllcUR = ULbar;
 
 			//if (count == 1) std::cout << U.row(i) << std::endl;
 
