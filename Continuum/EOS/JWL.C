@@ -48,3 +48,11 @@ double JWL::soundspeedScalar(vector U){
 			+ (1/pow(d, 2.0))*(A*R1*d0*pow(e, -R1*dprime) - B*R2*d0*pow(e, -R2*dprime));
 	return sqrt(csquare);
 }
+
+vector JWL::f(vector U){
+	vector flux;
+	flux(0) = U(1);
+	flux(1) = U(1)*(U(1)/U(0)) + PressureScalar(U);
+	flux(2) = (U(1)/U(0))*(U(2) + PressureScalar(U));
+	return flux;
+}

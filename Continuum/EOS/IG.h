@@ -21,6 +21,7 @@ struct IdealGas
 	double soundspeed(Eigen::MatrixXd, int);
 	double PressureScalar(vector); //used for muscl
 	double soundspeedScalar(vector);
+	vector f(vector);
 
 };
 

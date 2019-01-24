@@ -1,10 +1,7 @@
 CXX = g++
 CXXFLAGS = -O3 -Wall -Wextra -g
 
-RPsolvers/HLLC.o : RPsolvers/HLLC.C RPsolvers/HLLC.h
-	${CXX} -c $< -o $@ ${CXXFLAGS}
-
-RPsolvers/MUSCL.o : RPsolvers/MUSCL.C RPsolvers/MUSCL.h
+RPsolvers/Solvers.o : RPsolvers/Solvers.C RPsolvers/Solvers.h
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
 RPsolvers/FORCE.o : RPsolvers/FORCE.C RPsolvers/FORCE.h
@@ -22,6 +19,6 @@ Tests/eulerTests.o : Tests/eulerTests.C Tests/eulerTests.h
 main.o : main.C
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
-main : main.o RPsolvers/FORCE.o RPsolvers/HLLC.o RPsolvers/MUSCL.o EOS/IG.o EOS/JWL.o Tests/eulerTests.o
+main : main.o RPsolvers/FORCE.o RPsolvers/Solvers.o EOS/IG.o EOS/JWL.o Tests/eulerTests.o
 	g++ $^ -lm -o $@
 

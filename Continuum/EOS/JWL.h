@@ -44,6 +44,7 @@ struct JWL
 	double soundspeed(Eigen::MatrixXd, int);
 	double PressureScalar(vector);
 	double soundspeedScalar(vector);
+	vector f(vector);
 };
 
 

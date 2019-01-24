@@ -1,5 +1,5 @@
 #!/bin/bash
 
 gnuplot ploteuler
-ps2pdf Plots/plotHLLC.ps Plots/plotHLLC.pdf 
-open Plots/plotHLLC.pdf
+ps2pdf Plots/eulerTests.ps Plots/eulerTests.pdf 
+open Plots/eulerTests.pdf
