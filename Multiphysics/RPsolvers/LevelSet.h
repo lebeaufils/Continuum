@@ -13,37 +13,25 @@ typedef Eigen::MatrixXd matrix;
 
 class LevelSetFunction
 {
+protected:
 	//domain parameters
 	int N;
-	double L;
+	matrix X;
 	double dx;
+	double x0;
 
-	//LevelSetFunction
-	vector phi;
-	vector X;
+	matrix phi;
 	int sgn; //sign of the levelset
 
 public:
-	LevelSetFunction(eulerTests);
+	LevelSetFunction(gfmTests);
 
+	int get_sgn();
 	void boudnary_conditions();
-	void initial_conditions();
-	void get_sgn();
-	/*
-	//sign function
-	int sgn(double x){
-	return (x > 0) - (x < 0);
-	Here's a more readable way to do it:
-
-	if (x > 0) return 1;
-	if (x < 0) return -1;
-	return 0;}
-	*/
+	void signed_distance_function_1D();
 	
-
 	//first order upwind hamilton-jacobi method
-	void HJ_FirstOrder(double); //velocity
-	void HJ_FirstOrder(double, double);	
+	double HJ_FirstOrder(double, double, int); //velocity
 	//void HJ_ENO(VectorN2, double);
 	//void HJ_WENO(VectorN2, double);
 

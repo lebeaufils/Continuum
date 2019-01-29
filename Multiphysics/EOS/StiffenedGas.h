@@ -1,21 +1,23 @@
 /*
-Ideal Gas EOS
+Stiffened Gas EOS
  */
 
-#ifndef EOS_IG_H_
-#define EOS_IG_H_
+#ifndef EOS_SG_H_
+#define EOS_SG_H_
 
 #include <cmath>
 #include <Eigen/Dense>
 
 typedef Eigen::Vector3d vector;
 
-struct IdealGas
+struct StiffenedGas
 {
-	const double y;
+	double y;
+	double Pref;
 
-	IdealGas() : y(1.4) {}
+	StiffenedGas() : y(1.4) {}
 
+	void GetGamma();
 	double internalE(Eigen::MatrixXd, int);
 	double Pressure(Eigen::MatrixXd, int);
 	double soundspeed(Eigen::MatrixXd, int);
@@ -26,4 +28,4 @@ struct IdealGas
 };
 
 
-#endif /* EOS_IG_H_ */
+#endif /* EOS_SG_H_ */

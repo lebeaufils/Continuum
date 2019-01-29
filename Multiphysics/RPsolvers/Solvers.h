@@ -10,7 +10,7 @@
 
 //Equation of states and tests
 //#include "../EOS/JWL.h"
-#include "../EOS/IG.h"
+#include "../EOS/EOS.h"
 #include "../Tests/eulerTests.h"
 
 #include <iostream>
@@ -44,16 +44,19 @@ protected:
 	double Smax; //Maximum soundspeed
 
 public:
+	RPsolvers() : CFL(0), N(0), count(0), dt(0), dx(0), X(0,0), U(0,0), F(0,0) {}
 	RPsolvers(double, eulerTests, int, int); //double c, int N, double L || courant number/ number of cells/ domain length
 	virtual ~RPsolvers() {};
+
+	void conservative_update_formula(int);
 	//Abstract classes
 	virtual void boundary_conditions() = 0;
-	virtual void initial_conditions(IdealGas, eulerTests) = 0;
+	virtual void initial_conditions(EOS*, eulerTests) = 0;
 	//virtual void initial_conditions(JWL, eulerTests) = 0;
-	virtual void compute_fluxes(IdealGas, int) = 0;
+	//virtual void compute_fluxes(EOS*, int) = 0;
 	//virtual void compute_fluxes(JWL, eulerTests) = 0;
-	virtual void solver(IdealGas, eulerTests) = 0;
-	virtual void output(IdealGas) = 0;
+	virtual void solver(EOS*, eulerTests) = 0;
+	virtual void output(EOS*) = 0;
 	//virtual void output(JWL) = 0;
 };
 
@@ -65,15 +68,15 @@ class HLLC : public virtual RPsolvers
 {
 public:
 	HLLC(double, eulerTests);
-	~HLLC() {};
+	virtual ~HLLC() {};
 
 	virtual void boundary_conditions();
-	virtual void initial_conditions(IdealGas, eulerTests);
+	virtual void initial_conditions(EOS*, eulerTests);
 	//virtual void initial_conditions(JWL, eulerTests);
-	virtual void compute_fluxes(IdealGas, int);
+	void compute_fluxes_HLLC(EOS*, int);
 	//virtual void compute_fluxes(JWL, eulerTests);
-	virtual void solver(IdealGas, eulerTests);
-	virtual void output(IdealGas);
+	virtual void solver(EOS*, eulerTests);
+	virtual void output(EOS*);
 	//virtual void output(JWL);
 };
 
@@ -89,10 +92,10 @@ class MUSCL : public virtual RPsolvers
 
 public:
 	MUSCL(double, eulerTests);
-	~MUSCL() {};
+	virtual ~MUSCL() {};
 
 	virtual void boundary_conditions();
-	virtual void initial_conditions(IdealGas, eulerTests);
+	virtual void initial_conditions(EOS*, eulerTests);
 	//virtual void initial_conditions(JWL, eulerTests);
 
 	//-----Slope limiters-----
@@ -106,13 +109,13 @@ public:
 	//-----------------------------
 
 	/*
-	vector f(vector, IdealGas);
+	vector f(vector, EOS*);
 	vector f(vector, JWL);
 	*/
-	virtual void compute_fluxes(IdealGas, int);
+	void compute_fluxes_MUSCL(EOS*, int);
 	//virtual void compute_fluxes(JWL, eulerTests);
-	virtual void solver(IdealGas, eulerTests);
-	virtual void output(IdealGas);
+	virtual void solver(EOS*, eulerTests);
+	virtual void output(EOS*);
 	//virtual void output(JWL);
 
 };

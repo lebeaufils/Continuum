@@ -11,6 +11,9 @@ RPsolvers::RPsolvers(double c, eulerTests Test, int nU, int nF)
 	: CFL(c), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(nU, 1), U(nU, 3), F(nF, 3), Smax(0){
 }
 
+void RPsolvers::conservative_update_formula(int i){
+	U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
+}
 /*--------------------------------------------------------------------------------
  * HLLC
  --------------------------------------------------------------------------------*/
@@ -24,23 +27,14 @@ void HLLC::boundary_conditions(){
 	U.row(N+1) = U.row(N);
 }
 
-void HLLC::initial_conditions(IdealGas IG, eulerTests Test){
+void HLLC::initial_conditions(EOS* IG, eulerTests Test){
 	vector eulerL;
 	vector eulerR;
 
-	//rho
-	eulerL(0) = Test.initialL(0);
-	eulerR(0) = Test.initialR(0);
+	eulerL = IG->conservedVar(Test.initialL);
+	eulerR = IG->conservedVar(Test.initialR);
 
-	//rhou
-	eulerL(1) = Test.initialL(0)*Test.initialL(1);
-	eulerR(1) = Test.initialR(0)*Test.initialR(1);
-
-	//E
-	eulerL(2) = Test.initialL(2)/(IG.y-1) + 0.5*Test.initialL(0)*Test.initialL(1)*Test.initialL(1);
-	eulerR(2) = Test.initialR(2)/(IG.y-1) + 0.5*Test.initialR(0)*Test.initialR(1)*Test.initialR(1);
-
-	for (int i=0; i<N+1; i++){
+	for (int i=0; i<N; i++){
 		X(i+1) = i*dx;
 		if (X(i+1)  < Test.x0){
 			U.row(i+1) = eulerL;
@@ -51,7 +45,7 @@ void HLLC::initial_conditions(IdealGas IG, eulerTests Test){
 	boundary_conditions();
 }
 
-void HLLC::compute_fluxes(IdealGas IG, int i){
+void HLLC::compute_fluxes_HLLC(EOS* IG, int i){
 
 	//Storing left and right states
 	double al, ar; //sound-speed
@@ -87,16 +81,16 @@ void HLLC::compute_fluxes(IdealGas IG, int i){
 
 	//physical properties
 	//Pressure
-	Pl = IG.Pressure(U, i);
-	Pr = IG.Pressure(U, i+1);
+	Pl = IG->Pressure(U, i);
+	Pr = IG->Pressure(U, i+1);
 
 	//velocity
 	ul = U(i, 1)/U(i, 0);
 	ur = U(i+1, 1)/U(i+1, 0);
 
 	//soundspeed
-	al = IG.soundspeed(U, i);
-	ar = IG.soundspeed(U, i+1);
+	al = IG->soundspeed(U, i);
+	ar = IG->soundspeed(U, i+1);
 
 	/*--------------------------------------------------------------
 	 * pressure based wave speed estimate
@@ -113,7 +107,7 @@ void HLLC::compute_fluxes(IdealGas IG, int i){
 	}
 
 	else{ //if (Pstar > Pl){
-		ql = sqrt(1 + ((IG.y+1)/(2*IG.y))*((Pstar/Pl) - 1));
+		ql = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pl) - 1));
 	}
 
 	if (Pstar <= Pr){
@@ -121,7 +115,7 @@ void HLLC::compute_fluxes(IdealGas IG, int i){
 	}
 
 	else{ // if (Pstar > Pr){
-		qr = sqrt(1 + ((IG.y+1)/(2*IG.y))*((Pstar/Pr) - 1));
+		qr = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pr) - 1));
 	}
 
 	SR = ur + ar*qr;
@@ -163,13 +157,13 @@ void HLLC::compute_fluxes(IdealGas IG, int i){
 }
 
 
-void HLLC::solver(IdealGas IG, eulerTests Test){
+void HLLC::solver(EOS* IG, eulerTests Test){
 
 	double t = 0.0;
 	do{
 		//compute fluxes at current timestep
 		for (int i=0; i<N+1; i++){
-			compute_fluxes(IG, i);
+			compute_fluxes_HLLC(IG, i);
 		}
 
 		//set timestep following CFL conditions with max wavespeed Smax
@@ -178,7 +172,8 @@ void HLLC::solver(IdealGas IG, eulerTests Test){
 
 		//updating U
 		for (int i=1; i<N+1; i++){
-			U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
+			//U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
+			conservative_update_formula(i);
 		}
 		boundary_conditions();
 
@@ -189,23 +184,21 @@ void HLLC::solver(IdealGas IG, eulerTests Test){
 	std::cout << count << std::endl;
 }
 
-void HLLC::output(IdealGas IG){
+void HLLC::output(EOS* IG){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
 
-	for (int i=1; i<N+2; i++){
+	for (int i=1; i<N+1; i++){
 
 		double u = U(i, 1)/U(i, 0);
-		double P = IG.Pressure(U, i);
-		double e = IG.internalE(U, i);
+		double P = IG->Pressure(U, i);
+		double e = IG->internalE(U, i);
 
-		std::cout << X(i) << '\t' << U(i, 0) << '\t' << u
-				<< '\t' << P << '\t' << e << std::endl;
 		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
-	std::cout << "done: HLLC - IG" << std::endl;
+	std::cout << "done: HLLC" << std::endl;
 }
 
 /*--------------------------------------------------------------------------------
@@ -223,10 +216,14 @@ void MUSCL::boundary_conditions(){
 	U.row(N+3) = U.row(N+2);
 }
 
-void MUSCL::initial_conditions(IdealGas IG, eulerTests Test){
+void MUSCL::initial_conditions(EOS *IG, eulerTests Test){
 	vector eulerL;
 	vector eulerR;
 
+	eulerL = IG->conservedVar(Test.initialL);
+	eulerR = IG->conservedVar(Test.initialR);
+
+/*
 	//rho
 	eulerL(0) = Test.initialL(0);
 	eulerR(0) = Test.initialR(0);
@@ -236,8 +233,9 @@ void MUSCL::initial_conditions(IdealGas IG, eulerTests Test){
 	eulerR(1) = Test.initialR(0)*Test.initialR(1);
 
 	//E
-	eulerL(2) = Test.initialL(2)/(IG.y-1) + 0.5*Test.initialL(0)*Test.initialL(1)*Test.initialL(1);
-	eulerR(2) = Test.initialR(2)/(IG.y-1) + 0.5*Test.initialR(0)*Test.initialR(1)*Test.initialR(1);
+	eulerL(2) = Test.initialL(2)/(IG->y-1) + 0.5*Test.initialL(0)*Test.initialL(1)*Test.initialL(1);
+	eulerR(2) = Test.initialR(2)/(IG->y-1) + 0.5*Test.initialR(0)*Test.initialR(1)*Test.initialR(1);
+*/
 
 	for (int i=0; i<N+2; i++){
 		X(i+2) = i*dx;
@@ -252,7 +250,7 @@ void MUSCL::initial_conditions(IdealGas IG, eulerTests Test){
 }
 
 /*
-vector MUSCL::f(vector U, IdealGas IG){
+vector MUSCL::f(vector U, EOS IG){
 	vector flux;
 	flux(0) = U(1);
 	flux(1) = U(1)*(U(1)/U(0)) + (IG.y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
@@ -468,7 +466,7 @@ void MUSCL::data_reconstruction(slopeLimiter a){
 	}
 }
 
-void MUSCL::compute_fluxes(IdealGas IG, int i){
+void MUSCL::compute_fluxes_MUSCL(EOS* IG, int i){
 
 	double al, ar;
 
@@ -500,8 +498,8 @@ void MUSCL::compute_fluxes(IdealGas IG, int i){
 	vector URtmp1 = URi.row(i+1);
 
 	//Post 1/2 time-step evolution left and right states
-	vector ULbar = ULtmp1 + 0.5*(dt/dx)*(IG.f(ULtmp1) - IG.f(URtmp1)); //UL(i+1)
-	vector URbar = URtmp + 0.5*(dt/dx)*(IG.f(ULtmp) - IG.f(URtmp));
+	vector ULbar = ULtmp1 + 0.5*(dt/dx)*(IG->f(ULtmp1) - IG->f(URtmp1)); //UL(i+1)
+	vector URbar = URtmp + 0.5*(dt/dx)*(IG->f(ULtmp) - IG->f(URtmp));
 
 	/*-------------------------------------------------------
 	 * Solution of the piecewise constant Riemann problem pg 180
@@ -526,16 +524,16 @@ void MUSCL::compute_fluxes(IdealGas IG, int i){
 		Er = hllcUR(2);
 
 		//Pressure
-		Pl = IG.PressureScalar(hllcUL);
-		Pr = IG.PressureScalar(hllcUR);
+		Pl = IG->PressureScalar(hllcUL);
+		Pr = IG->PressureScalar(hllcUR);
 
 		//velocity
 		ul = hllcUL(1)/hllcUL(0);
 		ur = hllcUR(1)/hllcUR(0);
 
 		//soundspeed
-		al = IG.soundspeedScalar(hllcUL);
-		ar = IG.soundspeedScalar(hllcUR);
+		al = IG->soundspeedScalar(hllcUL);
+		ar = IG->soundspeedScalar(hllcUR);
 
 
 		/*---------------------------------------
@@ -553,7 +551,7 @@ void MUSCL::compute_fluxes(IdealGas IG, int i){
 		}
 
 		else {
-			ql = sqrt(1 + ((IG.y+1)/(2*IG.y))*((Pstar/Pl) - 1));
+			ql = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pl) - 1));
 		}
 
 		if (Pstar <= Pr){
@@ -561,7 +559,7 @@ void MUSCL::compute_fluxes(IdealGas IG, int i){
 		}
 
 		else {
-			qr = sqrt(1 + ((IG.y+1)/(2*IG.y))*((Pstar/Pr) - 1));
+			qr = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pr) - 1));
 		}
 
 		SR = ur + ar*qr;
@@ -600,7 +598,7 @@ void MUSCL::compute_fluxes(IdealGas IG, int i){
 		//if (count == 0) std::cout << F.row(i) << std::endl;
 }
 
-void MUSCL::solver(IdealGas IG, eulerTests Test){
+void MUSCL::solver(EOS* IG, eulerTests Test){
 	
 	slopeLimiter a = getLimiter();
 
@@ -608,7 +606,7 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 	do{
 		data_reconstruction(a);
 		for (int i=1; i<N+2; i++){
-			compute_fluxes(IG, i);
+			compute_fluxes_MUSCL(IG, i);
 		}
 
 		//set timestep
@@ -620,9 +618,7 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 		if (count == 0) std::cout << dt << std::endl;
 		//updating U
 		for (int i=2; i<N+2; i++){
-			//if (count == 0) std::cout << U.row(i) << '\t' << '\t';
-			U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
-			//if (count == 0) std::cout << U.row(i) << std::endl;
+			conservative_update_formula(i);
 		}
 		boundary_conditions();
 
@@ -630,7 +626,7 @@ void MUSCL::solver(IdealGas IG, eulerTests Test){
 	std::cout << count << std::endl;
 }
 
-void MUSCL::output(IdealGas IG){
+void MUSCL::output(EOS* IG){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
@@ -638,13 +634,13 @@ void MUSCL::output(IdealGas IG){
 	for (int i=2; i<N+3; i++){
 
 		double u = U(i, 1)/U(i, 0);
-		double P = IG.Pressure(U, i);
-		double e = IG.internalE(U, i);
+		double P = IG->Pressure(U, i);
+		double e = IG->internalE(U, i);
 
 		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
-	std::cout << "done: MUSCL - IG" << std::endl;
+	std::cout << "done: MUSCL" << std::endl;
 }
 
 
