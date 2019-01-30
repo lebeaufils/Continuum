@@ -1,8 +1,8 @@
 #ifndef GHOSTFLUID_H_
 #define GHOSTFLUID_H_
 
-#include "Solvers.h"
-#include "LevelSet.h"
+#include "RPsolvers/Solvers.h"
+#include "RPsolvers/LevelSet.h"
 
 //Note 1: Update is split from flux computation to allow identification of max wavespeed between both materials
 
@@ -17,44 +17,33 @@
 		}
 */
 
-/*class GhostFluidMethods : public HLLC, public MUSCL, public LevelSetFunction
-{
-
-	//Accessing members of HLLC/MUSCL as such
-	//A::word = a;
-	//B::word = b;
-public:
-	GFM(double, eulerTests);
-
-	void initial_conditions(EOS*, EOS*, eulerTests); //EOS is polymorphic
-	void ghost_boundary(); //original GFM
-	void ghost_boundary_RP(); //RP based
-	void update_levelset();
-	//void update_levelset_ENO();
-	//void update_levelset_WENO();
-	//void update_levelset_TVD();
-	void solver();
-};
-*/
 class GhostFluidMethods : public LevelSetFunction
 {
 	RPsolvers* var1;
 	RPsolvers* var2;
 
 	//domain wide dt and Smax after considering all materials
+	double CFL;
 	double Smax;
 	double dt;
+	int count;
 public:
 	//GhostFluidMethods(double, eulerTests, HLLC);
 	//GhostFluidMethods(double, eulerTests, MUSCL);
-	GhostFluidMethods(double, gfmTests);
-	~GhostFluidMethods();
+	GhostFluidMethods(double c, gfmTests);
+	~GhostFluidMethods() {
+		delete var1; delete var2;
+	};
 
-	void ghost_boundary(gfmTests, matrix, matrix, int); //original GFM
+	void initialise_HLLC(gfmTests);
+	//void initialise_EXACT():
+	//void initialise_MUSCL();
+
+	void ghost_boundary(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //original GFM
 	void ghost_boundary_RP(); //RP based
 
-	template <typename T> void initial_conditions(T, EOS*, EOS*, gfmTests){static_assert(sizeof(T) == 0, "Specialised calls only")}
-	template <> void initial_conditions<HLLC>(HLLC, HLLC, EOS*, EOS*, gfmTests);
+	//template <typename T> void initial_conditions(T, EOS*, EOS*, gfmTests){static_assert(sizeof(T) == 0, "Specialised calls only")}
+	void initial_conditions_HLLC(EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<HLLC>(HLLC, HLLC, EOS*, EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<HLLC>(HLLC, HLLC, EOS*, EOS*, EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<MUSCL>(MUSCL, MUSCL, EOS*, EOS*, gfmTests);
@@ -64,7 +53,36 @@ public:
 	//void update_levelset_ENO();
 	//void update_levelset_WENO();
 	//void update_levelset_TVD();
-	void solver();
-}
+	void solver(EOS*, EOS*, gfmTests);
+	void output(EOS*, EOS*);
+
+
+};
+/*
+class GhostFluidMethods : public LevelSetFunction
+{
+	RPsolvers* var1;
+	RPsolvers* var2;
+
+	//domain wide dt and Smax after considering all materials
+	double Smax;
+	double dt;
+	int count;
+
+	public:
+	//GhostFluidMethods(double, eulerTests, HLLC);
+	//GhostFluidMethods(double, eulerTests, MUSCL);
+	GhostFluidMethods(gfmTests);
+	~GhostFluidMethods();
+};
+*/
+
+
+
+
 
 #endif /* GHOSTFLUID_H_ */
+
+
+
+

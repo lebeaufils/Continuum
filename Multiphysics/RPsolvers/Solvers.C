@@ -7,6 +7,10 @@
 
 #include "Solvers.h"
 
+RPsolvers::RPsolvers(gfmTests Test, int nU, int nF)
+	: CFL(0), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(nU, 1), U(nU, 3), F(nF, 3), Smax(0){
+}
+
 RPsolvers::RPsolvers(double c, eulerTests Test, int nU, int nF)
 	: CFL(c), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(nU, 1), U(nU, 3), F(nF, 3), Smax(0){
 }
@@ -14,9 +18,17 @@ RPsolvers::RPsolvers(double c, eulerTests Test, int nU, int nF)
 void RPsolvers::conservative_update_formula(int i){
 	U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
 }
+
+void RPsolvers::conservative_update_formula(double newdt, double newdx, int i){
+	U.row(i) = U.row(i) - (newdt/newdx)*(F.row(i) - F.row(i-1));
+}
+
 /*--------------------------------------------------------------------------------
  * HLLC
  --------------------------------------------------------------------------------*/
+HLLC::HLLC(gfmTests Test)
+	: RPsolvers(Test, Test.N+2, Test.N+1){
+}
 
 HLLC::HLLC(double c, eulerTests Test)
 	: RPsolvers(c, Test, Test.N+2, Test.N+1){
@@ -45,7 +57,7 @@ void HLLC::initial_conditions(EOS* IG, eulerTests Test){
 	boundary_conditions();
 }
 
-void HLLC::compute_fluxes_HLLC(EOS* IG, int i){
+void HLLC::compute_fluxes(EOS* IG, int i){
 
 	//Storing left and right states
 	double al, ar; //sound-speed
@@ -163,7 +175,7 @@ void HLLC::solver(EOS* IG, eulerTests Test){
 	do{
 		//compute fluxes at current timestep
 		for (int i=0; i<N+1; i++){
-			compute_fluxes_HLLC(IG, i);
+			compute_fluxes(IG, i);
 		}
 
 		//set timestep following CFL conditions with max wavespeed Smax
@@ -204,6 +216,9 @@ void HLLC::output(EOS* IG){
 /*--------------------------------------------------------------------------------
  * MUSCL
  --------------------------------------------------------------------------------*/
+MUSCL::MUSCL(gfmTests Test)
+	:RPsolvers(Test, Test.N+4, Test.N+2), ULi(Test.N+4, 3), URi(Test.N+4, 3){
+}
 
 MUSCL::MUSCL(double c, eulerTests Test)
 	:RPsolvers(c, Test, Test.N+4, Test.N+2), ULi(Test.N+4, 3), URi(Test.N+4, 3){
@@ -466,7 +481,7 @@ void MUSCL::data_reconstruction(slopeLimiter a){
 	}
 }
 
-void MUSCL::compute_fluxes_MUSCL(EOS* IG, int i){
+void MUSCL::compute_fluxes(EOS* IG, int i){
 
 	double al, ar;
 
@@ -606,7 +621,7 @@ void MUSCL::solver(EOS* IG, eulerTests Test){
 	do{
 		data_reconstruction(a);
 		for (int i=1; i<N+2; i++){
-			compute_fluxes_MUSCL(IG, i);
+			compute_fluxes(IG, i);
 		}
 
 		//set timestep

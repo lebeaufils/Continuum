@@ -5,13 +5,14 @@
  *      Author: forte
  */
 
-#include "RPsolvers/Solvers.h"
+#include "GhostFluid.h"
 
 int main(void){
 
 	//use a switch function here to choose between idealgas or stiffened gas.
 	//do the same for choice of solver.
 	//switch can be activated through user input or mapping through filename
+	/*
 	EOS *SG = new IdealGas();
 	//SG->GetGamma();
 
@@ -27,5 +28,20 @@ int main(void){
 
 	delete SG;
 	delete var;
+	*/
+
+	EOS* eos1 = new IdealGas();
+	EOS* eos2 = new IdealGas();
+
+	gfmTests Tests(100, 4.0); //(N, L)
+	//Tests.test_example_1();
+	Tests.testA_hires();
+
+	GhostFluidMethods gfmProblem(0.9, Tests);
+	gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
+	gfmProblem.solver(eos1, eos2, Tests);
+	gfmProblem.output(eos1, eos2);
+
+	delete eos1; delete eos2;
 }
 

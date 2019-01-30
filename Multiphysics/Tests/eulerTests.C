@@ -82,8 +82,25 @@ void gfmTests::testA(){
 	L = 1.0;
 	N = 100;
 	double dx = L/N;
-	x0 = dx*(50+51)/2.;
-	tstop = 0;
+	x0 = dx*(N+1)/2.;
+	tstop = 0.0007;
+
+	y1 = 1.4;
+	y2 = 1.2;
+}
+
+void gfmTests::testA_hires(){
+	vector Left(1.0, 0.0, 1e5);
+	vector Right(0.125, 0.0, 1e4);
+
+	initialL = Left;
+	initialR = Right;
+
+	L = 1.0;
+	N = 400;
+	double dx = L/N;
+	x0 = dx*(N+1)/2.;
+	tstop = 0.0007;
 
 	y1 = 1.4;
 	y2 = 1.2;

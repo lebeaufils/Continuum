@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <Eigen/Dense>
 
+#include "../Tests/eulerTests.h"
+
 typedef Eigen::Vector3d vector;
 typedef Eigen::MatrixXd matrix;
 
@@ -26,9 +28,9 @@ protected:
 public:
 	LevelSetFunction(gfmTests);
 
-	int get_sgn();
-	void boudnary_conditions();
-	void signed_distance_function_1D();
+	int get_sgn(double);
+	void boundary_conditions();
+	void signed_distance_function_1D(int);
 	
 	//first order upwind hamilton-jacobi method
 	double HJ_FirstOrder(double, double, int); //velocity

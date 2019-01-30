@@ -71,6 +71,7 @@ void ghostBoundary(MatrixN2 Ureal, MatrixN2 &Ughost, int realmaterial, int i){ /
 	velocityghost = velocityreal;
 	dghost = pow(pow(dreal, yreal)*(Pghost/Preal), 1.0/yghost);
 
+
 	//std::cout << Pghost << '\t' << dghost << '\t' << velocityghost << std::endl;
 
 	//setting the conservative form of the ghost variables
@@ -429,11 +430,12 @@ void output(MatrixN2 U1, MatrixN2 U2, VectorN2 X, VectorN2 phi, double tstop){
 	MatrixN2 U;
 	double y;
 
-	std::stringstream filename;
-	filename << "Euler_" << std::setw(3) << std::setfill('0') << tstop << "s.txt";
+	//std::stringstream filename;
+	//filename << "Euler_" << std::setw(3) << std::setfill('0') << tstop << "s.txt";
 
 	std::ofstream outfile;
-	outfile.open(filename.str().c_str());
+	//outfile.open(filename.str().c_str());
+	outfile.open("dataeuler.txt");
 
 	for (int i=0; i<(N+1); i++){
 		if (sgn(phi(i+1)) < 0){
@@ -449,7 +451,7 @@ void output(MatrixN2 U1, MatrixN2 U2, VectorN2 X, VectorN2 phi, double tstop){
 		double u = U(i+1, 1)/U(i+1, 0);
 		double P = (y-1)*(U(i+1, 2) - 0.5*U(i+1, 0)*pow((U(i+1, 1)/U(i+1, 0)),2.0));
 		double e = P/(U(i+1, 0)*(y - 1));
-		std::cout << u << '\t' << phi(i+1) << std::endl;
+		//std::cout << u << '\t' << phi(i+1) << std::endl;
 
 		outfile << X(i+1) << '\t' << U(i+1, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << '\t' << phi(i+1) << std::endl;

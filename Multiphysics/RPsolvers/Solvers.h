@@ -38,22 +38,28 @@ protected:
 
 	//Variable Matrix
 	matrix X; //Domain
-	matrix U; //Conserved quantities d, du, E
-	matrix F; //Flux
+	//matrix U; //Conserved quantities d, du, E
+	//matrix F; //Flux
 
-	double Smax; //Maximum soundspeed
+	//double Smax; //Maximum soundspeed
 
 public:
+	matrix U; //Conserved quantities d, du, E
+	matrix F; //Flux
+	double Smax; //Maximum soundspeed
+
 	RPsolvers() : CFL(0), N(0), count(0), dt(0), dx(0), X(0,0), U(0,0), F(0,0) {}
+	RPsolvers(gfmTests, int, int); //without CFL, for gfm
 	RPsolvers(double, eulerTests, int, int); //double c, int N, double L || courant number/ number of cells/ domain length
 	virtual ~RPsolvers() {};
 
 	void conservative_update_formula(int);
+	void conservative_update_formula(double, double, int);
 	//Abstract classes
 	virtual void boundary_conditions() = 0;
 	virtual void initial_conditions(EOS*, eulerTests) = 0;
 	//virtual void initial_conditions(JWL, eulerTests) = 0;
-	//virtual void compute_fluxes(EOS*, int) = 0;
+	virtual void compute_fluxes(EOS*, int) = 0;
 	//virtual void compute_fluxes(JWL, eulerTests) = 0;
 	virtual void solver(EOS*, eulerTests) = 0;
 	virtual void output(EOS*) = 0;
@@ -67,13 +73,14 @@ public:
 class HLLC : public virtual RPsolvers
 {
 public:
+	HLLC(gfmTests);
 	HLLC(double, eulerTests);
 	virtual ~HLLC() {};
 
 	virtual void boundary_conditions();
 	virtual void initial_conditions(EOS*, eulerTests);
 	//virtual void initial_conditions(JWL, eulerTests);
-	void compute_fluxes_HLLC(EOS*, int);
+	virtual void compute_fluxes(EOS*, int);
 	//virtual void compute_fluxes(JWL, eulerTests);
 	virtual void solver(EOS*, eulerTests);
 	virtual void output(EOS*);
@@ -91,6 +98,7 @@ class MUSCL : public virtual RPsolvers
 	matrix URi;
 
 public:
+	MUSCL(gfmTests);
 	MUSCL(double, eulerTests);
 	virtual ~MUSCL() {};
 
@@ -112,7 +120,7 @@ public:
 	vector f(vector, EOS*);
 	vector f(vector, JWL);
 	*/
-	void compute_fluxes_MUSCL(EOS*, int);
+	virtual void compute_fluxes(EOS*, int);
 	//virtual void compute_fluxes(JWL, eulerTests);
 	virtual void solver(EOS*, eulerTests);
 	virtual void output(EOS*);

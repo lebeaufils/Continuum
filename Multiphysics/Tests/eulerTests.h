@@ -54,6 +54,7 @@ struct gfmTests : public virtual standardTests
 
 	void test_example_1();
 	void testA();
+	void testA_hires();
 	void testB();
 	void testC();
 	void testD();

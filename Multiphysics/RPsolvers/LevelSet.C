@@ -1,6 +1,6 @@
 #include "LevelSet.h"
 
-LevelSetFunction::LevelSetFunction(gfmTest Test)
+LevelSetFunction::LevelSetFunction(gfmTests Test)
 	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), phi(N+2, 1), sgn(0) {}
 
 int LevelSetFunction::get_sgn(double a){
