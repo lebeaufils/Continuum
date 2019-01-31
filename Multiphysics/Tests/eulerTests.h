@@ -52,9 +52,10 @@ struct gfmTests : public virtual standardTests
 	gfmTests() : standardTests(0, 0), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0) {}
 	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0) {}
 
+	void set_number_of_cells(int); //changing the resolution. 
+
 	void test_example_1();
 	void testA();
-	void testA_hires();
 	void testB();
 	void testC();
 	void testD();

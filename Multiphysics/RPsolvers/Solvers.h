@@ -38,19 +38,14 @@ protected:
 
 	//Variable Matrix
 	matrix X; //Domain
-	//matrix U; //Conserved quantities d, du, E
-	//matrix F; //Flux
-
-	//double Smax; //Maximum soundspeed
-
 public:
 	matrix U; //Conserved quantities d, du, E
 	matrix F; //Flux
 	double Smax; //Maximum soundspeed
 
-	RPsolvers() : CFL(0), N(0), count(0), dt(0), dx(0), X(0,0), U(0,0), F(0,0) {}
-	RPsolvers(gfmTests, int, int); //without CFL, for gfm
-	RPsolvers(double, eulerTests, int, int); //double c, int N, double L || courant number/ number of cells/ domain length
+	RPsolvers() : CFL(0), N(0), count(0), dt(0), dx(0), X(0, 0), U(0, 0), F(0, 0), Smax(0){}
+	RPsolvers(gfmTests,  int, int); //without CFL, for gfm
+	RPsolvers(double, eulerTests,  int, int); //double c, int N, double L || courant number/ number of cells/ domain length
 	virtual ~RPsolvers() {};
 
 	void conservative_update_formula(int);
@@ -65,6 +60,31 @@ public:
 	virtual void output(EOS*) = 0;
 	//virtual void output(JWL) = 0;
 };
+
+/*
+class FiniteVolume : public virtual RPsolvers
+{	
+protected:
+	matrix X; //Domain
+public:
+	matrix U; //Conserved quantities d, du, E
+	matrix F; //Flux
+
+	FiniteVolume() : RPsolvers(){}
+	FiniteVolume(gfmTests,  int, int);
+	FiniteVolume(double, eulerTests,  int, int);
+	virtual ~FiniteVolume() {};
+
+	virtual void conservative_update_formula(int);
+	virtual void conservative_update_formula(double, double, int);
+	//Abstract classes
+	virtual void boundary_conditions() = 0;
+	virtual void initial_conditions(EOS*, eulerTests) = 0;
+	virtual void compute_fluxes(EOS*, int) = 0;
+	virtual void solver(EOS*, eulerTests) = 0;
+	virtual void output(EOS*) = 0;
+};
+*/
 
 /*--------------------------------------------------------------------------------
  * HLLC
@@ -128,5 +148,39 @@ public:
 
 };
 
+class EXACT //: public virtual RPsolvers
+{
+	int N;
+	int count;
+	double dt;
+	double dx;
+
+	//Variable Matrix
+	matrix X; //Domain
+	matrix W;
+
+	double TOL;
+
+public:
+	EXACT(eulerTests Test) : N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(N, 1), W(N, 3), TOL(1e-6) {}
+	//EXACT(double, eulerTests);
+	//virtual ~EXACT() {};
+
+	void initial_conditions(eulerTests);
+
+	//Riemann Problem: Equations for Pressure and Particle Velocity
+	//void fL(double);
+	double fk(double, vector, EOS*);
+	double f(double, vector, vector, EOS*);
+	double fkprime(double, vector, EOS*);
+	double fprime(double, vector, vector, EOS*);
+	double newton_raphson(double, vector, vector, EOS*);
+	double compute_star_pressure(vector, vector, EOS*); //Newton-Raphson Method
+	double relative_pressure_change(double, double);
+
+
+
+
+};
 
 #endif /* SOLVERS_H_ */

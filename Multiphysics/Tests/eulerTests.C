@@ -55,6 +55,13 @@ void eulerTests::test5(){ //slowly moving contact discontinuities
 	tstop = 0.012;
 }
 
+/*--------------------------------------------------------------------------------------------
+	Ghost Fluid Tests
+--------------------------------------------------------------------------------------------*/
+void gfmTests::set_number_of_cells(int Ncells){
+	N = Ncells;
+}
+
 void gfmTests::test_example_1(){
 	vector Left(2.0, 0.0, 9.8e5);
 	vector Right(1.0, 0.0, 2.45e5);
@@ -62,10 +69,10 @@ void gfmTests::test_example_1(){
 	initialL = Left;
 	initialR = Right;
 
-	L = 4.0;
-	N = 100;
+	//L = 4.0;
+	//N = 100;
 	double dx = L/N;
-	x0 = dx*(50+51)/2.;
+	x0 = dx*(N+1)/2.;
 	tstop = 0.0022;
 
 	y1 = 1.4;
@@ -79,25 +86,8 @@ void gfmTests::testA(){
 	initialL = Left;
 	initialR = Right;
 
-	L = 1.0;
-	N = 100;
-	double dx = L/N;
-	x0 = dx*(N+1)/2.;
-	tstop = 0.0007;
-
-	y1 = 1.4;
-	y2 = 1.2;
-}
-
-void gfmTests::testA_hires(){
-	vector Left(1.0, 0.0, 1e5);
-	vector Right(0.125, 0.0, 1e4);
-
-	initialL = Left;
-	initialR = Right;
-
-	L = 1.0;
-	N = 400;
+	//L = 1.0;
+	//N = 100;
 	double dx = L/N;
 	x0 = dx*(N+1)/2.;
 	tstop = 0.0007;

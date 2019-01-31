@@ -30,12 +30,14 @@ int main(void){
 	delete var;
 	*/
 
+/*
 	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 
-	gfmTests Tests(100, 4.0); //(N, L)
+	gfmTests Tests(400, 1.0); //(N, L)
+
+	Tests.testA();
 	//Tests.test_example_1();
-	Tests.testA_hires();
 
 	GhostFluidMethods gfmProblem(0.9, Tests);
 	gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
@@ -43,5 +45,16 @@ int main(void){
 	gfmProblem.output(eos1, eos2);
 
 	delete eos1; delete eos2;
+*/
+	EOS* IG = new IdealGas();
+	eulerTests Test(100, 1.0);
+	Test.test4();
+
+	EXACT var(Test);
+	var.initial_conditions(Test);
+	double pstar = var.compute_star_pressure(Test.initialL, Test.initialR, IG);
+	std::cout << pstar << std::endl;
+
+	delete IG;
 }
 

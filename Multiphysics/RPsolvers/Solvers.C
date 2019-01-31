@@ -23,6 +23,16 @@ void RPsolvers::conservative_update_formula(double newdt, double newdx, int i){
 	U.row(i) = U.row(i) - (newdt/newdx)*(F.row(i) - F.row(i-1));
 }
 
+/*
+FiniteVolume::FiniteVolume(gfmTests Test, int nU, int nF)
+	: RPsolvers(Test), X(nU, 1), U(nU, 3), F(nF, 3){
+}
+
+FiniteVolume::FiniteVolume(double c, eulerTests Test, int nU, int nF)
+	: RPsolvers(c, Test), X(nU, 1), U(nU, 3), F(nF, 3){
+}
+*/
+
 /*--------------------------------------------------------------------------------
  * HLLC
  --------------------------------------------------------------------------------*/
@@ -268,8 +278,8 @@ void MUSCL::initial_conditions(EOS *IG, eulerTests Test){
 vector MUSCL::f(vector U, EOS IG){
 	vector flux;
 	flux(0) = U(1);
-	flux(1) = U(1)*(U(1)/U(0)) + (IG.y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
-	flux(2) = (U(1)/U(0))*(U(2) + (IG.y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0)));
+	flux(1) = U(1)*(U(1)/U(0)) + (IG->y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
+	flux(2) = (U(1)/U(0))*(U(2) + (IG->y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0)));
 	return flux;
 }
 
@@ -658,8 +668,112 @@ void MUSCL::output(EOS* IG){
 	std::cout << "done: MUSCL" << std::endl;
 }
 
+/*--------------------------------------------------------------------------------
+ * Exact Solver
+ --------------------------------------------------------------------------------*/
+//Note, W contains primitive variables (density, velocity, pressure)
 
+void EXACT::initial_conditions(eulerTests Test){
 
+	for (int i=0; i<N; i++){
+		X(i) = i*dx;
+		if (X(i)  < Test.x0){
+			W.row(i) = Test.initialL;
+		}
+		else W.row(i) = Test.initialR;
+		std::cout << W.row(i) << std::endl;
+	}
+}
+
+double EXACT::fk(double P, vector Wk, EOS* IG){
+	//Data-dependent constants
+	double Ak = 2./((IG->y + 1)*Wk(0));
+	double Bk = Wk(2)*((IG->y - 1)/(IG->y + 1));
+	double ck = pow(IG->y*Wk(2)/Wk(0), 0.5); //soundspeed
+	double flux;
+
+	if (P > Wk(2)){ //Shock
+		flux = (P - Wk(2))*pow(Ak/(P + Bk), 0.5);
+	}
+
+	else { //Rarefraction
+		flux = ((2.*ck)/(IG->y - 1))*(pow(P/Wk(2), (IG->y - 1)/(2.*IG->y)) - 1);
+	}
+
+	return flux;
+}
+
+double EXACT::f(double P, vector WL, vector WR, EOS* IG){
+	double du = (WR(1) - WL(1));
+	return fk(P, WL, IG) + fk(P, WR, IG) + du;                                                                                                             
+}
+
+double EXACT::fkprime(double P, vector Wk, EOS* IG){ //first derivative of f
+	//Data-dependent constants
+	double Ak = 2./((IG->y + 1)*Wk(0));
+	double Bk = Wk(2)*((IG->y - 1)/(IG->y + 1));
+	double ck = pow(IG->y*Wk(2)/Wk(0), 0.5); //soundspeed
+	double fluxprime;
+
+	if (P > Wk(2)){ //Shock
+		fluxprime = pow(Ak/(P + Bk), 0.5) * (1 - (P - Wk(2))/(2.*(P + Bk))); 
+	}
+
+	else { //Rarefraction
+		fluxprime = (1./(Wk(0)*ck))*pow(P/Wk(2), -(IG->y + 1)/(2*IG->y));
+	}
+
+	return fluxprime;
+}
+
+double EXACT::fprime(double P, vector WL, vector WR, EOS* IG){
+	return fkprime(P, WR, IG) + fkprime(P, WL, IG);
+}
+
+double EXACT::newton_raphson(double Pk, vector WL, vector WR, EOS* IG){
+	double Pk_1 = Pk - f(Pk, WL, WR, IG)/fprime(Pk, WL, WR, IG);
+	//double du = (WR(1) - WL(1));
+	//double Pk_1 = Pk - (fk(Pk, WR, IG) + fk(Pk, WL, IG) + du)/(fkprime(Pk, WR, IG) + fkprime(Pk, WL, IG));
+	return Pk_1;
+}
+
+double EXACT::compute_star_pressure(vector WL, vector WR, EOS* IG){
+	//An approximation for p, p0 is required for the initial guess.
+	//A poor choice of p0 results in the need for large number of iterations to achieve convergence
+	
+	double cL = pow(IG->y*WL(2)/WL(0), 0.5); //soundspeed in left state
+	double cR = pow(IG->y*WR(2)/WR(0), 0.5); //soundspeed in right state
+
+	double exponent = (IG->y - 1)/(2*IG->y);
+	double _exponent = (2*IG->y)/(IG->y - 1);
+	
+	//Two-Rarefraction approximation
+	double pTR = pow((cL + cR - 0.5*(IG->y-1)*(WR(1) - WL(1)))/((cL/pow(WL(2), exponent)) + (cR/pow(WR(2), exponent))), _exponent);
+		//Pressure under the assumption that the two non-linear waves are rarefraction waves
+
+	//double p0 = 0.5*(WL(2) + WR(2));
+	//to make logic gates to select the 4 different P guesses...
+
+	double Pk; Pk = pTR; //First guess
+	double Pk_1;
+	double CHA = 0;
+
+	int count = 0;
+	do{
+		Pk_1 = newton_raphson(Pk, WL, WR, IG);
+		CHA = relative_pressure_change(Pk_1, Pk);
+		Pk = Pk_1; //Set the iterate as the new guess
+		count += 1;
+	}while(CHA > TOL);
+
+	std::cout << count <<std::endl;
+	return Pk;
+}
+
+double EXACT::relative_pressure_change(double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
+	double CHA = abs(Pk_1 - Pk)/(0.5*(Pk_1 + Pk));
+	return CHA;
+}
 
 
 

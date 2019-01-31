@@ -29,37 +29,7 @@ void GhostFluidMethods::ghost_boundary(RPsolvers* Ureal, EOS* eosReal, RPsolvers
 }
 
 void GhostFluidMethods::ghost_boundary_RP(){
-	/*
-	double yreal, yghost;
-	double Preal, Pghost;
-	double dghost;
-	double dreal = Ureal(i, 0);
-	double velocityreal = Ureal(i, 1)/Ureal(i, 0);
-	double velocityghost;
-
-	if (realmaterial == 1){
-		yreal = gamma1;
-		yghost = gamma2;
-	}
-
-	else {
-		yreal = gamma2;
-		yghost = gamma1;
-	}
-
-	Preal = (yreal-1)*(Ureal(i, 2) - 0.5*Ureal(i, 0)*pow((Ureal(i, 1)/Ureal(i, 0)),2.0)); //extrapolated Pressure
-	Pghost = Preal;
-	velocityghost = velocityreal;
-	dghost = pow(pow(dreal, yreal)*(Pghost/Preal), 1.0/yghost);
-
-
-	//std::cout << Pghost << '\t' << dghost << '\t' << velocityghost << std::endl;
-
-	//setting the conservative form of the ghost variables
-	Ughost(i, 0) = dghost;
-	Ughost(i, 1) = velocityghost*dghost;
-	Ughost(i, 2) = Pghost/(yghost-1) + 0.5*dghost*velocityghost*velocityghost;
-	*/
+//Exact riemannsolver for idealgas and stiffened gas. Ghost point values are the RP star states.
 }
 
 //Initial conditions for 2 material system
