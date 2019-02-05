@@ -30,6 +30,7 @@ struct eulerTests : public virtual standardTests
 	eulerTests(double N, double L) : standardTests(N, L) {}
 
 	void test1();
+	void test1_stationary();
 	void test2();
 	void test3();
 	void test4();

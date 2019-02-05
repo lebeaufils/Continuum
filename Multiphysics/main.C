@@ -48,12 +48,14 @@ int main(void){
 */
 	EOS* IG = new IdealGas();
 	eulerTests Test(100, 1.0);
-	Test.test4();
+	//Test.test1_stationary();
+	Test.test2();
 
 	EXACT var(Test);
-	var.initial_conditions(Test);
-	double pstar = var.compute_star_pressure(Test.initialL, Test.initialR, IG);
-	std::cout << pstar << std::endl;
+	var.initial_conditions(IG);
+
+	var.sampling(Test.tstop);
+	var.output();
 
 	delete IG;
 }

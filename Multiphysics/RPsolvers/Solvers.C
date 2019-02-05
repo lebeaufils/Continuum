@@ -220,6 +220,7 @@ void HLLC::output(EOS* IG){
 		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
+	outfile.close();
 	std::cout << "done: HLLC" << std::endl;
 }
 
@@ -665,6 +666,7 @@ void MUSCL::output(EOS* IG){
 		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
+	outfile.close();
 	std::cout << "done: MUSCL" << std::endl;
 }
 
@@ -673,18 +675,293 @@ void MUSCL::output(EOS* IG){
  --------------------------------------------------------------------------------*/
 //Note, W contains primitive variables (density, velocity, pressure)
 
-void EXACT::initial_conditions(eulerTests Test){
+void EXACT::initial_conditions(EOS* IG){
 
 	for (int i=0; i<N; i++){
-		X(i) = i*dx;
-		if (X(i)  < Test.x0){
-			W.row(i) = Test.initialL;
-		}
-		else W.row(i) = Test.initialR;
-		std::cout << W.row(i) << std::endl;
+		X(i) = (i)*dx;
+	}
+	y = IG->y;
+	cL = sqrt(y*WL(2)/WL(0));
+	cR = sqrt(y*WR(2)/WR(0));
+
+	CONST1 = (y-1)/(2*y); // y-1 / 2y
+	CONST2 = (y+1)/(2*y); // y+1 / 2y
+	CONST3 = (2*y)/(y-1);
+	CONST4 = 2./(y-1);
+	CONST5 = 2./(y+1);
+	CONST6 = (y-1)/(y+1);
+	CONST7 = (y-1)/2.;
+	CONST8 = y-1;
+}
+
+void EXACT::check_pressure_pos_condition(){
+//(Δu)crit ≡ 2aL/γ−1 + 2aR/γ−1 ≤ uR −uL , (4.82) Toro pg 127
+	double du_crit = CONST4*(cL + cR);
+	double du = WR(1) - WL(1);
+
+	//If the pressure positivity condition is not satisfied, vacuum is generated
+	// and the solver fails. Exit the program if this condition is not satisfied.
+	if (du_crit <= du){ //This conditions ensures S*L <= S*R
+		throw "Pressure positivity condition violated";
 	}
 }
 
+double EXACT::fk(double P, vector Wk){
+	//data-dependent constants
+	double Ak = CONST5/Wk(0);
+	double Bk = Wk(2)*CONST6;
+	double Qk = sqrt(Ak/(P + Bk)); //mass flux
+	double ck = sqrt(y*Wk(2)/Wk(0));
+	double flux;
+
+	if (P > Wk(2)){ //Shock
+		flux = (P - Wk(2))*Qk;
+	}
+
+	else { //Rarefraction
+		flux = CONST4*ck*(pow(P/Wk(2), CONST1) - 1);
+	}
+
+	return flux;
+}
+
+double EXACT::f(double P){
+	double du = (WR(1) - WL(1));
+	return fk(P, WL) + fk(P, WR) + du;   
+}
+
+double EXACT::fkprime(double P, vector Wk){
+	//data-dependent constants
+	double Ak = CONST5/Wk(0);
+	double Bk = Wk(2)*CONST6;
+	double Qk = sqrt(Ak/(P + Bk)); //mass flux
+	double ck = sqrt(y*Wk(2)/Wk(0));
+	double fluxprime;
+
+	if (P > Wk(2)){ //Shock
+		fluxprime = Qk*(1 - (P - Wk(2))/(2.*(P + Bk))); 
+	}
+
+	else { //Rarefraction
+		fluxprime = (1./(Wk(0)*ck))*pow(P/Wk(2), -CONST2);
+	}
+
+	return fluxprime;
+}
+
+double EXACT::fprime(double P){
+	return fkprime(P, WR) + fkprime(P, WL);  
+}
+
+double EXACT::newton_raphson(double Pk){
+	double Pk_1 = Pk - f(Pk)/fprime(Pk);
+	return Pk_1;
+}
+
+double EXACT::relative_pressure_change(double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
+	double CHA = 2*abs((Pk_1 - Pk)/(Pk_1 + Pk));
+	return CHA;
+}
+
+double EXACT::compute_star_pressure(){
+	//check positivity condition
+	
+	try {
+		check_pressure_pos_condition();
+	} 
+	catch(const char* c){
+		std::cout << c << std::endl;
+		std::cout << "vacuum generated, terminating program" << std::endl;
+	}
+	
+	//An approximation for p, p0 is required for the initial guess.
+	//A poor choice of p0 results in the need for large number of iterations to achieve convergence
+	
+	//Two-Rarefraction approximation
+	double pTR = pow((cL + cR - 0.5*CONST8*(WR(1) - WL(1)))/((cL/pow(WL(2), CONST1)) + (cR/pow(WR(2), CONST1))), CONST3);
+		//Pressure under the assumption that the two non-linear waves are rarefraction waves
+
+	//double p0 = 0.5*(WL(2) + WR(2));
+	//to make logic gates to select the 4 different P guesses...
+
+	double Pk; Pk = pTR; //First guess
+	double Pk_1;
+	double CHA = 0;
+	double mixTOL;
+
+	int count = 0;
+	std::cout << pTR << std::endl;
+	do{
+		Pk_1 = newton_raphson(Pk);
+		CHA = relative_pressure_change(Pk_1, Pk);
+		Pk = Pk_1; //Set the iterate as the new guess
+		//std::cout << CHA << '\t' << Pk << std::endl;
+		count += 1;
+		mixTOL = TOL*(1 + Pk);
+
+		if (CHA < mixTOL) break;
+		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
+	}while(count < 20);
+
+	std::cout << count <<std::endl;
+	return Pk;
+}
+
+double EXACT::compute_star_velocity(double pstar){
+	double ustar = 0.5*(WL(1) + WR(1)) + 0.5*(fk(pstar, WR) - fk(pstar, WL));
+	return ustar;
+}
+
+double EXACT::compute_shock_density(vector Wk, double pstar){
+	//turn this into a stored variable so the iteration does not have to be called multiple times
+	
+	//From the Hugoniot jump conditions, see TORO 3.1.3 (substituting the expressio n for internal energy)
+	double Pratio = pstar/Wk(2);
+	double dshock_k = Wk(0)*((CONST6 + Pratio)/(CONST6*Pratio + 1));
+	return dshock_k;
+}
+
+double EXACT::compute_rarefraction_density(vector Wk, double pstar){
+	double drare_k = Wk(0)*pow(pstar/Wk(2), 1./y);
+	return drare_k;
+}
+
+void EXACT::sampling(double t){
+	//Solution of wavestructure within the domain of interest
+	double pstar = compute_star_pressure();
+	double ustar = compute_star_velocity(pstar);
+	double dshockL = compute_shock_density(WL, pstar);
+	double dshockR = compute_shock_density(WR, pstar);
+	double drareL = compute_rarefraction_density(WL, pstar);
+	double drareR = compute_rarefraction_density(WR, pstar);
+
+	//primitive variables of left and right states
+	double dL = WL(0); double dR = WR(0);
+	double uL = WL(1); double uR = WR(1);
+	double pL = WL(2); double pR = WR(2);
+
+	//Shock Speeds
+	double AL = CONST5/dL; double AR = CONST5/dR;
+	double BL = pL*CONST6; double BR = pR*CONST6;
+	double QL = sqrt(AL/(pstar + BL)); double QR = sqrt(AR/(pstar + BR));
+
+	double SL = uL - QL/dL; double SR = uR + QR/dR;
+
+	//Rarefraction wave speeds
+	double cstarL = cL*pow(pstar/pL, CONST1);
+	double cstarR = cR*pow(pstar/pR, CONST1);
+
+	double SHL = uL - cL; double SHR = uR + cR; //Head of fan
+	double STL = ustar - cstarL; double STR = ustar + cstarR; //tail of fan
+
+	std::cout << drareL << '\t' << drareR << std::endl;
+	std::cout << SHL << '\t' << SHR << std::endl;
+	std::cout << STL << '\t' << STR<< std::endl;
+
+	//Sampling is based on the position of wave with respect to time in x-t space,
+	// characterised by its "speed" S = x/t.
+	//When the solution at a specified time t is required the solution profiles are only a function of space x. Toro 137
+	for (int i=0; i<N; i++){
+		double S = (X(i) - x0)/t;
+
+		//--------------------------------
+		// Sampled region lies to the...
+		//--------------------------------
+		//Left side of Contact wave
+		if (S <= ustar){
+			//Left Shock wave
+			if (pstar > pL){
+				//Left of Shock Wave (unaffected by shock)
+				if (S < SL){
+					W.row(i) = WL;
+				}
+				//Right of Shock Wave (shocked material, star state)
+				else {
+					W(i, 0) = dshockL;
+					W(i, 1) = ustar;
+					W(i, 2) = pstar;
+				}
+			}
+			//Left Rarefraction fan
+			else {
+				//Left of fastest rarefraction wave (unaffected by rarefraction)
+				if (S < SHL){
+					W.row(i) = WL;
+				}
+				//Out of the rarefraction fan, within the left star state
+				else if (S > STL){
+					W(i, 0) = drareL;
+					W(i, 1) = ustar;
+					W(i, 2) = pstar;
+					//std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
+				}
+				//Within the rarefraction fan
+				else {
+					double dLfan = dL*pow(CONST5 + (CONST6/cL)*(uL - S), CONST4);
+					double uLfan = CONST5*(cL + CONST7*uL + S);
+					double pLfan = pL*pow(CONST5 + (CONST6/cL)*(uL - S), CONST3);
+					vector WLfan(dLfan, uLfan, pLfan);
+					W.row(i) = WLfan;
+				}
+			}
+		}
+
+		//right side of contact wave
+		else {
+			//Right Shock wave
+			if (pstar > pR){
+				//Right of Shock Wave (unaffected by shock)
+				if (S > SR){
+					W.row(i) = WR;
+				}
+				//Left of Shock Wave (shocked material, star state)
+				else {
+					W(i, 0) = dshockR;
+					W(i, 1) = ustar;
+					W(i, 2) = pstar;
+				}
+			}
+			//Right Rarefraction fan
+			else {
+				//Right of fastest rarefraction wave (unaffected by rarefraction)
+				if (S > SHR){
+					W.row(i) = WR;
+				}
+				//Out of the rarefraction fan, within the right star state
+				else if (S < STR){
+					W(i, 0) = drareR;
+					W(i, 1) = ustar;
+					W(i, 2) = pstar;
+					//std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
+				}
+				//Within the rarefraction fan
+				else {
+					double dRfan = dR*pow(CONST5 - (CONST6/cR)*(uR - S), CONST4);
+					double uRfan = CONST5*(-cR + CONST7*uR + S);
+					double pRfan = pR*pow(CONST5 - (CONST6/cR)*(uR - S), CONST3);
+					vector WRfan(dRfan, uRfan, pRfan);
+					W.row(i) = WRfan;
+				}
+			}
+		}
+	}
+}
+
+void EXACT::output(){
+	std::ofstream outfile;
+	outfile.open("dataeuler.txt");
+
+	for (int i=0; i<N; i++){
+		double e = W(i, 2)/(y-1);
+
+		outfile << X(i) << '\t' << W(i, 0) << '\t' << W(i, 1)
+				<< '\t' << W(i, 2) << '\t' << e << std::endl;
+	}
+	outfile.close();
+	std::cout << "done: exact" << std::endl;
+}
+
+/*
 double EXACT::fk(double P, vector Wk, EOS* IG){
 	//Data-dependent constants
 	double Ak = 2./((IG->y + 1)*Wk(0));
@@ -737,6 +1014,11 @@ double EXACT::newton_raphson(double Pk, vector WL, vector WR, EOS* IG){
 	return Pk_1;
 }
 
+double EXACT::relative_pressure_change(double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
+	double CHA = abs(Pk_1 - Pk)/(0.5*(Pk_1 + Pk));
+	return CHA;
+}
+
 double EXACT::compute_star_pressure(vector WL, vector WR, EOS* IG){
 	//An approximation for p, p0 is required for the initial guess.
 	//A poor choice of p0 results in the need for large number of iterations to achieve convergence
@@ -770,10 +1052,39 @@ double EXACT::compute_star_pressure(vector WL, vector WR, EOS* IG){
 	return Pk;
 }
 
-double EXACT::relative_pressure_change(double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
-	double CHA = abs(Pk_1 - Pk)/(0.5*(Pk_1 + Pk));
-	return CHA;
+double EXACT::compute_star_velocity(vector WL, vector WR, EOS* IG, double pstar){
+	ustar = 0.5*(WL(1) + WR(1)) + 0.5*(fk(pstar, WR, IG) - fk(pstar, WL, IG));
+	return ustar;
 }
+
+double EXACT::compute_star_density_k(vector Wk, EOS* IG, double pstar){
+	//turn this into a stored variable so the iteration does not have to be called multiple times
+	
+	//From the Hugoniot jump conditions, see TORO 3.1.3 (substituting the expressio n for internal energy)
+	Yratio = (IG.y-1)/(IG.y+1);
+	Pratio = pstar/Wk(2);
+	dstar_k = Wk(0)*((Yratio + Pratio)/(Yratio*Pratio + 1));
+	return dstar_k;
+}
+
+double EXACT::compute_mass_flux_k(vector Wk, EOS* IG, double pstar){
+	double Ak = 2./((IG->y + 1)*Wk(0));
+	double Bk = Wk(2)*((IG->y - 1)/(IG->y + 1));
+	Qk = pow((pstar + Bk)/Ak, 0.5);
+	return Qk;
+}
+
+double EXACT::compute_left_shock_speed(vector WL, EOS* IG, double pstar){
+	QL = compute_mass_flux_k(WL, IG, Pstar);
+	return WL(1) - QL/WL(0);
+}
+
+double EXACT::compute_right_shock_speed(vector WR, EOS* IG, double pstar){
+	QR = compute_mass_flux_k(WR, IG, Pstar);
+	return WR(1) + QR/WR(0);
+}
+*/
+
 
 
 

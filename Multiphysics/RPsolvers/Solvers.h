@@ -151,34 +151,79 @@ public:
 class EXACT //: public virtual RPsolvers
 {
 	int N;
-	int count;
-	double dt;
 	double dx;
+	double x0;
 
-	//Variable Matrix
+	//VDomain and initial conditions
 	matrix X; //Domain
 	matrix W;
+	vector WL;
+	vector WR;
 
+	//Tolerance level (try mixed error testing)
 	double TOL;
 
+	//Exact solver 
+	//constants
+	double y;
+	double cL, cR; //soundspeed of left and right states
+	double CONST1; // y-1 / 2y
+	double CONST2; // y+1 / 2y
+	double CONST3; // 2*y / y-1
+	double CONST4; // 2 / y-1
+	double CONST5; // 2 / y+1
+	double CONST6; // y-1 / y+1
+	double CONST7; // y-1 / 2
+	double CONST8; // y-1
+
 public:
-	EXACT(eulerTests Test) : N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(N, 1), W(N, 3), TOL(1e-6) {}
+	EXACT(eulerTests Test) : N(Test.N), dx(Test.L/Test.N), x0(Test.x0), X(N, 1), W(N, 3), TOL(1e-6), 
+		y(0), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {
+			WL = Test.initialL;
+			WR = Test.initialR;
+		}
 	//EXACT(double, eulerTests);
 	//virtual ~EXACT() {};
 
-	void initial_conditions(eulerTests);
+	//compute constants
+	void initial_conditions(EOS*);
 
 	//Riemann Problem: Equations for Pressure and Particle Velocity
+
+	//Pressure positivity condition Toro pg 127
+		//Direct evaluation of f(p) gives the pressure positivity condition
+	void check_pressure_pos_condition();
+
 	//void fL(double);
-	double fk(double, vector, EOS*);
-	double f(double, vector, vector, EOS*);
-	double fkprime(double, vector, EOS*);
-	double fprime(double, vector, vector, EOS*);
-	double newton_raphson(double, vector, vector, EOS*);
-	double compute_star_pressure(vector, vector, EOS*); //Newton-Raphson Method
+	double fk(double, vector);
+	double f(double);
+	double fkprime(double, vector);
+	double fprime(double);
+	double newton_raphson(double);
 	double relative_pressure_change(double, double);
 
+	double compute_star_pressure(); //Newton-Raphson Method
+	double compute_star_velocity(double);
+	double compute_shock_density(vector, double);
+	double compute_rarefraction_density(vector, double);
+	void sampling(double);
+	void output();
 
+	//double compute_star_velocity(vector, vector, EOS*, double);
+	//double compute_star_shockdensity_k(vector, EOS*, double);
+	//double compute_mass_flux_k(vector, EOS*, double);
+	//double compute_left_shock_speed(vector, EOS*, double);
+	//double compute_right_shock_speed(vector, EOS*, double);
+	//double compute_rarefraction_speed();
+
+	//if P* > PL --> shock wave
+	//compute shock speed,
+	//W = W*shock if x/t > SL and x/t< Ustar
+	//if P* < PL --> rarefractionwave
+	//compute speed head and speed tail
+	//W = WL, WLfan, WLfan*....
+
+	//c^2 = y*(P+P0)/d
 
 
 };

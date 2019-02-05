@@ -11,6 +11,17 @@ void eulerTests::test1(){ //sod's tube test
 	tstop = 0.2;
 }
 
+void eulerTests::test1_stationary(){
+	vector Left(1.0, 0.0, 1.0); //density, velocity, pressure
+	vector Right(0.125, 0.0, 0.1);
+
+	initialL = Left;
+	initialR = Right;
+
+	x0 = 0.5;
+	tstop = 0.25;
+}
+
 void eulerTests::test2(){ //Two rarefraction waves, vaccum test
 	vector Left(1.0, -2.0, 0.4);
 	vector Right(1.0, 2.0, 0.4);
