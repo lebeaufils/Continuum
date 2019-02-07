@@ -1,5 +1,5 @@
-CXX = g++
-CXXFLAGS = -O3 -Wall -Wextra -g
+CXX = clang++
+CXXFLAGS = -std=c++11 -O3 -Wall -Wextra -g
 
 RPsolvers/Solvers.o : RPsolvers/Solvers.C RPsolvers/Solvers.h
 	${CXX} -c $< -o $@ ${CXXFLAGS}

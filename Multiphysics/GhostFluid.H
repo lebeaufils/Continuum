@@ -1,6 +1,10 @@
 #ifndef GHOSTFLUID_H_
 #define GHOSTFLUID_H_
 
+#if   __cplusplus < 201103L
+#error This program requires a C++11 compiler. 
+#endif
+
 #include "RPsolvers/Solvers.h"
 #include "RPsolvers/LevelSet.h"
 
@@ -22,6 +26,9 @@ class GhostFluidMethods : public LevelSetFunction
 	RPsolvers* var1;
 	RPsolvers* var2;
 
+	//EXACT* Evar1;
+	//EXACT* Evar2;
+
 	//domain wide dt and Smax after considering all materials
 	double CFL;
 	double Smax;
@@ -36,7 +43,7 @@ public:
 	};
 
 	void initialise_HLLC(gfmTests);
-	//void initialise_EXACT():
+	//void initialise_EXACT(gfmTests);
 	//void initialise_MUSCL();
 
 	void ghost_boundary(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //original GFM
@@ -54,6 +61,9 @@ public:
 	//void update_levelset_WENO();
 	//void update_levelset_TVD();
 	void solver(EOS*, EOS*, gfmTests);
+	void exact_solver(gfmTests); //remember to divide internal energy by density
+	//void ExactSolver();
+
 	void output(EOS*, EOS*);
 
 

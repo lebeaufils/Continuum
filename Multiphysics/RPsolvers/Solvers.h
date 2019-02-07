@@ -150,20 +150,24 @@ public:
 
 class EXACT //: public virtual RPsolvers
 {
+//------------------------------------------------
+//	Input Parameters
+//------------------------------------------------
 	int N;
 	double dx;
 	double x0;
 
 	//VDomain and initial conditions
-	matrix X; //Domain
+	//matrix X; //Domain
 	matrix W;
 	vector WL;
 	vector WR;
 
-	//Tolerance level (try mixed error testing)
+//------------------------------------------------
+//	Exact solver 
+//------------------------------------------------
+	//Tolerance level (Mixed error testing)
 	double TOL;
-
-	//Exact solver 
 	//constants
 	double y;
 	double cL, cR; //soundspeed of left and right states
@@ -177,16 +181,18 @@ class EXACT //: public virtual RPsolvers
 	double CONST8; // y-1
 
 public:
-	EXACT(eulerTests Test) : N(Test.N), dx(Test.L/Test.N), x0(Test.x0), X(N, 1), W(N, 3), TOL(1e-6), 
-		y(0), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {
+	EXACT(eulerTests Test, EOS* IG) : N(Test.N), dx(Test.L/Test.N), x0(Test.x0), W(N, 3), TOL(1e-6), 
+		y(IG->y), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {
 			WL = Test.initialL;
 			WR = Test.initialR;
 		}
+	
+	EXACT(int, double, double, double, vector, vector); //unfinished
 	//EXACT(double, eulerTests);
 	//virtual ~EXACT() {};
 
 	//compute constants
-	void initial_conditions(EOS*);
+	void initial_conditions();
 
 	//Riemann Problem: Equations for Pressure and Particle Velocity
 

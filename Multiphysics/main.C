@@ -30,11 +30,10 @@ int main(void){
 	delete var;
 	*/
 
-/*
-	EOS* eos1 = new IdealGas();
+ 	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 
-	gfmTests Tests(400, 1.0); //(N, L)
+	gfmTests Tests(100, 1.0); //(N, L)
 
 	Tests.testA();
 	//Tests.test_example_1();
@@ -42,21 +41,25 @@ int main(void){
 	GhostFluidMethods gfmProblem(0.9, Tests);
 	gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
 	gfmProblem.solver(eos1, eos2, Tests);
+	gfmProblem.exact_solver(Tests);
 	gfmProblem.output(eos1, eos2);
 
 	delete eos1; delete eos2;
-*/
+/*
 	EOS* IG = new IdealGas();
-	eulerTests Test(100, 1.0);
+	eulerTests Test(400, 1.0);
 	//Test.test1_stationary();
-	Test.test2();
+	Test.test6();
 
-	EXACT var(Test);
-	var.initial_conditions(IG);
+	EXACT var(Test, IG);
+	var.initial_conditions();
 
 	var.sampling(Test.tstop);
 	var.output();
 
 	delete IG;
+
+    return 0;
+ */
 }
 

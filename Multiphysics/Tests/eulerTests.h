@@ -35,6 +35,7 @@ struct eulerTests : public virtual standardTests
 	void test3();
 	void test4();
 	void test5();
+	void test6();
 
 	//custom tests
 	//void testN(); //user input

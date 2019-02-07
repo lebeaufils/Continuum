@@ -675,12 +675,11 @@ void MUSCL::output(EOS* IG){
  --------------------------------------------------------------------------------*/
 //Note, W contains primitive variables (density, velocity, pressure)
 
-void EXACT::initial_conditions(EOS* IG){
+EXACT::EXACT(int N, double dx, double x0, double y, vector WL, vector WR)
+	: dx(dx), x0(x0), W(N, 3), WL(WL), WR(WR), TOL(1e-6), y(y), cL(0), cR(0), 
+	CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {}
 
-	for (int i=0; i<N; i++){
-		X(i) = (i)*dx;
-	}
-	y = IG->y;
+void EXACT::initial_conditions(){
 	cL = sqrt(y*WL(2)/WL(0));
 	cR = sqrt(y*WR(2)/WR(0));
 
@@ -841,11 +840,12 @@ void EXACT::sampling(double t){
 	double pL = WL(2); double pR = WR(2);
 
 	//Shock Speeds
-	double AL = CONST5/dL; double AR = CONST5/dR;
-	double BL = pL*CONST6; double BR = pR*CONST6;
-	double QL = sqrt(AL/(pstar + BL)); double QR = sqrt(AR/(pstar + BR));
+	//double AL = CONST5/dL; double AR = CONST5/dR;
+	//double BL = pL*CONST6; double BR = pR*CONST6;
+	//double QL = sqrt(AL/(pstar + BL)); double QR = sqrt(AR/(pstar + BR));
 
-	double SL = uL - QL/dL; double SR = uR + QR/dR;
+	double SL = uL - cL*sqrt((CONST2*(pstar/pL) + CONST1)); 
+	double SR = uR + cR*sqrt((CONST2*(pstar/pR) + CONST1));
 
 	//Rarefraction wave speeds
 	double cstarL = cL*pow(pstar/pL, CONST1);
@@ -862,7 +862,8 @@ void EXACT::sampling(double t){
 	// characterised by its "speed" S = x/t.
 	//When the solution at a specified time t is required the solution profiles are only a function of space x. Toro 137
 	for (int i=0; i<N; i++){
-		double S = (X(i) - x0)/t;
+		double xPos = (static_cast<double>(i) + 0.5)*dx;
+		double S = (xPos - x0)/t;
 
 		//--------------------------------
 		// Sampled region lies to the...
@@ -949,12 +950,14 @@ void EXACT::sampling(double t){
 
 void EXACT::output(){
 	std::ofstream outfile;
-	outfile.open("dataeuler.txt");
+	outfile.open("dataexact.txt");
 
 	for (int i=0; i<N; i++){
-		double e = W(i, 2)/(y-1);
 
-		outfile << X(i) << '\t' << W(i, 0) << '\t' << W(i, 1)
+		double xPos = (static_cast<double>(i) + 0.5)*dx;
+		double e = W(i, 2)/(W(i, 0)*(y-1));
+
+		outfile << xPos << '\t' << W(i, 0) << '\t' << W(i, 1)
 				<< '\t' << W(i, 2) << '\t' << e << std::endl;
 	}
 	outfile.close();
