@@ -8,11 +8,11 @@
 #include "Solvers.h"
 
 RPsolvers::RPsolvers(gfmTests Test, int nU, int nF)
-	: CFL(0), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(nU, 1), U(nU, 3), F(nF, 3), Smax(0){
+	: CFL(0), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(Test.N+2, 1), U(nU, 3), F(nF, 3), Smax(0){
 }
 
 RPsolvers::RPsolvers(double c, eulerTests Test, int nU, int nF)
-	: CFL(c), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(nU, 1), U(nU, 3), F(nF, 3), Smax(0){
+	: CFL(c), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(Test.N+2, 1), U(nU, 3), F(nF, 3), Smax(0){
 }
 
 void RPsolvers::conservative_update_formula(int i){
@@ -57,7 +57,7 @@ void HLLC::initial_conditions(EOS* IG, eulerTests Test){
 	eulerR = IG->conservedVar(Test.initialR);
 
 	for (int i=0; i<N; i++){
-		X(i+1) = i*dx;
+		X(i+1) = (i+0.5)*dx;
 		if (X(i+1)  < Test.x0){
 			U.row(i+1) = eulerL;
 		}
@@ -77,10 +77,7 @@ void HLLC::compute_fluxes(EOS* IG, int i){
 
 	//Pressure-based wave speed estimate
 	//as in Toro's book chapter 10
-	double Ppvrs;
 	double Pstar;
-	double rhoavg;
-	double aavg;
 	double ql, qr;
 
 	double mvl, mvr;
@@ -117,12 +114,39 @@ void HLLC::compute_fluxes(EOS* IG, int i){
 	/*--------------------------------------------------------------
 	 * pressure based wave speed estimate
 	 *--------------------------------------------------------------*/
+	double Ppvrs, p0;
+	//------------------------------------------------------
+	double rhoavg = 0.5*(dl + dr);
+	double aavg = 0.5*(al + ar);
+	Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg; //initial pressure estimate
+	//------------------------------------------------------
+	double Pmax = fmax(Pl, Pr);
+	double Pmin = fmin(Pl, Pr);
+	double Quser = 2.0; //Toro sect 9.5.1
+	double z = (IG->y - 1)/(2*IG->y);
 
-	rhoavg = 0.5*(dl + dr);
-	aavg = 0.5*(al + ar);
+	//if the pressure difference is small and the guess is within the initial pressure range
+	if (Pmax/Pmin < Quser && Ppvrs > Pmin && Ppvrs < Pmax){
+		//Select the linearised pressure guess
+		p0 = Ppvrs;
+	}
+	//If the guess is less than the initial pressure, two rarefraction wves have been formed
+	else if (Ppvrs < Pmin){
+		double pTR = pow((al + ar - 0.5*(IG->y - 1)*(ur - ul))/((al/pow(Pl, z)) + (ar/pow(Pr, z))), 1./z);
+		p0 = pTR;
+	}
+	//If the pressure difference is large or if the guess is larger than Pmax
+	else {
+		//Select the two shock initial guess using pPV as estimate
+		double AL = (2./(IG->y + 1))/dl;	double AR = (2./(IG->y + 1))/dr;
+		double BL = Pl*((IG->y - 1)/(IG->y + 1));	double BR = Pr*((IG->y - 1)/(IG->y + 1));
+		double QL = sqrt(AL/(Ppvrs + BL));
+		double QR = sqrt(AR/(Ppvrs + BR));
+		double pTS = (QL*Pl + QR*Pr - (ur - ul))/(QL + QR);
+		p0 = pTS;
+	}
 
-	Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg;
-	Pstar = fmax(0.0, Ppvrs);
+	Pstar = fmax(0.0, p0);
 
 	if (Pstar <= Pl){
 		ql = 1.0;
@@ -263,9 +287,9 @@ void MUSCL::initial_conditions(EOS *IG, eulerTests Test){
 	eulerR(2) = Test.initialR(2)/(IG->y-1) + 0.5*Test.initialR(0)*Test.initialR(1)*Test.initialR(1);
 */
 
-	for (int i=0; i<N+2; i++){
-		X(i+2) = i*dx;
-		if (X(i+2)  < Test.x0){
+	for (int i=0; i<N; i++){
+		X(i+1) = (i+0.5)*dx;
+		if (X(i+1)  < Test.x0){
 			U.row(i+2) = eulerL;
 		}
 		else U.row(i+2) = eulerR;
@@ -499,12 +523,6 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 	double ul, ur; //note u is the eigenvalue of the euler equation
 	double dl, dr;
 	double Pl, Pr;
-	//Pressure-based wave speed estimate
-	double Ppvrs;
-	double Pstar;
-	double rhoavg;
-	double aavg;
-	double ql, qr;
 
 	double mvl, mvr;
 	double El, Er;
@@ -565,13 +583,42 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 		/*---------------------------------------
 		 * pressure based wave speed estimate
 		 ---------------------------------------*/
+	/*	
+		double Ppvrs, p0;
+		double Pstar;
+		double ql, qr;
+		//------------------------------------------------------
+		double rhoavg = 0.5*(dl + dr);
+		double aavg = 0.5*(al + ar);
+		Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg; //initial pressure estimate
+		//------------------------------------------------------
+		double Pmax = fmax(Pl, Pr);
+		double Pmin = fmin(Pl, Pr);
+		double Quser = 2.0; //Toro sect 9.5.1
+		double z = (IG->y - 1)/(2*IG->y);
 
-		rhoavg = 0.5*(dl + dr);
-		aavg = 0.5*(al + ar);
+		//if the pressure difference is small and the guess is within the initial pressure range
+		if (Pmax/Pmin < Quser && Ppvrs > Pmin && Ppvrs < Pmax){
+			//Select the linearised pressure guess
+			p0 = Ppvrs;
+		}
+		//If the guess is less than the initial pressure, two rarefraction wves have been formed
+		else if (Ppvrs < Pmin){
+			double pTR = pow((al + ar - 0.5*(IG->y - 1)*(ur - ul))/((al/pow(Pl, z)) + (ar/pow(Pr, z))), 1./z);
+			p0 = pTR;
+		}
+		//If the pressure difference is large or if the guess is larger than Pmax
+		else {
+			//Select the two shock initial guess using pPV as estimate
+			double AL = (2./(IG->y + 1))/dl;	double AR = (2./(IG->y + 1))/dr;
+			double BL = Pl*((IG->y - 1)/(IG->y + 1));	double BR = Pr*((IG->y - 1)/(IG->y + 1));
+			double QL = sqrt(AL/(Ppvrs + BL));
+			double QR = sqrt(AR/(Ppvrs + BR));
+			double pTS = (QL*Pl + QR*Pr - (ur - ul))/(QL + QR);
+			p0 = pTS;
+		}
 
-		Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg;
-
-		Pstar = fmax(0.0, Ppvrs);
+		Pstar = fmax(0.0, p0);
 		if (Pstar <= Pl){
 			ql = 1.0;
 		}
@@ -588,9 +635,33 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 			qr = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pr) - 1));
 		}
 
-		SR = ur + ar*qr;
-		SL = ul - al*ql;
-		//finding Smax for the whole domain (for each timestep)
+		double SRpressure = ur + ar*qr;
+		double SLpressure = ul - al*ql;
+	*/	
+		
+
+		/*---------------------------------------
+		 * Direct Wave Speed estimates
+		 ---------------------------------------*/
+		//Roe Riemann Solver
+		double ubar = (sqrt(dl)*ul + sqrt(dr)*ur)/(sqrt(dl) + sqrt(dr));
+		//double Hl = (hllcUL(2) + Pl)/dl; //enthalpy
+		//double Hr = (hllcUR(2) + Pr)/dr;
+		//double Hbar = (sqrt(dl)*Hl + sqrt(dr)*Hr)/(sqrt(dl) + sqrt(dr));
+		//double abar = pow((IG->y - 1)*(Hbar - 0.5*pow(ubar, 2)), 0.5);
+
+		//HLLE
+		double n2 = 0.5*sqrt(dl)*sqrt(dr)/pow((sqrt(dl) + sqrt(dr)), 2);
+		double d2 = (sqrt(dl)*pow(al, 2) + sqrt(dr)*pow(ar, 2))/(sqrt(dl) + sqrt(dr)) + n2*pow((ur - ul), 2);
+
+		//Davies
+		//double Splus = fmax(abs(ul) + al, abs(ur) + ar);
+
+		//double SLdavies = -Splus; 			double SRdavies = -Splus;
+		double SLhlle = ubar - sqrt(d2); 	double SRhlle = ubar + sqrt(d2);
+		//double SLroe = ubar - abar; 		double SRroe = ubar + abar;
+		SL = SLhlle; SR = SRhlle;
+		
 		if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
 		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
@@ -598,6 +669,11 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 		//initialize FL and FR for each timestep
 		vector FL(mvl, mvl*ul + Pl, ul*(El + Pl));
 		vector FR(mvr, mvr*ur + Pr, ur*(Er + Pr));
+		
+
+		/*---------------------------------------
+		 * davies wave speed estimate
+		 ---------------------------------------*/
 
 		if (0 <= SL){
 			F.row(i) = FL;
@@ -636,6 +712,7 @@ void MUSCL::solver(EOS* IG, eulerTests Test){
 		}
 
 		//set timestep
+		std::cout << Smax << std::endl;
 		dt = CFL*(dx/Smax); //updates every timestep
 		if (t + dt > Test.tstop) dt = Test.tstop - t;
 		t += dt;
@@ -657,18 +734,19 @@ void MUSCL::output(EOS* IG){
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
 
-	for (int i=2; i<N+3; i++){
+	for (int i=2; i<N+2; i++){
 
 		double u = U(i, 1)/U(i, 0);
 		double P = IG->Pressure(U, i);
 		double e = IG->internalE(U, i);
 
-		outfile << X(i) << '\t' << U(i, 0) << '\t' << u
+		outfile << X(i-1) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
 	outfile.close();
 	std::cout << "done: MUSCL" << std::endl;
 }
+
 
 /*--------------------------------------------------------------------------------
  * Exact Solver
@@ -775,21 +853,41 @@ double EXACT::compute_star_pressure(){
 	
 	//An approximation for p, p0 is required for the initial guess.
 	//A poor choice of p0 results in the need for large number of iterations to achieve convergence
-	
-	//Two-Rarefraction approximation
-	double pTR = pow((cL + cR - 0.5*CONST8*(WR(1) - WL(1)))/((cL/pow(WL(2), CONST1)) + (cR/pow(WR(2), CONST1))), CONST3);
-		//Pressure under the assumption that the two non-linear waves are rarefraction waves
+	double pPV, p0;
+	pPV = 0.5*(WL(2) + WR(2)) - (1./8.)*(WR(1) - WL(1))*(WL(0) + WR(0))*(cL + cR);
+	pPV = fmax(TOL, pPV);
+	double Pmax = fmax(WL(2), WR(2));
+	double Pmin = fmin(WL(2), WR(2));
+	double Quser = 2.0;
 
-	//double p0 = 0.5*(WL(2) + WR(2));
-	//to make logic gates to select the 4 different P guesses...
+	//if the pressure difference is small and the guess is within the initial pressure range
+	if (Pmax/Pmin < Quser && pPV > Pmin && pPV < Pmax){
+		//Select the linearised pressure guess
+		p0 = pPV;
+	}
+	//If the guess is less than the initial pressure, two rarefraction wves have been formed
+	else if (pPV < Pmin){
+		double pTR = pow((cL + cR - 0.5*CONST8*(WR(1) - WL(1)))/((cL/pow(WL(2), CONST1)) + (cR/pow(WR(2), CONST1))), CONST3);
+		p0 = pTR;
+	}
+	//If the pressure difference is large or if the guess is larger than Pmax
+	else {
+		//Select the two shock initial guess using pPV as estimate
+		double AL = CONST5/WL(0);	double AR = CONST5/WR(0);
+		double BL = WL(2)*CONST6;	double BR = WR(2)*CONST6;
+		double QL = sqrt(AL/(pPV + BL));
+		double QR = sqrt(AR/(pPV + BR));
+		double pTS = (QL*WL(2) + QR*WR(2) - (WR(1) - WL(1)))/(QL + QR);
+		p0 = pTS;
+	}
 
-	double Pk; Pk = pTR; //First guess
+	double Pk; Pk = p0; //First guess
 	double Pk_1;
 	double CHA = 0;
 	double mixTOL;
 
 	int count = 0;
-	std::cout << pTR << std::endl;
+	std::cout << p0 << std::endl;
 	do{
 		Pk_1 = newton_raphson(Pk);
 		CHA = relative_pressure_change(Pk_1, Pk);
@@ -840,10 +938,6 @@ void EXACT::sampling(double t){
 	double pL = WL(2); double pR = WR(2);
 
 	//Shock Speeds
-	//double AL = CONST5/dL; double AR = CONST5/dR;
-	//double BL = pL*CONST6; double BR = pR*CONST6;
-	//double QL = sqrt(AL/(pstar + BL)); double QR = sqrt(AR/(pstar + BR));
-
 	double SL = uL - cL*sqrt((CONST2*(pstar/pL) + CONST1)); 
 	double SR = uR + cR*sqrt((CONST2*(pstar/pR) + CONST1));
 

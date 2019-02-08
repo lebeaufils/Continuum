@@ -12,40 +12,49 @@ int main(void){
 	//use a switch function here to choose between idealgas or stiffened gas.
 	//do the same for choice of solver.
 	//switch can be activated through user input or mapping through filename
-	/*
-	EOS *SG = new IdealGas();
+/*	
+	EOS *IG = new IdealGas();
 	//SG->GetGamma();
 
 	eulerTests Tests(100, 1.0); //(N, L)
 	Tests.test1();
 
-	RPsolvers *var = new HLLC(0.9, Tests);
+	RPsolvers *var = new MUSCL(0.9, Tests);
 
 	//HLLCeuler.boundary_conditions();
-	var->initial_conditions(SG, Tests);
-	var->solver(SG, Tests);
-	var->output(SG);
+	var->initial_conditions(IG, Tests);
+	var->solver(IG, Tests);
+	var->output(IG);
 
-	delete SG;
+	EXACT evar(Tests, IG);
+	evar.initial_conditions();
+	evar.sampling(Tests.tstop);
+	evar.output();
+
+	delete IG;
 	delete var;
-	*/
+*/
 
  	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
+	EOS* eos3 = new IdealGas();
 
 	gfmTests Tests(100, 1.0); //(N, L)
 
-	Tests.testA();
+	Tests.testB();
 	//Tests.test_example_1();
 
-	GhostFluidMethods gfmProblem(0.9, Tests);
-	gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
-	gfmProblem.solver(eos1, eos2, Tests);
-	gfmProblem.exact_solver(Tests);
-	gfmProblem.output(eos1, eos2);
+	GhostFluidMethods gfmProblem(0.9, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
+	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
+	gfmProblem.initial_conditions_HLLC(eos1, eos2, eos3, Tests);
+	gfmProblem.solver_HLLC(eos1, eos2, eos3, Tests);
+	//gfmProblem.exact_solver(Tests);
+	gfmProblem.output_HLLC(eos1, eos2, eos3);
 
-	delete eos1; delete eos2;
+	delete eos1; delete eos2; delete eos3;
+
 /*
+	//note exact solver for stiffened gas not written yet
 	EOS* IG = new IdealGas();
 	eulerTests Test(400, 1.0);
 	//Test.test1_stationary();

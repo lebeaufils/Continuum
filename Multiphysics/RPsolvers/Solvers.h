@@ -181,7 +181,7 @@ class EXACT //: public virtual RPsolvers
 	double CONST8; // y-1
 
 public:
-	EXACT(eulerTests Test, EOS* IG) : N(Test.N), dx(Test.L/Test.N), x0(Test.x0), W(N, 3), TOL(1e-6), 
+	EXACT(eulerTests Test, EOS* IG) : N(1000), dx(Test.L/N), x0(Test.x0), W(N, 3), TOL(1e-6), 
 		y(IG->y), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {
 			WL = Test.initialL;
 			WR = Test.initialR;

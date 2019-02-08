@@ -1,7 +1,7 @@
 #include "LevelSet.h"
 
 LevelSetFunction::LevelSetFunction(gfmTests Test)
-	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), phi(N+2, 1), sgn(0) {}
+	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), x1(Test.x1), x2(Test.x2), phi(N+2, 1), sgn(0) {}
 
 int LevelSetFunction::get_sgn(double a){
 	//sign function
@@ -26,6 +26,22 @@ void LevelSetFunction::signed_distance_function_1D(){
 
 void LevelSetFunction::signed_distance_function_1D(int i){
 	phi(i+1) = X(i+1) - x0;
+}
+
+void LevelSetFunction::signed_distance_function_1D_2(int i){
+	// positive inside
+	if (x0 > x1) {
+		throw "Interface location incorrectly defined";
+	}
+
+	double dist = fmin(abs(X(i+1) - x0), abs(X(i+1) - x1));
+	if (X(i+1) < x0 || X(i+1) > x1) {
+		phi(i+1) = -dist;
+	}
+
+	else {
+		phi(i+1) = dist;
+	}
 }
 
 double LevelSetFunction::HJ_FirstOrder(double velocity, double dt, int i){ //velocity and dt to follow numerical method

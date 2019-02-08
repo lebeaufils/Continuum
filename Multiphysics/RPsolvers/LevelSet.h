@@ -21,6 +21,8 @@ protected:
 	matrix X;
 	double dx;
 	double x0;
+	double x1;
+	double x2;
 
 	matrix phi;
 	int sgn; //sign of the levelset
@@ -31,6 +33,7 @@ public:
 	int get_sgn(double);
 	void boundary_conditions();
 	void signed_distance_function_1D(int);
+	void signed_distance_function_1D_2(int); //2 discontinuties
 	
 	//first order upwind hamilton-jacobi method
 	double HJ_FirstOrder(double, double, int); //velocity

@@ -31,11 +31,11 @@ set style line 9 lc rgb "black" lt 1 lw 1 pt 65 ps 0.5
 set multiplot layout 2,2;
 set title "Density"
 unset key;
-plot  "dataexact.txt" using 1:2 w linespoints ls 9
+plot  "dataeuler.txt" using 1:2 w p ls 8
 set title "Speed";
-plot "dataexact.txt" using 1:3 w linespoints ls 9 
+plot "dataeuler.txt" using 1:3 w p ls 8
 set title "Pressure";
-plot "dataexact.txt" using 1:4 w linespoints ls 9
+plot "dataeuler.txt" using 1:4 w p ls 8
 set title "Energy"; 
-plot "dataexact.txt" using 1:5 w linespoints ls 9
+plot "dataeuler.txt" using 1:5 w p ls 8
 unset multiplot

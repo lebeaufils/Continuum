@@ -51,8 +51,15 @@ struct gfmTests : public virtual standardTests
 	double y3;
 	double y4;
 
-	gfmTests() : standardTests(0, 0), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0) {}
-	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0) {}
+	double x1;
+	double x2;
+	vector initialM1;
+	vector initialM2;
+
+	gfmTests() : standardTests(0, 0), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0),
+	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0)  {}
+	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0),
+	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0) {}
 
 	void set_number_of_cells(int); //changing the resolution. 
 

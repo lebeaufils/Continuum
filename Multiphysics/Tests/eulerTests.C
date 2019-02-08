@@ -73,7 +73,7 @@ void eulerTests::test6(){ //slowly moving contact discontinuities
 	initialL = Left;
 	initialR = Right;
 
-	x0 = 0.5;
+	x0 = 0.505;
 	tstop = 0.0022;
 }
 
@@ -119,8 +119,27 @@ void gfmTests::testA(){
 }
 
 
-void gfmTests::testB(){
+void gfmTests::testB(){ //FedKiw 2002 test B
+	number_of_materials = 3;
+	vector Left(1.3333, 0.3535*sqrt(1e5), 1.5e5);
+	vector Middle(1.0, 0.0, 1e5);
+	vector Right(0.1379, 0.0, 1e5);
 
+	initialL = Left;
+	initialM1 = Middle;
+	initialR = Right;
+
+	L = 1.0;
+	//N = 100;
+	double dx = L/N;
+	x0 = dx*N*((5.+6.)/2.)/100.; //Right going shock between 5th ans 6th grid point (on a 100 grid)
+	x1 = dx*(N+1)/2.; //Material discontinuity between 50 and 51st point
+	tstop = 0.0012;
+	//tstop = 0.0006;
+
+	y1 = 1.4;
+	y2 = 1.4;
+	y3 = 1.67;
 }
 
 void gfmTests::testC(){

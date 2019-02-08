@@ -25,6 +25,8 @@ class GhostFluidMethods : public LevelSetFunction
 {
 	RPsolvers* var1;
 	RPsolvers* var2;
+//	RPsolvers* var3;
+//	RPsolvers* var4;
 
 	//EXACT* Evar1;
 	//EXACT* Evar2;
@@ -42,32 +44,50 @@ public:
 		delete var1; delete var2;
 	};
 
-	void initialise_HLLC(gfmTests);
-	//void initialise_EXACT(gfmTests);
-	//void initialise_MUSCL();
+	
+
 
 	void ghost_boundary(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //original GFM
 	void ghost_boundary_RP(); //RP based
 
-	//template <typename T> void initial_conditions(T, EOS*, EOS*, gfmTests){static_assert(sizeof(T) == 0, "Specialised calls only")}
+	//HLLC
+	//void initialise_HLLC(gfmTests);
 	void initial_conditions_HLLC(EOS*, EOS*, gfmTests);
+	void initial_conditions_HLLC(EOS*, EOS*, EOS*, gfmTests); //3 initial conditions, 2 discontinuities
+	void update_levelset_HLLC(double);
+	void solver_HLLC(EOS*, EOS*, gfmTests);
+	void solver_HLLC(EOS*, EOS*, EOS*, gfmTests);
+	void output_HLLC(EOS*, EOS*);
+	void output_HLLC(EOS*, EOS*, EOS*);
+
+	//MUSCL
+	void initialise_MUSCL(gfmTests);
+	void initial_conditions_MUSCL(EOS*, EOS*, gfmTests);
+	void update_levelset_MUSCL(double);	
+	void solver_MUSCL(EOS*, EOS*, gfmTests);
+	void output_MUSCL(EOS*, EOS*);
+
+	//EXACT
+	void exact_solver(gfmTests); 
+	//remember to check that internal energy is divided by density (specific)
+
+	//template <typename T> void initial_conditions(T, EOS*, EOS*, gfmTests){static_assert(sizeof(T) == 0, "Specialised calls only")}
+
+
 	//template <> void initial_conditions<HLLC>(HLLC, HLLC, EOS*, EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<HLLC>(HLLC, HLLC, EOS*, EOS*, EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<MUSCL>(MUSCL, MUSCL, EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<MUSCL>(MUSCL, MUSCL, EOS*, EOS*, EOS*, gfmTests);
 	//template <> void initial_conditions<MUSCL>(MUSCL, MUSCL, EOS*, EOS*, EOS*, gfmTests);
-	void update_levelset(double);
+
 	//void update_levelset_ENO();
 	//void update_levelset_WENO();
 	//void update_levelset_TVD();
-	void solver(EOS*, EOS*, gfmTests);
-	void exact_solver(gfmTests); //remember to divide internal energy by density
-	//void ExactSolver();
 
-	void output(EOS*, EOS*);
-
+	//void reinitialise();
 
 };
+
 /*
 class GhostFluidMethods : public LevelSetFunction
 {
