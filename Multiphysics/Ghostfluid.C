@@ -100,7 +100,7 @@ void GhostFluidMethods::initial_conditions_HLLC(EOS* eos1, EOS* eos2, EOS* eos3,
 	for (int i=0; i<N; i++){
 		X(i+1) = (i+0.5)*dx;
 		signed_distance_function_1D_2(i);
-		if (X(i+1)  < x0){
+		if (X(i+1)  <= x0){
 			var1->U.row(i+1) = euler1; //setting real values of Left initial condition
 		}
 		else if (X(i+1) > x1){
@@ -390,13 +390,9 @@ void GhostFluidMethods::output_HLLC(EOS* eos1, EOS* eos2, EOS* eos3){
 //	MUSCL
 //--------------------------------------------------------
 
-void GhostFluidMethods::initialise_MUSCL(gfmTests Test){
+void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, gfmTests Test){
 	var1 = new MUSCL(Test);
 	var2 = new MUSCL(Test);
-}
-
-void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, gfmTests Test){
-	initialise_MUSCL(Test);
 
 	vector euler1;
 	vector euler2;
@@ -413,7 +409,7 @@ void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, gfmTests 
 	for (int i=0; i<N; i++){
 		X(i+1) = (i+0.5)*dx;
 		signed_distance_function_1D(i); //refers to x(i+1)
-		if (X(i+1)  < x0){
+		if (X(i+1)  <= x0){
 			var1->U.row(i+2) = euler1; //setting real values of material 1
 		}
 		else{
@@ -430,6 +426,81 @@ void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, gfmTests 
 			ghost_boundary(var2, eos2, var1, eos1, i+2); //matrix 1 contains ghost points
 		}
 	}
+
+	var1->boundary_conditions();
+	var2->boundary_conditions();
+	boundary_conditions(); //levelsetfunction
+
+}
+
+void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Test){
+	var1 = new MUSCL(Test);
+	var2 = new MUSCL(Test);
+
+		//setting material EOS parameter
+	eos1->y = Test.y1;
+	eos2->y = Test.y2;
+	if (Test.y3 != 0){
+		eos3->y = Test.y3;
+	}
+	else {
+		throw "Number of materials do not match the chosen solver.";
+	}
+
+	//initial values for conserved variables
+	vector euler1 = eos1->conservedVar(Test.initialL);
+	vector euler2 = eos2->conservedVar(Test.initialM1);
+	vector euler3 = eos3->conservedVar(Test.initialR);
+
+	for (int i=0; i<N; i++){
+		X(i+1) = (i+0.5)*dx;
+		signed_distance_function_1D_2(i);
+		if (X(i+1)  <= x0){
+			var1->U.row(i+2) = euler1; //setting real values of Left initial condition
+		}
+		else if (X(i+1) > x1){
+			var1->U.row(i+2) = euler3; //setting real values of Right initial condition
+		}
+		else{
+			var2->U.row(i+2) = euler2; //Middle initial condition
+		}
+
+		//std::cout << var1->U.row(i) << '\t' << var2->U.row(i) << std::endl;
+	}
+
+	//After setting the real fluids, populate the empty cells with ghost values
+	for (int i=1; i<N+1; i++){
+		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+		//std::cout << phi(i) << '\t' << testsgn << std::endl;
+		if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+			if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+				for (int j=0; j<4; j++){
+					//to the left of interface, the ghostfluid is in var2
+					ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
+					//to the right of the interface, the ghostfluid is in var1
+					ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
+					//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+					//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
+				}
+			}
+			else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+				for(int j=0; j<4; j++){
+					//std::cout << var2->U.row(i+1-j) << std::endl;
+					//to the left of interface, the ghostfluid is in var1
+						//note that we are now in the right material which has EOS: eos3
+					ghost_boundary(var2, eos2, var1, eos3, (i+1)-j);
+					//to the right of the interface, the ghostfluid is in var2
+					ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
+					//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+					//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
+				}
+			}
+		} 
+	}
+
+	/*`for (int i=1; i<N+1; i++){
+		std::cout << i << '\t' << get_sgn(phi(i)) << '\t' <<var1->U.row(i+1) << '\t' << var2->U.row(i+1) << std::endl;
+	}*/
 
 	var1->boundary_conditions();
 	var2->boundary_conditions();
@@ -518,6 +589,111 @@ void GhostFluidMethods::solver_MUSCL(EOS* eos1, EOS* eos2, gfmTests Test){
 	std::cout << count << std::endl;
 }
 
+void GhostFluidMethods::solver_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Test){
+	MUSCL* m1 = dynamic_cast<MUSCL*>(var1);
+	MUSCL* m2 = dynamic_cast<MUSCL*>(var2);
+	slopeLimiter a;
+
+	if(m1 && m2){
+		a = m1->getLimiter();
+	}
+	else {
+		std::cout << "dynamic casting to type MUSCL failed" << std::endl;
+	}
+
+	double t = 0.0;
+	do{
+		//compute ghost fluid boundaries
+		for (int i=1; i<N+1; i++){
+			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+			//std::cout << phi(i) << '\t' << testsgn << std::endl;
+			if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+				if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+					for (int j=0; j<4; j++){
+						//to the left of interface, the ghostfluid is in var2
+						ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
+						//to the right of the interface, the ghostfluid is in var1
+						ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
+						//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+						//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
+					}
+				}
+				else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+					for(int j=0; j<4; j++){
+						//std::cout << var2->U.row(i+1-j) << std::endl;
+						//to the left of interface, the ghostfluid is in var1
+							//note that we are now in the right material which has EOS: eos3
+						ghost_boundary(var2, eos2, var1, eos3, (i+1)-j);
+						//to the right of the interface, the ghostfluid is in var2
+						ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
+						//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+						//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
+					}
+				}
+			} 
+		}
+
+		var1->boundary_conditions();
+		var2->boundary_conditions();
+
+		//reconstruct data to piecewise linear representation
+		m1->data_reconstruction(a);
+		m2->data_reconstruction(a);
+
+		//compute fluxes at current timestep		
+		bool flag = true;
+		//std::cout << "test1" << std::endl;
+		for (int i=1; i<N+2; i++){
+			if (phi(i-1) < 0 && flag==true){
+				//std::cout <<"a " << i << std::endl;
+				var1->compute_fluxes(eos1, i);
+				//if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eos1, i+1);
+			}
+			if (phi(i-1) >= 0){
+				//std::cout <<"b " << i << std::endl;
+				if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eos1, i-1);
+				var2->compute_fluxes(eos2, i);
+				//if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eos1, i+1);
+				flag = false;
+			}
+			if (phi(i-1) < 0 && flag == false){
+				//std::cout <<"c " << i << std::endl;
+				if (get_sgn(phi(i-2)) > 0) var1->compute_fluxes(eos3, i-1);
+				var1->compute_fluxes(eos3, i);
+			}
+			//if (count == 0 ) std::cout << var1->U.row(i) << std::endl; //'\t' << var2->U.row(i) << std::endl;
+			//if (count ==1 )std::cout << i << '\t' << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+		}
+
+		//set timestep following CFL conditions with max wavespeed between both materials
+		Smax = fmax(var1->Smax, var2->Smax);
+		dt = CFL*(dx/Smax); 
+		if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+		//updating both materials, looping through real and ghost points
+		for (int i=2; i<N+2; i++){
+			if (phi(i-1) < 0){
+				var1->conservative_update_formula(dt, dx, i);
+			}
+			else {
+				var2->conservative_update_formula(dt, dx, i);
+			}
+			//if (phi(i)<0) var1->conservative_update_formula(dt, dx, i);
+			//else var2->conservative_update_formula(dt, dx, i);
+		}
+
+		var1->boundary_conditions();
+		var2->boundary_conditions();
+
+		//evolving the levelset equation
+		update_levelset_MUSCL(dt);
+		
+		t += dt;
+		count += 1;
+
+	}while(t<Test.tstop);
+	std::cout << count << std::endl;
+}
 
 
 void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2){
@@ -544,6 +720,39 @@ void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2){
 		<< '\t' << P << '\t' << e << std::endl;
 	}
 	std::cout << "done: GFM-MUSCL" << std::endl;
+}
+
+void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3){
+	std::ofstream outfile;
+	outfile.open("dataeuler.txt");
+
+	double d, u, P, e;
+	bool flag = true;
+	for (int i=2; i<N+2; i++){
+		if (phi(i-1) < 0 && flag == true){
+			d = var1->U(i, 0);
+			u = var1->U(i, 1)/var1->U(i, 0);
+			P = eos1->Pressure(var1->U, i);
+			e = eos1->internalE(var1->U, i);
+		}
+
+		if (phi(i-1) >= 0) {
+			d = var2->U(i, 0);
+			u = var2->U(i, 1)/var2->U(i, 0);
+			P = eos2->Pressure(var2->U, i);
+			e = eos2->internalE(var2->U, i);
+			flag = false;
+		}
+		if (phi(i-1) < 0 && flag == false){
+			d = var1->U(i, 0);
+			u = var1->U(i, 1)/var1->U(i, 0);
+			P = eos3->Pressure(var1->U, i);
+			e = eos3->internalE(var1->U, i);
+		}
+
+		outfile << X(i) << '\t' << d << '\t' << u
+		<< '\t' << P << '\t' << e << std::endl;
+	}
 }
 
 //-----------------------------------------------------------------

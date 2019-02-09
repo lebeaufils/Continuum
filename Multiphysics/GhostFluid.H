@@ -54,12 +54,13 @@ public:
 	void output_HLLC(EOS*, EOS*, EOS*);
 
 	//MUSCL
-	void initialise_MUSCL(gfmTests);
 	void initial_conditions_MUSCL(EOS*, EOS*, gfmTests);
+	void initial_conditions_MUSCL(EOS*, EOS*, EOS*, gfmTests);
 	void update_levelset_MUSCL(double);	
 	void solver_MUSCL(EOS*, EOS*, gfmTests);
+	void solver_MUSCL(EOS*, EOS*, EOS*, gfmTests);	
 	void output_MUSCL(EOS*, EOS*);
-
+	void output_MUSCL(EOS*, EOS*, EOS*);
 	//EXACT
 	void exact_solver(gfmTests); 
 	//remember to check that internal energy is divided by density (specific)
