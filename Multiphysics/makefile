@@ -29,5 +29,5 @@ main.o : main.C
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
 main : main.o  RPsolvers/Solvers.o GhostFluid.o RPsolvers/LevelSet.o EOS/EOS.o EOS/JWL.o Tests/eulerTests.o
-	g++ $^ -lm -o $@
+	g++  $^ -lm -o $@
 

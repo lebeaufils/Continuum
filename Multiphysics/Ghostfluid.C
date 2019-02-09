@@ -97,7 +97,6 @@ void GhostFluidMethods::initial_conditions_HLLC(EOS* eos1, EOS* eos2, EOS* eos3,
 	vector euler2 = eos2->conservedVar(Test.initialM1);
 	vector euler3 = eos3->conservedVar(Test.initialR);
 
-
 	for (int i=0; i<N; i++){
 		X(i+1) = (i+0.5)*dx;
 		signed_distance_function_1D_2(i);
@@ -220,7 +219,7 @@ void GhostFluidMethods::solver_HLLC(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Te
 		for (int i=1; i<N+1; i++){
 			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 			//std::cout << phi(i) << '\t' << testsgn << std::endl;
-			if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+			if (testsgn > -2 && testsgn < 1 && i<N-2){ //-1 or 0, the boundary is crossed
 				if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 					for (int j=0; j<3; j++){
 						//to the left of interface, the ghostfluid is in var2
@@ -243,35 +242,41 @@ void GhostFluidMethods::solver_HLLC(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Te
 					}
 				}
 			} 
+
+			if (testsgn > -2 && testsgn < 1 && i>N-2){
+				std::cout << "Warning, interface is going out of bounds" << std::endl;
+			}
 			//std::cout << var1->U.row(i) << '\t' << var2->U.row(i) << std::endl;
 		}
 
-
 		var1->boundary_conditions();
 		var2->boundary_conditions();
+		/*for (int i=0; i<N+2; i++){
+			if (count ==0 ) std::cout << var1->U.row(i) << std::endl;
+		}*/
 
 		//compute fluxes at current timestep
 		
-		for (int i=0; i<N+1; i++){
+		/*for (int i=0; i<N+1; i++){
 			var1->compute_fluxes(eos1, i);
 			var2->compute_fluxes(eos2, i);
-		}
+		}*/
 
 		//compute fluxes at current timestep
 		
 		bool flag = true;
 		//std::cout << "test1" << std::endl;
-		/*for (int i=0; i<N+1; i++){
+		for (int i=0; i<N+1; i++){
 			if (phi(i) < 0 && flag==true){
 				//std::cout <<"a " << i << std::endl;
 				var1->compute_fluxes(eos1, i);
-				if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eos1, i);
+				//if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eos1, i+1);
 			}
 			if (phi(i) >= 0){
 				//std::cout <<"b " << i << std::endl;
 				if (get_sgn(phi(i-1)) < 0) var2->compute_fluxes(eos1, i-1);
 				var2->compute_fluxes(eos2, i);
-				if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eos1, i+1);
+				//if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eos1, i+1);
 				flag = false;
 			}
 			if (phi(i) < 0 && flag == false){
@@ -279,31 +284,44 @@ void GhostFluidMethods::solver_HLLC(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Te
 				if (get_sgn(phi(i-1)) > 0) var1->compute_fluxes(eos3, i-1);
 				var1->compute_fluxes(eos3, i);
 			}
-			//if (count ==0 ) std::cout << var1->U.row(i) << '\t' << var2->U.row(i) << std::endl;
-			//if (count ==0 )std::cout << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+			//if (count == 0 ) std::cout << var1->U.row(i) << std::endl; //'\t' << var2->U.row(i) << std::endl;
+			//if (count ==1 )std::cout << i << '\t' << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+		//note error of computing fluxes when the boundary lies exacdtly at cell i!!
 		}
-		*/
+		
 		//set timestep following CFL conditions with max wavespeed between both materials
 		Smax = fmax(var1->Smax, var2->Smax);
 		dt = CFL*(dx/Smax); 
 		if (t + dt > Test.tstop) dt = Test.tstop - t;
 
-		//evolving the levelset equation
-		update_levelset_HLLC(dt);
+
 
 		//updating both materials, looping through real and ghost points
 		for (int i=1; i<N+1; i++){
-			//if (count == 2)std::cout << var1->U.row(i) << "\t";
-			if (phi(i) < 0) var1->conservative_update_formula(dt, dx, i);
-			else var2->conservative_update_formula(dt, dx, i);
-			//if (count == 2) std::cout << var1->U.row(i) << std::endl;
+			if (phi(i) < 0){
+				//if (get_sgn(phi(i+1)) > 0) var1->conservative_update_formula(dt, dx, i+1);
+				//if (get_sgn(phi(i-1)) > 0) var1->conservative_update_formula(dt, dx, i-1);
+				//if (count ==0 )std::cout << i << '\t' << var1->F.row(i-1) << std::endl;
+				var1->conservative_update_formula(dt, dx, i);
+			}
+			else {
+				//if (get_sgn(phi(i-1)) < 0) var2->conservative_update_formula(dt, dx, i-1);
+				var2->conservative_update_formula(dt, dx, i);
+				//if (get_sgn(phi(i+1)) < 0) var2->conservative_update_formula(dt, dx, i+1);
+			}
+			//if (phi(i)<0) var1->conservative_update_formula(dt, dx, i);
+			//else var2->conservative_update_formula(dt, dx, i);
 		}
+
+		//evolving the levelset equation
+		update_levelset_HLLC(dt);
 
 		var1->boundary_conditions();
 		var2->boundary_conditions();
 		
 		t += dt;
 		count += 1;
+		//if (count%50 ==0) std::cout << count << std::endl;
 
 	}while(t<Test.tstop);
 	std::cout << count << std::endl;

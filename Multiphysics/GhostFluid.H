@@ -25,11 +25,6 @@ class GhostFluidMethods : public LevelSetFunction
 {
 	RPsolvers* var1;
 	RPsolvers* var2;
-//	RPsolvers* var3;
-//	RPsolvers* var4;
-
-	//EXACT* Evar1;
-	//EXACT* Evar2;
 
 	//domain wide dt and Smax after considering all materials
 	double CFL;
@@ -45,8 +40,6 @@ public:
 	};
 
 	
-
-
 	void ghost_boundary(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //original GFM
 	void ghost_boundary_RP(); //RP based
 
