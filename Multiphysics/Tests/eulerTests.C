@@ -121,8 +121,7 @@ void gfmTests::testA(){
 
 	L = 1.0;
 	//N = 100;
-	double dx = L/N;
-	x0 = dx*(N+1)/2.;
+	x0 = 0.5;
 	tstop = 0.0007;
 
 	y1 = 1.4;
