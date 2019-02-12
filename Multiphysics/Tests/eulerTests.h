@@ -68,6 +68,7 @@ struct gfmTests : public virtual standardTests
 	void testA();
 	void testB();
 	void testC();
+	void testB_Wang();
 	void testD();
 	void testE();
 

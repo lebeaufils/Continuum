@@ -44,6 +44,30 @@ void LevelSetFunction::signed_distance_function_1D_2(int i){
 	}
 }
 
+void LevelSetFunction::signed_distance_function_1D_3(int i){
+	// positive inside
+	if (x0 > x1 || x1 > x2) {
+		throw "Interface location incorrectly defined";
+	}
+
+	double dist = fmin(fmin(abs(X(i+1) - x0), abs(X(i+1) - x1)), abs(X(i+1) - x2));
+	if (X(i+1) <= x0) {
+		phi(i+1) = -dist;
+	}
+
+	else if (X(i+1) > x0 && X(i+1) <= x1){
+		phi(i+1) = dist;
+	}
+
+	else if (X(i+1) > x1 && X(i+1) <= x2){
+		phi(i+1) = -dist;
+	}
+
+	else {
+		phi(i+1) = dist;
+	}
+}
+
 double LevelSetFunction::HJ_FirstOrder(double velocity, double dt, int i){ //velocity and dt to follow numerical method
 
 	double phi_1;

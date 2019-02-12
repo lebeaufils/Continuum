@@ -34,6 +34,7 @@ public:
 	void boundary_conditions();
 	void signed_distance_function_1D(int);
 	void signed_distance_function_1D_2(int); //2 discontinuties
+	void signed_distance_function_1D_3(int); //3 discontinuities
 	
 	//first order upwind hamilton-jacobi method
 	double HJ_FirstOrder(double, double, int); //velocity

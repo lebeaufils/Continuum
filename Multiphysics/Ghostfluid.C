@@ -83,9 +83,9 @@ void GhostFluidMethods::initial_conditions_HLLC(EOS* eos1, EOS* eos2, EOS* eos3,
 
 	//setting material EOS parameter
 	eos1->y = Test.yL;
-	eos2->y = Test.yM1;
+	eos3->y = Test.yR;
 	if (Test.yM1 != 0){
-		eos3->y = Test.yR;
+		eos2->y = Test.yM1;
 	}
 	else {
 		throw "Number of materials do not match the chosen solver.";
@@ -327,6 +327,10 @@ void GhostFluidMethods::solver_HLLC(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Te
 	std::cout << count << std::endl;
 }
 
+void GhostFluidMethods::solver_HLLC(EOS*, EOS*, EOS*, EOS*, gfmTests){
+
+}
+
 void GhostFluidMethods::output_HLLC(EOS* eos1, EOS* eos2){
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
@@ -386,6 +390,10 @@ void GhostFluidMethods::output_HLLC(EOS* eos1, EOS* eos2, EOS* eos3){
 	std::cout << "done: GFM-HLLC" << std::endl;
 }
 
+void GhostFluidMethods::output_HLLC(EOS*, EOS*, EOS*, EOS*){
+
+}
+
 //--------------------------------------------------------
 //	MUSCL
 //--------------------------------------------------------
@@ -439,9 +447,9 @@ void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3
 
 		//setting material EOS parameter
 	eos1->y = Test.yL;
-	eos2->y = Test.yM1;
+	eos3->y = Test.yR;
 	if (Test.yM1 != 0){
-		eos3->y = Test.yR;
+		eos2->y = Test.yM1;
 	}
 	else {
 		throw "Number of materials do not match the chosen solver.";
@@ -506,6 +514,109 @@ void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3
 	var2->boundary_conditions();
 	boundary_conditions(); //levelsetfunction
 
+}
+
+void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4, gfmTests Test){
+	var1 = new MUSCL(Test);
+	var2 = new MUSCL(Test);
+
+		//setting material EOS parameter
+	eos1->y = Test.yL;
+	eos4->y = Test.yR;
+	if (Test.yM1 != 0 && Test.yM2 != 0){
+		eos2->y = Test.yM1;
+		eos3->y = Test.yM2;
+	}
+	else {
+		throw "Number of materials do not match the chosen solver.";
+	}
+
+	//initial values for conserved variables
+	vector euler1 = eos1->conservedVar(Test.initialL);
+	vector euler2 = eos2->conservedVar(Test.initialM1);
+	vector euler3 = eos3->conservedVar(Test.initialM2);
+	vector euler4 = eos4->conservedVar(Test.initialR);
+
+	for (int i=0; i<N; i++){
+		X(i+1) = (i+0.5)*dx;
+		signed_distance_function_1D_3(i);
+		if (X(i+1)  <= x0){
+			var1->U.row(i+2) = euler1; //Left IC
+		}
+		else if (X(i+1) > x0 && X(i+1) < x1){
+			var2->U.row(i+2) = euler2; //Middle left IC
+		}
+		else if (X(i+1) > x1 && X(i+1) < x2){
+			var1->U.row(i+2) = euler3; //Middle right IC
+		}
+		else {
+			var2->U.row(i+2) = euler4;
+		}
+		//std::cout << var1->U.row(i) << '\t' << var2->U.row(i) << std::endl;
+		//std::cout << phi(i+1) << std::endl;
+	}
+
+//////////////////////////////////////////////////////////
+	//Populating the Ghost cells
+//////////////////////////////////////////////////////////
+	bool flag1 = false; //Markers to identify which domain have been computed
+	bool flag2 = false;
+	bool flag3 = false;
+
+	for (int i=1; i<N+1; i++){
+		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+		//std::cout << phi(i) << '\t' << testsgn << std::endl;
+		if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+			if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+				if (flag1 == false && flag2 == false && flag3 == false){
+					for (int j=0; j<4; j++){
+						//std::cout << "flag1" <<std::endl;
+						//to the left of interface, the ghostfluid is in var2
+						ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
+						//to the right of the interface, the ghostfluid is in var1
+						ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
+						//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+						//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
+						if (j >= 3) flag1 = true;
+					}
+				}
+				//populating the 3rd boundary, second discontinuity in var1
+				//the materials now obey eos3 in var1 and eos4 in var2
+				else if (flag1 == true && flag2 == true && flag3 == false){
+					for (int j=0; j<4; j++){
+						//std::cout << "flag3" <<std::endl;
+						ghost_boundary(var1, eos3, var2, eos4, (i+1)-j); 
+						ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
+						if (j >= 3) flag3 = true;
+					}
+				}
+			}
+			else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+				for(int j=0; j<4; j++){
+					//to the left of interface, the ghostfluid is in var1
+					//std::cout << var2->U.row(i+1-j) << std::endl;
+					if(flag1 == true && flag2 == false && flag3 == false){
+						//std::cout << "flag2" <<std::endl;
+						//note that we are now in the right material which has EOS: eos3
+						ghost_boundary(var2, eos2, var1, eos3, (i+1)-j);
+						//to the right of the interface, the ghostfluid is in var2
+						ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
+						//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+						//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
+						if (j >= 3) flag2 = true;
+					}
+				}
+			}
+		}
+	}
+
+	//for (int i=1; i<N+1; i++){
+	//	std::cout << i << '\t' << get_sgn(phi(i)) << '\t' <<var1->U.row(i+1) << '\t' << var2->U.row(i+1) << std::endl;
+	//}
+
+	var1->boundary_conditions();
+	var2->boundary_conditions();
+	boundary_conditions(); //levelsetfunction
 }
 
 void GhostFluidMethods::update_levelset_MUSCL(double dt){
@@ -696,6 +807,11 @@ void GhostFluidMethods::solver_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests T
 }
 
 
+void GhostFluidMethods::solver_MUSCL(EOS*, EOS*, EOS*, EOS*, gfmTests){
+
+}
+
+
 void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2){
 
 	std::ofstream outfile;
@@ -755,6 +871,11 @@ void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3){
 	}
 }
 
+void GhostFluidMethods::output_MUSCL(EOS*, EOS*, EOS*, EOS*){
+
+}
+
+///////////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------
 //	EXACT
 //-----------------------------------------------------------------
@@ -920,7 +1041,7 @@ double GhostFluidMethods::compute_star_pressure(vector W1, int mat1, vector W2, 
 	double mixTOL;
 
 	int count = 0;
-	std::cout << p0 << std::endl;
+	//std::cout << p0 << std::endl;
 	do{
 		Pk_1 = newton_raphson(Pk, W1, mat1, W2, mat2);
 		CHA = relative_pressure_change(Pk_1, Pk);
@@ -933,7 +1054,7 @@ double GhostFluidMethods::compute_star_pressure(vector W1, int mat1, vector W2, 
 		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
 	}while(count < 20);
 
-	std::cout << count <<std::endl;
+	//std::cout << count <<std::endl;
 	return Pk;
 }
 
@@ -1160,37 +1281,6 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 		double SHL_1 = uL_1 - C(0, 0); double SHR_1 = uR_1 + C(2, 0); //Head of fan
 		double STL_1 = ustar_1 - cstarL_1; double STR_1 = ustar_1 + cstarR_1; //tail of fan
 
-/*
-		//Solution of the right RP, between initial conditions WM1 and WR
-		double pstar_2 = compute_star_pressure(WM1, 2, WR, 1);
-		double ustar_2 = compute_star_velocity(pstar_2, WM1, 2, WR, 1);
-		double dshockL_2 = compute_shock_density(pstar_2, WM1, 2);
-		double dshockR_2 = compute_shock_density(pstar_2, WR, 1);
-		double drareL_2 = compute_rarefraction_density(pstar_2, WM1, 2);
-		double drareR_2 = compute_rarefraction_density(pstar_2, WR, 1);
-
-		//primitive variables of left and right states
-		double dL_2 = WM1(0); double dR_2 = WR(0);
-		double uL_2 = WM1(1); double uR_2 = WR(1);
-		double pL_2 = WM1(2); double pR_2 = WR(2);
-
-		//Shock Speeds
-		double SL_2 = uL_2 - C(2, 0)*sqrt((C(2, 2)*(pstar_2/pL_2) + C(2, 1))); 
-		double SR_2 = uR_2 + C(1, 0)*sqrt((C(1, 2)*(pstar_2/pR_2) + C(1, 1)));
-
-		//Rarefraction wave speeds
-		double cstarL_2 = C(2, 0)*pow(pstar_2/pL_2, C(2, 1));
-		double cstarR_2 = C(1, 0)*pow(pstar_2/pR_2, C(1, 1));
-
-		double SHL_2 = uL_2 - C(2, 0); double SHR_2 = uR_2 + C(1, 0); //Head of fan
-		double STL_2 = ustar_2 - cstarL_2; double STR_2 = ustar_2 + cstarR_2; //tail of fan
-
-		//If the generated shockwaves do not meet,
-		//at time t the contact waves would have moved by ustar*t
-		//double newx0 = Test.x0 + ustar_1*Test.tstop;
-		//double newx1 = Test.x1 + ustar_2*Test.tstop;
-		//double Pos_L_acoustic; double Pos_R_acoustic;
-*/
 	//Tracking the right moving shock wave. For this problem, we know that the right moving wave of the
 		//first riemann problem is a shock wave.
 		//time when shock wave reaches the discontinuity
@@ -1226,49 +1316,9 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 	
 
 		//-----------------------------------------------------------
-		//	Solution to RP of the 2 star states
+		//	Samp[ling]
 		//-----------------------------------------------------------
 
-		//Solution of wavestructure within the domain of interest
-		/*double pstar_test = compute_star_pressure(WstarL, 2, WR, 1);
-		double ustar_test = compute_star_velocity(pstar_test, WstarL, 2, WR, 1);
-		double dshockL_test = compute_shock_density(pstar_test, WstarL, 2);
-		double dshockR_test = compute_shock_density(pstar_test, WR, 1);
-		double drareL_test = compute_rarefraction_density(pstar_test, WstarL, 2);
-		double drareR_test = compute_rarefraction_density(pstar_test, WR, 1);
-
-		//primitive variables of left and right states
-		double dL_test = WstarL(0); double dR_test = WR(0);
-		double uL_test = WstarL(1); double uR_test = WR(1);
-		double pL_test = WstarL(2); double pR_test = WR(2);
-
-		double soundspeedL_test = sqrt(C(2, 10)*WstarL(2)/WstarL(0));
-		double soundspeedR_test = sqrt(C(1, 10)*WR(2)/WR(0));
-
-		//Shock Speeds
-		double SL_test = uL_test - soundspeedL_test*sqrt((C(2, 2)*(pstar_test/pL_test) + C(2, 1))); 
-		double SR_test = uR_test + soundspeedR_test*sqrt((C(1, 2)*(pstar_test/pR_test) + C(1, 1)));
-
-		//Rarefraction wave speeds
-		double cstarL_test = soundspeedL*pow(pstar_test/pL_test, C(2, 1));
-		double cstarR_test = soundspeedR*pow(pstar_test/pR_test, C(1, 1));
-
-		double SHL_test = uL_test - soundspeedL; double SHR_test = uR_test + soundspeedR; //Head of fan
-		double STL_test = ustar_test - cstarL_test; double STR_test = ustar_test + cstarR_test; //tail of fan
-*/
-		//std::cout << "newx0 = " << newx0 << '\t' << "newx1 = " << newx1 << std::endl;
-		//std::cout << "Pos_acoustic = " << Pos_L_acoustic << '\t' << Pos_R_acoustic << std::endl;
-		//std::cout << "ustar_1 = " << ustar_1 << '\t' << "ustar_2 = " << ustar_2 << std::endl;
-		//std::cout << "SL_1 = " << SL_1 << '\t' << SR_1 << std::endl;
-		//std::cout << "SL_2 = " << SL_2 << '\t' << SR_2 << std::endl;
-		//std::cout << "SHL_2, STL_2 = " << SHL_2 << '\t' << STL_2 << std::endl;
-		//std::cout << "SHR_2, STR_2 = " << SHR_2 << '\t' << STR_2 << std::endl;
-		//std::cout << "SL = " << SL << '\t' << SR << std::endl;
-		//std::cout << "SHL, STL = " << SHL << '\t' << STL << std::endl;
-
-		//std::cout << "Wstar states = " << WstarL.transpose() << "right" << WR.transpose() << std::endl;
-		
-		//-----------------Sampling------------------
 		//consider the time after the wave has hit the discontinuity, forming a new riemann problem
 		for (int i=0; i<newN; i++){
 
@@ -1282,14 +1332,14 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 						//Left of Shock Wave (unaffected by new shock)
 						if (S < SL){
 							W.row(i) = WstarL;
-							std::cout << "Shock WstarL" << '\t' << i << std::endl;
+							//std::cout << "Shock WstarL" << '\t' << i << std::endl;
 						}
 						//Right of Shock Wave (shocked material, star state)
 						else {
 							W(i, 0) = dshockL;
 							W(i, 1) = ustar;
 							W(i, 2) = pstar;
-							std::cout << "Shock new WstarL" << '\t' << i << std::endl;
+							//std::cout << "Shock new WstarL" << '\t' << i << std::endl;
 						}
 					}
 					//Left Rarefraction fan
@@ -1297,14 +1347,14 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 						//Left of fastest rarefraction wave (unaffected by rarefraction)
 						if (S < SHL){
 							W.row(i) = WstarL;
-							std::cout << "Rarefraction WstarL" << '\t' << i << std::endl;
+							//std::cout << "Rarefraction WstarL" << '\t' << i << std::endl;
 						}
 						//Out of the rarefraction fan, within the left star state
 						else if (S > STL){
 							W(i, 0) = drareL;
 							W(i, 1) = ustar;
 							W(i, 2) = pstar;
-							std::cout << "Rarefraction new WstarL" << '\t' << i << std::endl;
+							//std::cout << "Rarefraction new WstarL" << '\t' << i << std::endl;
 						}
 						//Within the rarefraction fan
 						else {
@@ -1313,7 +1363,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 							double pLfan = pL*pow(C(2, 5) + (C(2, 6)/soundspeedL)*(uL - S), C(2, 3));
 							vector WLfan(dLfan, uLfan, pLfan);
 							W.row(i) = WLfan;
-							std::cout << "Rarefraction new WfanL" << '\t' << i << std::endl;
+							//std::cout << "Rarefraction new WfanL" << '\t' << i << std::endl;
 						}
 					}
 				}
@@ -1323,13 +1373,13 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 					if (pstar > pR){
 						//Right of Shock Wave (unaffected by shock)
 						if (S > SR){
-							std::cout << "Shock WR" << '\t' << i << std::endl;
+							//std::cout << "Shock WR" << '\t' << i << std::endl;
 							W.row(i) = WR;
 
 						}
 						//Left of Shock Wave (shocked material, star state)
 						else {
-							std::cout << "Shock new WR" << '\t' << i << std::endl;
+							//std::cout << "Shock new WR" << '\t' << i << std::endl;
 							W(i, 0) = dshockR;
 							W(i, 1) = ustar;
 							W(i, 2) = pstar;
@@ -1340,12 +1390,12 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 					else {
 						//Right of fastest rarefraction wave (unaffected by rarefraction)
 						if (S > SHR){
-							std::cout << "rarefraction WR" << '\t' << i << std::endl;
+							//std::cout << "rarefraction WR" << '\t' << i << std::endl;
 							W.row(i) = WR;
 						}
 						//Out of the rarefraction fan, within the right star state
 						else if (S < STR){
-							std::cout << "rarefraction new WR" << '\t' << i << std::endl;
+							//std::cout << "rarefraction new WR" << '\t' << i << std::endl;
 							W(i, 0) = drareR;
 							W(i, 1) = ustar;
 							W(i, 2) = pstar;
@@ -1353,7 +1403,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 						}
 						//Within the rarefraction fan
 						else {
-							std::cout << "rarefraction WR" << '\t' << i << std::endl;
+							//std::cout << "rarefraction WR" << '\t' << i << std::endl;
 							double dRfan = dR*pow(C(2, 5) - (C(2, 6)/soundspeedR)*(uR - S), C(2, 4));
 							double uRfan = C(2, 5)*(-soundspeedR + C(2, 7)*uR + S);
 							double pRfan = pR*pow(C(2, 5) - (C(2, 6)/soundspeedR)*(uR - S), C(2, 3));
@@ -1364,7 +1414,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 				}
 			}
 
-			//If the shockwave has not reached the discontinuity
+//----------//If the shockwave has not reached the discontinuity------------------
 			else {
 				double S = (xPos - Test.x0)/Test.tstop;
 				if (S <= ustar_1){
@@ -1373,14 +1423,14 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 						//Left of Shock Wave (unaffected by shock)
 						if (S < SL_1){
 							W.row(i) = WL;
-							std::cout << "Shock WL" << '\t' << i << std::endl;
+							//std::cout << "Shock WL" << '\t' << i << std::endl;
 						}
 						//Right of Shock Wave (shocked material, star state)
 						else {
 							W(i, 0) = dshockL_1;
 							W(i, 1) = ustar_1;
 							W(i, 2) = pstar_1;
-							std::cout << "Shock WL star" << '\t' << i << std::endl;
+							//std::cout << "Shock WL star" << '\t' << i << std::endl;
 						}
 					}
 					//Left Rarefraction fan
@@ -1388,14 +1438,14 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 						//Left of fastest rarefraction wave (unaffected by rarefraction)
 						if (S < SHL_1){
 							W.row(i) = WL;
-							std::cout << "Rarefraction WL" << '\t' << i << std::endl;
+							//std::cout << "Rarefraction WL" << '\t' << i << std::endl;
 						}
 						//Out of the rarefraction fan, within the left star state
 						else if (S > STL_1){
 							W(i, 0) = drareL_1;
 							W(i, 1) = ustar_1;
 							W(i, 2) = pstar_1;
-							std::cout << "Rarefraction WL star" << '\t' << i << std::endl;
+							//std::cout << "Rarefraction WL star" << '\t' << i << std::endl;
 						}
 						//Within the rarefraction fan
 						else {
@@ -1404,7 +1454,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 							double pLfan = pL_1*pow(C(0, 5) + (C(0, 6)/C(0, 0))*(uL_1 - S), C(0, 3));
 							vector WLfan(dLfan, uLfan, pLfan);
 							W.row(i) = WLfan;
-							std::cout << "Rarefraction WL fan" << '\t' << i << std::endl;
+							//std::cout << "Rarefraction WL fan" << '\t' << i << std::endl;
 						}
 					}
 				}
@@ -1414,13 +1464,13 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 					if (pstar_1 > pR_1){
 						//Right of Shock Wave (unaffected by shock)
 						if (S > SR_1){
-							std::cout << "Shock WM" << '\t' << i << std::endl;
+							//std::cout << "Shock WM" << '\t' << i << std::endl;
 							W.row(i) = WM1;
 
 						}
 						//Left of Shock Wave (shocked material, star state)
 						else {
-							std::cout << "Shock WM Star" << '\t' << i << std::endl;
+							//std::cout << "Shock WM Star" << '\t' << i << std::endl;
 							W(i, 0) = dshockR_1;
 							W(i, 1) = ustar_1;
 							W(i, 2) = pstar_1;
@@ -1431,12 +1481,12 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 					else {
 						//Right of fastest rarefraction wave (unaffected by rarefraction)
 						if (S > SHR_1){
-							std::cout << "rarefraction WM" << '\t' << i << std::endl;
+							//std::cout << "rarefraction WM" << '\t' << i << std::endl;
 							W.row(i) = WM1;
 						}
 						//Out of the rarefraction fan, within the right star state
 						else if (S < STR_1){
-							std::cout << "rarefraction WM Star" << '\t' << i << std::endl;
+							//std::cout << "rarefraction WM Star" << '\t' << i << std::endl;
 							W(i, 0) = drareR_1;
 							W(i, 1) = ustar_1;
 							W(i, 2) = pstar_1;
@@ -1444,7 +1494,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 						}
 						//Within the rarefraction fan
 						else {
-							std::cout << "rarefraction WM fan" << '\t' << i << std::endl;
+							//std::cout << "rarefraction WM fan" << '\t' << i << std::endl;
 							double dRfan = dR_1*pow(C(2, 5) - (C(2, 6)/C(2, 0))*(uR_1 - S), C(2, 4));
 							double uRfan = C(2, 5)*(-C(2, 0) + C(2, 7)*uR_1 + S);
 							double pRfan = pR_1*pow(C(2, 5) - (C(2, 6)/C(2, 0))*(uR_1 - S), C(2, 3));
@@ -1456,14 +1506,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 
 			}
 
-
 		}
-
-		std::cout << "Star Pressure 1 = " << pstar_1 << std::endl;
-		std::cout << "Star Pressure new = " << pstar << std::endl;
-		std::cout << "ustar (s)" << ustar_1 << '\t' << ustar << std::endl;
-		std::cout << "dshockL/R" << dshockL << '\t' << dshockR << std::endl;
-		std::cout << "time after shock" << t_shock << std::endl;
 
 		/*-------------------------------
 			output
