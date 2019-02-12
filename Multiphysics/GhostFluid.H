@@ -38,14 +38,14 @@ public:
 	//void initialise_HLLC(gfmTests);
 	void initial_conditions_HLLC(EOS*, EOS*, gfmTests);
 	void initial_conditions_HLLC(EOS*, EOS*, EOS*, gfmTests); //3 initial conditions, 2 discontinuities
-	void initial_conditions_HLLC(EOS*, EOS*, EOS*, EOS*, gfmTests);
+	//void initial_conditions_HLLC(EOS*, EOS*, EOS*, EOS*, gfmTests); 
 	void update_levelset_HLLC(double);
 	void solver_HLLC(EOS*, EOS*, gfmTests);
 	void solver_HLLC(EOS*, EOS*, EOS*, gfmTests);
-	void solver_HLLC(EOS*, EOS*, EOS*, EOS*, gfmTests);
+	//void solver_HLLC(EOS*, EOS*, EOS*, EOS*, gfmTests); //too diffusive
 	void output_HLLC(EOS*, EOS*);
 	void output_HLLC(EOS*, EOS*, EOS*);
-	void output_HLLC(EOS*, EOS*, EOS*, EOS*);
+	//void output_HLLC(EOS*, EOS*, EOS*, EOS*);
 
 	//MUSCL
 	void initial_conditions_MUSCL(EOS*, EOS*, gfmTests);

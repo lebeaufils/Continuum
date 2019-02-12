@@ -71,11 +71,11 @@ int main(void){
 	EOS* eos3 = new IdealGas();
 	EOS* eos4 = new IdealGas();
 
-	gfmTests Tests(400, 1.0); //(N, L)
+	gfmTests Tests(1000, 1.0); //(N, L)
 
 	Tests.testB_Wang();
 
-	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
+	GhostFluidMethods gfmProblem(0.6, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
 	try{
 		gfmProblem.initial_conditions_MUSCL(eos1, eos2, eos3, eos4, Tests);

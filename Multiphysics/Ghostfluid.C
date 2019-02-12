@@ -327,10 +327,6 @@ void GhostFluidMethods::solver_HLLC(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Te
 	std::cout << count << std::endl;
 }
 
-void GhostFluidMethods::solver_HLLC(EOS*, EOS*, EOS*, EOS*, gfmTests){
-
-}
-
 void GhostFluidMethods::output_HLLC(EOS* eos1, EOS* eos2){
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
@@ -388,10 +384,6 @@ void GhostFluidMethods::output_HLLC(EOS* eos1, EOS* eos2, EOS* eos3){
 		<< '\t' << P << '\t' << e << std::endl;
 	}
 	std::cout << "done: GFM-HLLC" << std::endl;
-}
-
-void GhostFluidMethods::output_HLLC(EOS*, EOS*, EOS*, EOS*){
-
 }
 
 //--------------------------------------------------------
@@ -1016,31 +1008,36 @@ void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4)
 			d = var1->U(i, 0);
 			u = var1->U(i, 1)/var1->U(i, 0);
 			P = eos1->Pressure(var1->U, i);
-			e = eos1->internalE(var1->U, i);
+			//e = eos1->internalE(var1->U, i);
+			e = eos1->internalE(var1->U, i)*var1->U(i, 0);
 		}
 
 		if (phi(i-1) >= 0 && flag2==true) {
 			d = var2->U(i, 0);
 			u = var2->U(i, 1)/var2->U(i, 0);
 			P = eos2->Pressure(var2->U, i);
-			e = eos2->internalE(var2->U, i);
+			//e = eos2->internalE(var2->U, i);
+			e = eos2->internalE(var2->U, i)*var2->U(i, 0);
 			flag1 = false;
 		}
 		if (phi(i-1) < 0 && flag1 == false){
 			d = var1->U(i, 0);
 			u = var1->U(i, 1)/var1->U(i, 0);
 			P = eos3->Pressure(var1->U, i);
-			e = eos3->internalE(var1->U, i);
+			//e = eos3->internalE(var1->U, i);
+			e = eos3->internalE(var1->U, i)*var1->U(i, 0);
+			flag2 = false;
 		}
 		if (phi(i-1) >= 0 && flag1==false && flag2==false){
-			d = var1->U(i, 0);
-			u = var1->U(i, 1)/var1->U(i, 0);
-			P = eos4->Pressure(var1->U, i);
-			e = eos4->internalE(var1->U, i);	
+			d = var2->U(i, 0);
+			u = var2->U(i, 1)/var2->U(i, 0);
+			P = eos4->Pressure(var2->U, i);
+			//e = eos4->internalE(var2->U, i);
+			e = eos4->internalE(var2->U, i)*var2->U(i, 0);
 		}
 
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << phi(i-1) << std::endl;
+		<< '\t' << P << '\t' << e << std::endl;
 	}
 }
 
