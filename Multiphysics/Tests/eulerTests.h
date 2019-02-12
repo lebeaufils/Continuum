@@ -47,19 +47,19 @@ struct eulerTests : public virtual standardTests
 struct gfmTests : public virtual standardTests
 {
 	int number_of_materials;
-	double y1;
-	double y2;
-	double y3;
-	double y4;
+	double yL;
+	double yR;
+	double yM1;
+	double yM2;
 
 	double x1;
 	double x2;
 	vector initialM1;
 	vector initialM2;
 
-	gfmTests() : standardTests(0, 0), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0),
+	gfmTests() : standardTests(0, 0), number_of_materials(2), yL(1.4), yR(1.4), yM1(0), yM2(0),
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0)  {}
-	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2), y1(1.4), y2(1.4), y3(0), y4(0),
+	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2), yL(1.4), yR(1.4), yM1(0), yM2(0),
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0) {}
 
 	void set_number_of_cells(int); //changing the resolution. 
@@ -69,6 +69,7 @@ struct gfmTests : public virtual standardTests
 	void testB();
 	void testC();
 	void testD();
+	void testE();
 
 	//custom tests
 	//void testN(); //user input

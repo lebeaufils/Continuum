@@ -108,8 +108,8 @@ void gfmTests::test_example_1(){
 	x0 = dx*(N+1)/2.;
 	tstop = 0.0022;
 
-	y1 = 1.4;
-	y2 = 1.4;
+	yL = 1.4;
+	yR = 1.4;
 }
 
 void gfmTests::testA(){
@@ -124,8 +124,8 @@ void gfmTests::testA(){
 	x0 = 0.5;
 	tstop = 0.0007;
 
-	y1 = 1.4;
-	y2 = 1.2;
+	yL = 1.4;
+	yR = 1.2;
 }
 
 
@@ -141,21 +141,21 @@ void gfmTests::testB(){ //FedKiw 2002 test B
 
 	L = 1.0;
 	//N = 100;
-	//double dx = L/N;
 	x0 = 0.05; //Right going shock between 5th ans 6th grid point (on a 100 grid)
 	x1 = 0.5; //Material discontinuity between 50 and 51st point
 	tstop = 0.0012;
+	//tstop = 0.0011;
 
-	y1 = 1.4;
-	y2 = 1.4;
-	y3 = 1.67;
+	yL = 1.4;
+	yR = 1.67;
+	yM1 = 1.4;
 }
 
 void gfmTests::testC(){
 	number_of_materials = 3;
 	vector Left(1.0, 0.0, 1.0e5);
 	vector Middle(1.0, 0.0, 1e5);
-	vector Right(1.0, 0.0, 1e5);
+	vector Right(0.1379, 0.0, 1e5);
 
 	initialL = Left;
 	initialM1 = Middle;
@@ -168,13 +168,38 @@ void gfmTests::testC(){
 	x1 = 0.5; //Material discontinuity between 50 and 51st point
 	tstop = 0.0012;
 
-	y1 = 1.4;
-	y2 = 1.4;
-	y3 = 1.4;
+	yL = 1.4;
+	yR = 1.67;
+	yM1 = 1.4;
 }
 
 void gfmTests::testD(){
+	vector Left(1.3333, 0.3535*sqrt(1e5), 1.5e5);
+	vector Right(1.0, 0.0, 1e5);
 
+	initialL = Left;
+	initialR = Right;
+
+	L= 1.0;
+	x0 = 0.05;
+	tstop = 0.0012;
+
+	yL = 1.4;
+	yR = 1.4;
+}
+
+void gfmTests::testE(){
+	vector Left(1.0, 0.75, 1.0); //density, velocity, pressure
+	vector Right(0.125, 0.0, 0.1);
+
+	initialL = Left;
+	initialR = Right;
+
+	x0 = 0.3;
+	tstop = 0.2;
+
+	yL = 1.4;
+	yR = 1.4;
 }
 
 

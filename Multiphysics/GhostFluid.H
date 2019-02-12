@@ -31,6 +31,9 @@ class GhostFluidMethods : public LevelSetFunction
 	double Smax;
 	double dt;
 	int count;
+
+	//constants storage
+	matrix C;
 public:
 	//GhostFluidMethods(double, eulerTests, HLLC);
 	//GhostFluidMethods(double, eulerTests, MUSCL);
@@ -62,6 +65,17 @@ public:
 	void output_MUSCL(EOS*, EOS*);
 	void output_MUSCL(EOS*, EOS*, EOS*);
 	//EXACT
+	void y_constants(gfmTests);
+	double fk(double, vector, int);
+	double fprimek(double, vector, int);
+	double f(double, vector, int, vector, int);
+	double fprime(double, vector, int, vector, int);
+	void check_pressure_pos_condition(vector, int, vector, int);
+	double newton_raphson(double, vector, int, vector, int);
+	double compute_star_pressure(vector, int, vector, int);
+	double compute_star_velocity(double, vector, int, vector, int);
+	double compute_shock_density(double, vector, int);
+	double compute_rarefraction_density(double, vector, int);
 	void exact_solver(gfmTests); 
 	//remember to check that internal energy is divided by density (specific)
 

@@ -35,7 +35,7 @@ int main(void){
 	delete var;
 */
 
- /*	EOS* eos1 = new IdealGas();
+ 	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 	EOS* eos3 = new IdealGas();
 
@@ -53,16 +53,30 @@ int main(void){
 		std::cout << c << std::endl; 
 	}
 	gfmProblem.solver_MUSCL(eos1, eos2, eos3, Tests);
-	//gfmProblem.exact_solver(Tests);
+	gfmProblem.exact_solver(Tests);
 	gfmProblem.output_MUSCL(eos1, eos2, eos3);
 
 	delete eos1; delete eos2; delete eos3;
+
+/*	gfmTests Tests(400, 1.0);
+	Tests.testB();
+
+	vector WL(1.3333, 0.3535*sqrt(1e5), 1.5e5);
+	vector WM(1.0, 0.0, 1e5);
+
+	GhostFluidMethods gfmProblem(0.5, Tests);
+	gfmProblem.y_constants(Tests);
+	double pstar = gfmProblem.compute_star_pressure(WL, 0, WM, 2);
+	double ustar = gfmProblem.compute_star_velocity(pstar, WL, 0, WM, 2);
+	std::cout << "Pstar = " << pstar << std::endl;
+	std::cout << "ustar = " << ustar << std::endl;
 */
-	EOS* eos1 = new IdealGas();
+
+/*	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 
-	gfmTests Tests(400, 1.0); //(N, L)
-	Tests.testA();
+	gfmTests Tests(100, 1.0); //(N, L)
+	Tests.testE();
 	//Tests.test_example_1();
 
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
@@ -74,11 +88,17 @@ int main(void){
 		std::cout << c << std::endl; 
 	}
 	gfmProblem.solver_MUSCL(eos1, eos2, Tests);
-	gfmProblem.exact_solver(Tests);
 	gfmProblem.output_MUSCL(eos1, eos2);
+	try{
+		gfmProblem.exact_solver(Tests);
+	}
+	catch (const char* c){
+		std::cout << c << std::endl; 
+	}
+	//gfmProblem.exact_solver_old(Tests);
 
 	delete eos1; delete eos2;
-
+*/
 /*
 	//note exact solver for stiffened gas not written yet
 	EOS* IG = new IdealGas();
