@@ -71,7 +71,7 @@ int main(void){
 	EOS* eos3 = new IdealGas();
 	EOS* eos4 = new IdealGas();
 
-	gfmTests Tests(100, 1.0); //(N, L)
+	gfmTests Tests(400, 1.0); //(N, L)
 
 	Tests.testB_Wang();
 
@@ -83,8 +83,8 @@ int main(void){
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	//gfmProblem.solver_MUSCL(eos1, eos2, eos3, eos4, Tests);
-	//gfmProblem.output_MUSCL(eos1, eos2, eos3, eos4);
+	gfmProblem.solver_MUSCL(eos1, eos2, eos3, eos4, Tests);
+	gfmProblem.output_MUSCL(eos1, eos2, eos3, eos4);
 
 	delete eos1; delete eos2; delete eos3; delete eos4;
 

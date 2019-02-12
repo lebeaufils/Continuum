@@ -543,10 +543,10 @@ void GhostFluidMethods::initial_conditions_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3
 		if (X(i+1)  <= x0){
 			var1->U.row(i+2) = euler1; //Left IC
 		}
-		else if (X(i+1) > x0 && X(i+1) < x1){
+		else if (X(i+1) > x0 && X(i+1) <= x1){
 			var2->U.row(i+2) = euler2; //Middle left IC
 		}
-		else if (X(i+1) > x1 && X(i+1) < x2){
+		else if (X(i+1) > x1 && X(i+1) <= x2){
 			var1->U.row(i+2) = euler3; //Middle right IC
 		}
 		else {
@@ -807,8 +807,140 @@ void GhostFluidMethods::solver_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests T
 }
 
 
-void GhostFluidMethods::solver_MUSCL(EOS*, EOS*, EOS*, EOS*, gfmTests){
+void GhostFluidMethods::solver_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4, gfmTests Test){
+	MUSCL* m1 = dynamic_cast<MUSCL*>(var1);
+	MUSCL* m2 = dynamic_cast<MUSCL*>(var2);
+	slopeLimiter a;
 
+	if(m1 && m2){
+		a = m1->getLimiter();
+	}
+	else {
+		std::cout << "dynamic casting to type MUSCL failed" << std::endl;
+	}
+
+	double t = 0.0;
+	do{
+		//compute ghost fluid boundaries
+		bool flag1 = false; //Markers to identify which domain have been computed
+		bool flag2 = false;
+		bool flag3 = false;
+
+		for (int i=1; i<N+1; i++){
+			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+			//std::cout << phi(i) << '\t' << testsgn << std::endl;
+			if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+				if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+					if (flag1 == false && flag2 == false && flag3 == false){
+						for (int j=0; j<4; j++){
+							//std::cout << "flag1" <<std::endl;
+							//to the left of interface, the ghostfluid is in var2
+							ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
+							//to the right of the interface, the ghostfluid is in var1
+							ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
+							//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+							//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
+							if (j >= 3) flag1 = true;
+						}
+					}
+					//populating the 3rd boundary, second discontinuity in var1
+					//the materials now obey eos3 in var1 and eos4 in var2
+					else if (flag1 == true && flag2 == true && flag3 == false){
+						for (int j=0; j<4; j++){
+							//std::cout << "flag3" <<std::endl;
+							ghost_boundary(var1, eos3, var2, eos4, (i+1)-j); 
+							ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
+							if (j >= 3) flag3 = true;
+						}
+					}
+				}
+				else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+					for(int j=0; j<4; j++){
+						//to the left of interface, the ghostfluid is in var1
+						//std::cout << var2->U.row(i+1-j) << std::endl;
+						if(flag1 == true && flag2 == false && flag3 == false){
+							//std::cout << "flag2" <<std::endl;
+							//note that we are now in the right material which has EOS: eos3
+							ghost_boundary(var2, eos2, var1, eos3, (i+1)-j);
+							//to the right of the interface, the ghostfluid is in var2
+							ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
+							//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
+							//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
+							if (j >= 3) flag2 = true;
+						}
+					}
+				}
+			}
+		}
+
+		if(flag1==false || flag2==false || flag3==false){
+			throw "Failed to populate Ghost Fluid Cells";
+		}
+
+		var1->boundary_conditions();
+		var2->boundary_conditions();
+
+		//reconstruct data to piecewise linear representation
+		m1->data_reconstruction(a);
+		m2->data_reconstruction(a);
+
+		//compute fluxes at current timestep		
+		//using the previous flags which should now be true,
+		for (int i=1; i<N+2; i++){
+			if (phi(i-1) < 0 && flag1==true && flag2==true){
+				//std::cout <<"a " << i << std::endl;
+				var1->compute_fluxes(eos1, i);
+				//if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eos1, i+1);
+			}
+			if (phi(i-1) >= 0 && flag2==true){
+				//std::cout <<"b " << i << std::endl;
+				if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eos1, i-1);
+				var2->compute_fluxes(eos2, i);
+				//if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eos1, i+1);
+				flag1 = false;
+			}
+			if (phi(i-1) < 0 && flag1 == false){
+				//std::cout <<"c " << i << std::endl;
+				if (get_sgn(phi(i-2)) > 0) var1->compute_fluxes(eos3, i-1);
+				var1->compute_fluxes(eos3, i);
+				flag2 = false;
+			}
+			if (phi(i-1) >= 0 && flag1==false && flag2==false){
+				if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eos1, i-1);
+				var2->compute_fluxes(eos2, i);
+			}
+			//if (count == 1 ) std::cout << var1->U.row(i) << std::endl; //'\t' << var2->U.row(i) << std::endl;
+			//if (count == 180 )std::cout << i << '\t' << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+		}
+
+		//set timestep following CFL conditions with max wavespeed between both materials
+		Smax = fmax(var1->Smax, var2->Smax);
+		dt = CFL*(dx/Smax); 
+		if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+		//updating both materials, looping through real and ghost points
+		for (int i=2; i<N+2; i++){
+			if (phi(i-1) < 0){
+				var1->conservative_update_formula(dt, dx, i);
+			}
+			else {
+				var2->conservative_update_formula(dt, dx, i);
+			}
+			//if (phi(i)<0) var1->conservative_update_formula(dt, dx, i);
+			//else var2->conservative_update_formula(dt, dx, i);
+		}
+
+		var1->boundary_conditions();
+		var2->boundary_conditions();
+
+		//evolving the levelset equation
+		update_levelset_MUSCL(dt);
+		
+		t += dt;
+		count += 1;
+
+	}while(t<Test.tstop);
+	std::cout << count << std::endl;
 }
 
 
@@ -871,8 +1003,45 @@ void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3){
 	}
 }
 
-void GhostFluidMethods::output_MUSCL(EOS*, EOS*, EOS*, EOS*){
+void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4){
+	std::ofstream outfile;
+	outfile.open("dataeuler.txt");
 
+	double d, u, P, e;
+	bool flag1 = true;
+	bool flag2 = true;
+
+	for (int i=2; i<N+2; i++){
+		if (phi(i-1) < 0 && flag1==true && flag2==true){
+			d = var1->U(i, 0);
+			u = var1->U(i, 1)/var1->U(i, 0);
+			P = eos1->Pressure(var1->U, i);
+			e = eos1->internalE(var1->U, i);
+		}
+
+		if (phi(i-1) >= 0 && flag2==true) {
+			d = var2->U(i, 0);
+			u = var2->U(i, 1)/var2->U(i, 0);
+			P = eos2->Pressure(var2->U, i);
+			e = eos2->internalE(var2->U, i);
+			flag1 = false;
+		}
+		if (phi(i-1) < 0 && flag1 == false){
+			d = var1->U(i, 0);
+			u = var1->U(i, 1)/var1->U(i, 0);
+			P = eos3->Pressure(var1->U, i);
+			e = eos3->internalE(var1->U, i);
+		}
+		if (phi(i-1) >= 0 && flag1==false && flag2==false){
+			d = var1->U(i, 0);
+			u = var1->U(i, 1)/var1->U(i, 0);
+			P = eos4->Pressure(var1->U, i);
+			e = eos4->internalE(var1->U, i);	
+		}
+
+		outfile << X(i-1) << '\t' << d << '\t' << u
+		<< '\t' << P << '\t' << phi(i-1) << std::endl;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////

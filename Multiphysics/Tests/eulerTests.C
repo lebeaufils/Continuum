@@ -186,7 +186,9 @@ void gfmTests::testB_Wang(){
 	x0 = 0.05; 
 	x1 = 0.4; 
 	x2 = 0.6;
-	tstop = 0.0017;
+	tstop = 0.0014;
+	//tstop = 0.0009;
+
 
 	yL = 1.4;
 	yM1 = 1.4;
