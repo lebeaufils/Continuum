@@ -728,7 +728,7 @@ void GhostFluidMethods::solver_MUSCL(EOS* eos1, EOS* eos2, gfmTests Test){
 		//compute fluxes at current timestep		
 		for (int i=1; i<N+2; i++){
 			//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
-			if(phi(i-1) <= 0){
+			if(phi(i-1) < 0){
 				//std::cout << "phi < 0" << std::endl;
 				var1->compute_fluxes(eos1, i);
 			}
@@ -1111,16 +1111,9 @@ void GhostFluidMethods::solver_MUSCL_RP(EOS* eos1, EOS* eos2, gfmTests Test){
 		for (int i=1; i<N+2; i++){
 			//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
 			if(phi(i-1) < 0){
-				//std::cout << "phi < 0" << std::endl;
 				var1->compute_fluxes(eos1, i);
 			}
 			if (phi(i-1) >= 0){
-				//std::cout << "phi > 0" << std::endl;
-				//std::cout << i << std::endl;
-				if (get_sgn(phi(i-2)) < 0) {
-					//std::cout << "phi > 0 and phi-1 < 0" << std::endl;
-					var2->compute_fluxes(eos2, i-1);
-				}
 				var2->compute_fluxes(eos2, i);
 			}
 			//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
