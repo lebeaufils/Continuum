@@ -91,8 +91,8 @@ int main(void){
 	//EOS* eos1 = new IdealGas();
 	//EOS* eos2 = new IdealGas();
 
-	EOS* eos1 = new StiffenedGas();
-	EOS* eos2 = new StiffenedGas();
+	EOS* eos1 = new IdealGas();
+	EOS* eos2 = new IdealGas();
 
 	gfmTests Tests(400, 1.0); //(N, L)
 	//Tests.testA();
@@ -100,10 +100,11 @@ int main(void){
 
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 	
-	eos1->testing();
+	//eos1->testing();
 	eos1->y_constants(Tests.initialL);	
-	eos1->testing();
-	std::cout << eos1->fk(1.0) << std::endl;
+	eos2->y_constants(Tests.initialR);
+	std::cout << gfmProblem.testingcompute_star_pressure(eos1, eos2) << std::endl;
+
 	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
 	/*
 	try{

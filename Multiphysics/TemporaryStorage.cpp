@@ -42,44 +42,11 @@ void GhostFluidMethods::y_constants(gfmTests Test){
 		C(i, 10) = y;
 	}
 }
-//material: 0 = left, 1 = right, 2 = midleft, 3 = midright
-double GhostFluidMethods::fk(double P, vector Wk, int material){
-	//data-dependent constants
-	double Ak = C(material, 8);
-	double Bk = C(material, 9);
-	double Qk = sqrt(Ak/(P + Bk));
-	double Fk;
-
-	if (P > Wk(2)){ //Shock
-		Fk = (P - Wk(2))*Qk;
-	}
-
-	else { //Rarefraction
-		Fk = C(material, 4)*C(material, 0)*(pow(P/Wk(2), C(material, 1)) - 1);
-	}
-	return Fk;
-}
-
-double GhostFluidMethods::fprimek(double P, vector Wk, int material){
-	double Ak = C(material, 8);
-	double Bk = C(material, 9);
-	double Qk = sqrt(Ak/(P + Bk)); 
-	double Fkprime;
-
-	if (P > Wk(2)){ //Shock
-		Fkprime = Qk*(1 - (P - Wk(2))/(2.*(P + Bk))); 
-	}
-
-	else { //Rarefraction
-		Fkprime = (1./(Wk(0)*C(material, 0)))*pow(P/Wk(2), -C(material, 2));
-	}
-	return Fkprime;
-}
 
 //note: the left material is always listed first
-double GhostFluidMethods::f(double P, vector W1, int mat1, vector W2, int mat2){
-	double du = (W2(1) - W1(1)); //velocity difference
-	return fk(P, W1, mat1) + fk(P, W2, mat2) + du;   
+double GhostFluidMethods::f(double P, EOS* eosleft, EOS* eosright){
+	double du = (eosright->C(12) - eos1->C(12)); //velocity difference
+	return eos1->fk(P) + eos2->fk(P) + du;   
 }
 
 double GhostFluidMethods::fprime(double P, vector W1, int mat1, vector W2, int mat2){

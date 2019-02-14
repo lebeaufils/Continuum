@@ -55,7 +55,7 @@ public:
 	void solver_MUSCL(EOS*, EOS*, gfmTests);
 	void solver_MUSCL(EOS*, EOS*, EOS*, gfmTests);	
 	void solver_MUSCL(EOS*, EOS*, EOS*, EOS*, gfmTests);
-	
+
 	//RP based GFM solver
 	void initial_conditions_MUSCL_RP(EOS*, EOS*, gfmTests);
 	void solver_MUSCL_RP(EOS*, EOS*, gfmTests);
@@ -94,6 +94,18 @@ public:
 	//void update_levelset_TVD();
 
 	//void reinitialise();
+
+
+	//TESTING
+	double testingf(double, EOS*, EOS*);
+	double testingfprime(double, EOS*, EOS*);
+	void testingcheck_pressure_pos_condition(EOS*, EOS*);
+	double testingnewton_raphson(double, EOS*, EOS*);
+	double testingcompute_star_pressure(EOS*, EOS*);
+	double testingcompute_star_velocity(double, EOS*, EOS*);
+	double testingcompute_shock_density(double, EOS*);
+	double testingcompute_rarefraction_density(double, EOS*);
+	void testingexact_solver(gfmTests); 
 
 };
 

@@ -208,7 +208,7 @@ double StiffenedGas::fk(double P){
 	}
 
 	else { //Rarefraction
-		Fk = C(4)*C(0)*(pow(P/C(13), C(1)) - 1);
+		Fk = C(4)*C(0)*(pow((P + Pref)/(C(13) + Pref), C(1)) - 1);
 	}
 	return Fk;
 }
@@ -224,20 +224,11 @@ double StiffenedGas::fprimek(double P){
 	}
 
 	else { //Rarefraction
-		Fkprime = (1./(C(11)*C(0)))*pow(P/C(13), -C(2));
+		Fkprime = (1./(C(11)*C(0)))*pow((P + Pref)/(C(13) + Pref), -C(2));
 	}
 	return Fkprime;
 }
-/*
-double StiffenedGas::f(double P, vector WL, vector WR){
-	double du = WR(1) - WL(1);
-	return fk(P, WL) + fk(P, WR) + du;
-}
 
-double StiffenedGas::fprime(double P, vector WL, vector WR){
-	return fprimek(P, WL) + fprimek(P, WR);	
-}
-*/
 
 
 
