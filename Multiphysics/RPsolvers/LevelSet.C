@@ -25,7 +25,14 @@ void LevelSetFunction::signed_distance_function_1D(){
 }*/
 
 void LevelSetFunction::signed_distance_function_1D(int i){
-	phi(i+1) = X(i+1) - x0;
+	//phi(i+1) = X(i+1) - x0;
+	double dist = abs(X(i+1) - x0);
+	if (X(i+1) < x0) {
+		phi(i+1) = -dist;
+	}
+	else {
+		phi(i+1) = dist;
+	}
 }
 
 void LevelSetFunction::signed_distance_function_1D_2(int i){

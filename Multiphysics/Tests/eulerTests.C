@@ -103,9 +103,7 @@ void gfmTests::test_example_1(){
 	initialR = Right;
 
 	L = 4.0;
-	//N = 100;
-	double dx = L/N;
-	x0 = dx*(N+1)/2.;
+	x0 = 0.5;
 	tstop = 0.0022;
 
 	yL = 1.4;
@@ -123,6 +121,7 @@ void gfmTests::testA(){
 	//N = 100;
 	x0 = 0.5;
 	tstop = 0.0007;
+	//tstop = 0;
 
 	yL = 1.4;
 	yR = 1.2;
@@ -187,7 +186,6 @@ void gfmTests::testB_Wang(){
 	x1 = 0.4; 
 	x2 = 0.6;
 	tstop = 0.0014;
-	//tstop = 0.0009;
 
 
 	yL = 1.4;

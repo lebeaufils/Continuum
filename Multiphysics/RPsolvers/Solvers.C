@@ -545,6 +545,7 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 	vector ULbar = ULtmp1 + 0.5*(dt/dx)*(IG->f(ULtmp1) - IG->f(URtmp1)); //UL(i+1)
 	vector URbar = URtmp + 0.5*(dt/dx)*(IG->f(ULtmp) - IG->f(URtmp));
 
+
 	/*-------------------------------------------------------
 	 * Solution of the piecewise constant Riemann problem pg 180
 	 -------------------------------------------------------*/
@@ -697,7 +698,7 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 		else if (0 >= SR){
 			F.row(i) = FR;
 		}
-		//if (count == 0) std::cout << F.row(i) << std::endl;
+		//std::cout << FL << '\t' << FR << std::endl;
 }
 
 void MUSCL::solver(EOS* IG, eulerTests Test){

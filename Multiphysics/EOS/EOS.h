@@ -10,12 +10,14 @@ Ideal Gas EOS
 #include <Eigen/Dense>
 
 typedef Eigen::Vector3d vector;
+typedef Eigen::MatrixXd matrix;
 
 struct EOS
 {
 	double y;
+	matrix C;
 
-	EOS() : y(1.4) {}
+	EOS() : y(1.4), C(0, 0) {}
 	virtual ~EOS() {};
 
 	virtual void GetGamma() = 0;
@@ -27,6 +29,8 @@ struct EOS
 	virtual double Pressure(Eigen::MatrixXd, int) = 0;
 	virtual double PressureScalar(vector) = 0; //used for muscl
 	virtual vector conservedVar(vector) = 0;
+	//for exact soln
+	virtual void y_constants(vector) = 0;
 };
 
 struct IdealGas : public virtual EOS
@@ -39,6 +43,9 @@ struct IdealGas : public virtual EOS
 	double Pressure(Eigen::MatrixXd, int);
 	double PressureScalar(vector); //used for muscl
 	vector conservedVar(vector);
+
+	//exact
+	void y_constants(vector);
 };
 
 struct StiffenedGas : public virtual EOS
@@ -53,6 +60,9 @@ struct StiffenedGas : public virtual EOS
 	double Pressure(Eigen::MatrixXd, int);
 	double PressureScalar(vector); //used for muscl
 	vector conservedVar(vector);
+
+	//exact
+	void y_constants(vector);
 };
 
 

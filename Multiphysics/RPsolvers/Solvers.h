@@ -114,6 +114,7 @@ enum slopeLimiter {MinBee, VanLeer, SuperBee, Quit};
 
 class MUSCL : public virtual RPsolvers
 {
+public:
 	matrix ULi; 
 	matrix URi;
 

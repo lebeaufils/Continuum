@@ -32,7 +32,7 @@ public:
 
 	
 	void ghost_boundary(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //original GFM
-	void ghost_boundary_RP(); //RP based
+	void ghost_boundary_RP(RPsolvers*, EOS*, int, RPsolvers*, EOS*, int, int); //RP based
 
 	//HLLC
 	//void initialise_HLLC(gfmTests);
@@ -55,6 +55,12 @@ public:
 	void solver_MUSCL(EOS*, EOS*, gfmTests);
 	void solver_MUSCL(EOS*, EOS*, EOS*, gfmTests);	
 	void solver_MUSCL(EOS*, EOS*, EOS*, EOS*, gfmTests);
+	
+	//RP based GFM solver
+	void initial_conditions_MUSCL_RP(EOS*, EOS*, gfmTests);
+	void solver_MUSCL_RP(EOS*, EOS*, gfmTests);
+
+	//output
 	void output_MUSCL(EOS*, EOS*);
 	void output_MUSCL(EOS*, EOS*, EOS*);
 	void output_MUSCL(EOS*, EOS*, EOS*, EOS*);

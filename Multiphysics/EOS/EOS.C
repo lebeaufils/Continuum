@@ -62,6 +62,22 @@ vector IdealGas::conservedVar(vector W){
 	return consV;
 }
 
+void IdealGas::y_constants(vector W){
+	C.resize(11, 1);
+
+	C(0) = sqrt(y*W(2)/W(0));
+	C(1) = (y-1)/(2*y); // y-1 / 2y
+	C(2) = (y+1)/(2*y); // y+1 / 2y
+	C(3) = (2*y)/(y-1);
+	C(4) = 2./(y-1);
+	C(5) = 2./(y+1);
+	C(6) = (y-1)/(y+1);
+	C(7) = (y-1)/2.;
+	C(8) = (2./(y+1))/W(0);//Ak
+	C(9) = W(2)*((y-1)/(y+1));  //Bk
+	C(10) = y;
+}
+
 /*----------------------------------------------------------------------------------
 	Stiffened Gas EOS
 ----------------------------------------------------------------------------------*/
@@ -106,5 +122,21 @@ vector StiffenedGas::conservedVar(vector W){
 	consV(1) = W(0)*W(1); //Density * Velocity
 	consV(2) = (W(2)/(y-1) - y*Pref) + 0.5*W(0)*W(1)*W(1); //Total Energy
 	return consV;
+}
+
+void StiffenedGas::y_constants(vector W){
+	C.resize(11, 1);
+	
+	C(0) = sqrt(y*(W(2) + Pref)/W(0));
+	C(1) = (y-1)/(2*y); // y-1 / 2y
+	C(2) = (y+1)/(2*y); // y+1 / 2y
+	C(3) = (2*y)/(y-1);
+	C(4) = 2./(y-1);
+	C(5) = 2./(y+1);
+	C(6) = (y-1)/(y+1);
+	C(7) = (y-1)/2.;
+	C(8) = (2./(y+1))/W(0);//Ak
+	C(9) = W(2)*((y-1)/(y+1)) + W(2)*(2*y)/(y+1);  //Bk
+	C(10) = y;
 }
 
