@@ -88,8 +88,11 @@ int main(void){
 
 	delete eos1; delete eos2; delete eos3; delete eos4;
 */
-	EOS* eos1 = new IdealGas();
-	EOS* eos2 = new IdealGas();
+	//EOS* eos1 = new IdealGas();
+	//EOS* eos2 = new IdealGas();
+
+	EOS* eos1 = new StiffenedGas();
+	EOS* eos2 = new StiffenedGas();
 
 	gfmTests Tests(400, 1.0); //(N, L)
 	//Tests.testA();
@@ -97,7 +100,12 @@ int main(void){
 
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 	
+	eos1->testing();
+	eos1->y_constants(Tests.initialL);	
+	eos1->testing();
+	std::cout << eos1->fk(1.0) << std::endl;
 	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
+	/*
 	try{
 		gfmProblem.initial_conditions_MUSCL_RP(eos1, eos2, Tests);
 	}
@@ -130,7 +138,7 @@ int main(void){
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-
+	*/
 	delete eos1; delete eos2;
 
 

@@ -15,9 +15,9 @@ typedef Eigen::MatrixXd matrix;
 struct EOS
 {
 	double y;
-	matrix C;
+	Eigen::Matrix<double, 14, 1> C;
 
-	EOS() : y(1.4), C(0, 0) {}
+	EOS();
 	virtual ~EOS() {};
 
 	virtual void GetGamma() = 0;
@@ -29,8 +29,15 @@ struct EOS
 	virtual double Pressure(Eigen::MatrixXd, int) = 0;
 	virtual double PressureScalar(vector) = 0; //used for muscl
 	virtual vector conservedVar(vector) = 0;
-	//for exact soln
+
+	void testing();
+
+	//Functions for exact solver
 	virtual void y_constants(vector) = 0;
+	virtual double fk(double) = 0;
+	virtual double fprimek(double) = 0;
+	//virtual double f(double, vector) = 0;
+	//virtual double fprime(double, vector) = 0;
 };
 
 struct IdealGas : public virtual EOS
@@ -46,6 +53,11 @@ struct IdealGas : public virtual EOS
 
 	//exact
 	void y_constants(vector);
+	double fk(double);
+	double fprimek(double);
+	//double f(double, vector, vector);
+	//double fprime(double, vector, vector);
+
 };
 
 struct StiffenedGas : public virtual EOS
@@ -63,6 +75,10 @@ struct StiffenedGas : public virtual EOS
 
 	//exact
 	void y_constants(vector);
+	double fk(double);
+	double fprimek(double);
+	//double f(double, vector, vector);
+	//double fprime(double, vector, vector);
 };
 
 

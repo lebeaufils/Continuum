@@ -39,6 +39,8 @@ protected:
 	//Variable Matrix
 	matrix X; //Domain
 public:
+	//EOS* eos;
+
 	matrix U; //Conserved quantities d, du, E
 	matrix F; //Flux
 	double Smax; //Maximum soundspeed
