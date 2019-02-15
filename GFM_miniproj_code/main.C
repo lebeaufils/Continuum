@@ -62,30 +62,50 @@ int main(void){
 	//EOS* eos1 = new IdealGas();
 	//EOS* eos2 = new IdealGas();
 
-	EOS* eos1 = new IdealGas();
-	EOS* eos2 = new IdealGas();
+	EOS* eos1 = new StiffenedGas();
+	EOS* eos2 = new StiffenedGas();
+
+	EOS* eos3 = new IdealGas();
+	EOS* eos4 = new IdealGas();
 
 	gfmTests Tests(400, 1.0); //(N, L)
-	//Tests.testA();
-	Tests.test_example_1();
+	Tests.testF();
+	//Tests.test_example_1();
+
+	Tests.set_EOS(eos1, eos2);
+	Tests.set_EOS(eos3, eos4);
+
+	vector WL = Tests.initialL;	
+	vector WR = Tests.initialR;
+
+
+	eos1->y_constants(WL);
+	eos2->y_constants(WR);
+
+	eos3->y_constants(WL);
+	eos4->y_constants(WR);
+
 
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 	
-	//eos1->testing();
-	//eos1->y_constants(Tests.initialL);	
-	//eos2->y_constants(Tests.initialR);
-	//std::cout << gfmProblem.testingcompute_star_pressure(eos1, eos2) << std::endl;
+	std::cout << gfmProblem.compute_star_pressure(eos3, eos4) << std::endl;
+	std::cout << gfmProblem.compute_star_pressure_SG(eos1, eos2) << std::endl;
 
-	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
-	
 	try{
-		gfmProblem.initial_conditions_RP(eos1, eos2, Tests);
+		gfmProblem.exact_solver_SG(Tests, eos1, eos2);
+	}
+	catch (const char* c){
+		std::cout << c << std::endl; 
+	}
+	
+	/*try{
+		//gfmProblem.initial_conditions_RP(eos1, eos2, Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
 	try{
-		gfmProblem.solver_RP(eos1, eos2, Tests);
+		//gfmProblem.solver_RP(eos1, eos2, Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
@@ -110,8 +130,8 @@ int main(void){
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	
-	delete eos1; delete eos2;
+	*/
+	delete eos1; delete eos2; delete eos3; delete eos4;
 /*
 	//note exact solver for stiffened gas not written yet
 	EOS* IG = new IdealGas();

@@ -962,6 +962,7 @@ double GhostFluidMethods::compute_star_pressure(EOS* eosleft, EOS* eosright){
 		p0 = pTS;
 	}
 
+	std::cout << "initial pressure = "<< p0 << std::endl;
 	double Pk; Pk = p0; //First guess
 	double Pk_1;
 	double CHA = 0;
@@ -1007,8 +1008,8 @@ void GhostFluidMethods::exact_solver(gfmTests Test, EOS* eosleft, EOS* eosright)
 	//If there are 2 rarefraction waves, the exact solution no longer holds.
 
 	//setting material EOS parameter
-	eosleft->y = Test.yL;
-	eosright->y = Test.yR;
+	//eosleft->y = Test.yL;
+	//eosright->y = Test.yR;
 
 	vector WL = Test.initialL;	
 	vector WR = Test.initialR;
@@ -1505,8 +1506,322 @@ void GhostFluidMethods::exact_solver(gfmTests Test, EOS* eosleft, EOS* eosmiddle
 	std::cout << "done: exact (2 discontinuities)" << std::endl;
 }
 
+///FOR STIFFENED GAS////////////////////////////
+
+double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
+//------------------------------------------
+	double TOL = 1e-6;
+	auto relative_pressure_change = [](double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
+		double CHA = 2*abs((Pk_1 - Pk)/(Pk_1 + Pk));
+		return CHA;
+	};	
+//-------------------------------------------
+	//check positivity condition
+	try {
+		check_pressure_pos_condition(eosleft, eosright);
+	} 
+	catch(const char* c){
+		std::cout << c << std::endl;
+		std::cout << "vacuum generated, terminating program" << std::endl;
+	}
+
+	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
+	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
+
+	if(SGl == NULL || SGr == NULL) { 
+		throw "StiffenedGas exact solver called on non SG EOS";
+	}
+
+	double pPV, p0;
+	
+	//An approximation for p, p0 is required for the initial guess.
+	//A poor choice of p0 results in the need for large number of iterations to achieve convergence
+	double soundspeed1 = SGl->C(0);
+	double soundspeed2 = SGr->C(0);
+	double PstiffL = SGl->C(13) + SGl->Pref;
+	double PstiffR = SGr->C(13) + SGr->Pref;
 
 
+	pPV = 0.5*(PstiffL + PstiffR) - (1./8.)*(SGr->C(12) - SGl->C(12))*(SGl->C(11) + SGr->C(11))*(soundspeed1 + soundspeed2);
+	pPV = fmax(TOL, pPV);
+	double Pmax = fmax(PstiffL, PstiffR);
+	double Pmin = fmin(PstiffL, PstiffR);
+	double Quser = 2.0;
+
+	//if the pressure difference is small and the guess is within the initial pressure range
+	if (Pmax/Pmin < Quser && pPV > Pmin && pPV < Pmax){
+		//Select the linearised pressure guess
+		p0 = pPV;
+	}
+	//If the guess is less than the initial pressure, two rarefraction wves have been formed
+	else if (pPV < Pmin){
+	//Since the exact solution for two rarefractions with a jump in y is invalid, calculation of
+	//the pTR is only allowed for situations when yL = yR; 
+		double y1 = SGl->C(10); double y2 = SGr->C(10);
+		if (y1 == y2){
+			double pTR = pow((soundspeed1 + soundspeed2 - 0.5*(y1-1)*(SGr->C(12) - SGl->C(12)))/((soundspeed1/pow(PstiffL, SGl->C(1))) + (soundspeed2/pow(PstiffR, SGr->C(1)))), SGl->C(3));
+			p0 = pTR;
+		}
+		else {
+			throw "Exact solver attempted on two rarefraction waves with an EOS jump.";
+		}
+	}
+	//If the pressure difference is large or if the guess is larger than Pmax
+	else {
+		//Select the two shock initial guess using pPV as estimate
+		double Q1 = sqrt(SGl->C(8)/(pPV + SGl->C(9)));
+		double Q2 = sqrt(SGr->C(8)/(pPV + SGr->C(9)));
+		double pTS = (Q1*PstiffL + Q2*PstiffR - (SGr->C(12) - SGr->C(12)))/(Q1 + Q2);
+		p0 = pTS;
+	}
+
+	/*double pPV, p0;
+	double soundspeed1 = eosleft->C(0);
+	double soundspeed2 = eosright->C(0);
+	pPV = 0.5*(eosleft->C(13) + eosright->C(13)) - (1./8.)*(eosright->C(12) - eosleft->C(12))*(eosleft->C(11) + eosright->C(11))*(soundspeed1 + soundspeed2);
+	pPV = fmax(TOL, pPV);
+	double Pmax = fmax(eosleft->C(13), eosright->C(13));
+	double Pmin = fmin(eosleft->C(13), eosright->C(13));
+	double Quser = 2.0;
+
+	//if the pressure difference is small and the guess is within the initial pressure range
+	if (Pmax/Pmin < Quser && pPV > Pmin && pPV < Pmax){
+		//Select the linearised pressure guess
+		p0 = pPV;
+	}
+	//If the guess is less than the initial pressure, two rarefraction wves have been formed
+	else if (pPV < Pmin){
+	//Since the exact solution for two rarefractions with a jump in y is invalid, calculation of
+	//the pTR is only allowed for situations when yL = yR; 
+		double y1 = eosleft->C(10); double y2 = eosright->C(10);
+		if (y1 == y2){
+			double pTR = pow((soundspeed1 + soundspeed2 - 0.5*(y1-1)*(eosright->C(12) - eosleft->C(12)))/((soundspeed1/pow(eosleft->C(13), eosleft->C(1))) + (soundspeed2/pow(eosright->C(13), eosright->C(1)))), eosleft->C(3));
+			p0 = pTR;
+		}
+		else {
+			throw "Exact solver attempted on two rarefraction waves with an EOS jump.";
+		}
+	}
+	//If the pressure difference is large or if the guess is larger than Pmax
+	else {
+		//Select the two shock initial guess using pPV as estimate
+		double Q1 = sqrt(eosleft->C(8)/(pPV + eosleft->C(9)));
+		double Q2 = sqrt(eosright->C(8)/(pPV + eosright->C(9)));
+		double pTS = (Q1*eosleft->C(13) + Q2*eosright->C(13) - (eosright->C(12) - eosright->C(12)))/(Q1 + Q2);
+		p0 = pTS;
+	}*/
+
+	std::cout << "initial pressure = "<< p0 << std::endl;
+	double Pk; Pk = p0; //First guess
+	double Pk_1;
+	double CHA = 0;
+	double mixTOL;
+
+	int count = 0;
+	//std::cout << p0 << std::endl;
+	do{
+		Pk_1 = newton_raphson(Pk, eosleft, eosright);
+		CHA = relative_pressure_change(Pk_1, Pk);
+		Pk = Pk_1; //Set the iterate as the new guess
+		//std::cout << CHA << '\t' << Pk << std::endl;
+		count += 1;
+		mixTOL = TOL*(1 + Pk);
+
+		if (CHA < mixTOL) break;
+		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
+	}while(count < 20);
+
+	//std::cout << count <<std::endl;
+	return Pk;
+}
+
+void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosright){
+	//If there are 2 rarefraction waves, the exact solution no longer holds.
+
+	//setting material EOS parameter
+	//eosleft->y = Test.yL;
+	//eosright->y = Test.yR;
+
+	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
+	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
+
+	if(SGl == NULL || SGr == NULL) { 
+		throw "StiffenedGas exact solver called on non SG EOS";
+	}
+
+	vector WL = Test.initialL;	
+	vector WR = Test.initialR;
+
+	SGl->y_constants(WL);
+	eosright->y_constants(WR);
+
+	double yL = SGl->C(10);
+	double yR = SGr->C(10);
+
+	//-----------------------------------------------------------
+	//Let the exact solution have a resolution of 1000 grid points
+	int newN = 1000;
+	double newdx = Test.L/static_cast<double>(newN);
+	matrix W(newN, 3);
+	//-----------------------------------------------------------
+
+	if (Test.number_of_materials == 2){
+
+		//-----------------Sampling------------------
+		//Solution of wavestructure within the domain of interest
+		double pstar = compute_star_pressure_SG(eosleft, eosright);
+		double ustar = compute_star_velocity(pstar, eosleft, eosright);
+		double dshockL = compute_shock_density(pstar, eosleft);
+		double dshockR = compute_shock_density(pstar, eosright);
+		double drareL = compute_rarefraction_density(pstar, eosleft);
+		double drareR = compute_rarefraction_density(pstar, eosright);
+
+		//primitive variables of left and right states
+		double dL = WL(0); double dR = WR(0);
+		double uL = WL(1); double uR = WR(1);
+		double pL = WL(2); double pR = WR(2);
+
+		//Shock Speeds
+		double SL = uL - SGl->C(0)*sqrt((SGl->C(2)*(pstar/pL) + SGl->C(1))); 
+		double SR = uR + SGr->C(0)*sqrt((SGr->C(2)*(pstar/pR) + SGr->C(1)));
+
+		//Rarefraction wave speeds
+		double cstarL = SGl->C(0)*pow(pstar/pL, SGl->C(1));
+		double cstarR = SGr->C(0)*pow(pstar/pR, SGr->C(1));
+
+		double SHL = uL - SGl->C(0); double SHR = uR + SGr->C(0); //Head of fan
+		double STL = ustar - cstarL; double STR = ustar + cstarR; //tail of fan
+		
+		//std::cout << drareL << '\t' << drareR << std::endl;
+		//std::cout << "Shockspeeds = ";
+		//std::cout << SL << '\t' << SR << std::endl;
+		//std::cout << SHL << '\t' << SHR << std::endl;
+		//std::cout << STL << '\t' << STR << std::endl; 
+
+		//Sampling is based on the position of wave with respect to time in x-t space,
+		// characterised by its "speed" S = x/t.
+		//When the solution at a specified time t is required the solution profiles are only a function of space x. Toro 137
+		for (int i=0; i<newN; i++){
+			double xPos = (static_cast<double>(i) + 0.5)*newdx;
+			double S = (xPos - x0)/Test.tstop;
+			//--------------------------------
+			// Sampled region lies to the...
+			//--------------------------------
+			//Left side of Contact wave
+			if (S <= ustar){
+				//Left Shock wave
+				if (pstar > pL){
+					//Left of Shock Wave (unaffected by shock)
+					if (S < SL){
+						W.row(i) = WL;
+					}
+					//Right of Shock Wave (shocked material, star state)
+					else {
+						W(i, 0) = dshockL;
+						W(i, 1) = ustar;
+						W(i, 2) = pstar;
+					}
+				}
+				//Left Rarefraction fan
+				else {
+					//Left of fastest rarefraction wave (unaffected by rarefraction)
+					if (S < SHL){
+						W.row(i) = WL;
+					}
+					//Out of the rarefraction fan, within the left star state
+					else if (S > STL){
+						W(i, 0) = drareL;
+						W(i, 1) = ustar;
+						W(i, 2) = pstar;
+						//std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
+					}
+					//Within the rarefraction fan
+					else {
+						double dLfan = dL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(4));
+						double uLfan = SGl->C(5)*(SGl->C(0) + SGl->C(7)*uL + S);
+						double pLfan = pL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(3));
+						vector WLfan(dLfan, uLfan, pLfan);
+						W.row(i) = WLfan;
+					}
+				}
+			}
+			//right side of contact wave
+			else {
+				//Right Shock wave
+				if (pstar > pR){
+					//Right of Shock Wave (unaffected by shock)
+					if (S > SR){
+						//std::cout << "Shock WR" << '\t' << i << std::endl;
+						W.row(i) = WR;
+					}
+					//Left of Shock Wave (shocked material, star state)
+					else {
+						//std::cout << "Shock Star" << '\t' << i << std::endl;
+						W(i, 0) = dshockR;
+						W(i, 1) = ustar;
+						W(i, 2) = pstar;
+					}
+				}
+				//Right Rarefraction fan
+				else {
+					//Right of fastest rarefraction wave (unaffected by rarefraction)
+					if (S > SHR){
+						//std::cout << "rarefraction WR" << '\t' << i << std::endl;
+						W.row(i) = WR;
+					}
+					//Out of the rarefraction fan, within the right star state
+					else if (S < STR){
+						//std::cout << "rarefraction Star" << '\t' << i << std::endl;
+						W(i, 0) = drareR;
+						W(i, 1) = ustar;
+						W(i, 2) = pstar;
+						//std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
+					}
+					//Within the rarefraction fan
+					else {
+						//std::cout << "rarefraction fan" << '\t' << i << std::endl;
+						double dRfan = dR*pow(SGr->C(5) - (SGr->C(6)/SGr->C(0))*(uR - S), SGr->C(4));
+						double uRfan = SGr->C(5)*(-SGr->C(0) + SGr->C(7)*uR + S);
+						double pRfan = pR*pow(SGr->C(5) - (SGr->C(6)/SGr->C(0))*(uR - S), SGr->C(3));
+						vector WRfan(dRfan, uRfan, pRfan);
+						W.row(i) = WRfan;
+					}
+				}
+			}			
+		}
+
+		std::cout << "Pstar = " << pstar << '\t' << "ustar = " << ustar << std::endl;
+
+		//-------------------------------
+		//	output
+		//-------------------------------
+		std::ofstream outfile;
+		outfile.open("dataexact.txt");
+
+		for (int i=0; i<newN; i++){
+			double xPos = (static_cast<double>(i) + 0.5)*newdx;
+			double S = (xPos - x0)/Test.tstop;
+			double e;
+			if (S <= ustar){
+				e = W(i, 2)/(W(i, 0)*(yL-1));
+			}
+
+			else {
+				e = W(i, 2)/(W(i, 0)*(yR-1));
+			}
+
+			outfile << xPos << '\t' << W(i, 0) << '\t' << W(i, 1)
+					<< '\t' << W(i, 2) << '\t' << e << std::endl;
+		}
+		outfile.close();
+		std::cout << "done: exact" << std::endl;
+	}
+
+	else{
+		throw "Exact solver is only avaliable for a single material interface.";
+	}
+
+}
 
 
 

@@ -202,15 +202,51 @@ void gfmTests::testE(){ //Water - Air shock tube
 	initialR = Right;
 
 	x0 = 0.7;
-	tstop = 237.44e-6;
+	tstop = 0.00023744;
 
 	yL = 4.4;
 	yR = 1.4;
 
 	Pref1 = 6e8;
 	Pref2 = 0.0; 
-
 }
+
+void gfmTests::testF(){ //Water - Air shock tube
+	vector Left(1000, 0.0, 1e9); //Water
+	vector Right(50, 0.0, 1e5); //Air
+
+	initialL = Left;
+	initialR = Right;
+
+	x0 = 0.7;
+	tstop = 0.00023744;
+
+	yL = 4.4;
+	yR = 4.4;
+
+	Pref1 = 6e8;
+	Pref2 = 0; 
+}
+
+void gfmTests::set_EOS(EOS* eosL, EOS* eosR){
+	eosL->y = yL;
+	eosR->y = yR;
+
+	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosL);
+	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosR);
+
+	if (SGl) {
+		SGl->Pref = Pref1;
+	}
+	if (SGr){
+		SGr->Pref = Pref2;
+	}
+}
+
+
+
+
+
 
 
 

@@ -72,6 +72,9 @@ public:
 	void exact_solver(gfmTests, EOS*, EOS*); 
 	void exact_solver(gfmTests, EOS*, EOS*, EOS*);
 
+	double compute_star_pressure_SG(EOS*, EOS*);
+	void exact_solver_SG(gfmTests, EOS*, EOS*); 
+
 };
 
 

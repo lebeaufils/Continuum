@@ -9,6 +9,7 @@
 #define TESTS_EULERTESTS_H_
 
 #include <Eigen/Dense>
+#include "../EOS/EOS.h"
 typedef Eigen::Vector3d vector;
 
 struct standardTests
@@ -73,10 +74,14 @@ struct gfmTests : public virtual standardTests
 	void testB_Wang();
 	void testD();
 	void testE();
+	void testF();
 
 	//custom tests
 	//void testN(); //user input
 	//void testS(); //settings file
+
+	//Set EOS parameters
+	void set_EOS(EOS*, EOS*);
 };
 	
 

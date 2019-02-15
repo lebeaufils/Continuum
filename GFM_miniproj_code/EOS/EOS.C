@@ -196,35 +196,35 @@ void StiffenedGas::y_constants(vector W){
 	C(13) = W(2);
 }
 
-double StiffenedGas::fk(double P){
+double StiffenedGas::fk(double pstar){
 	//data-dependent constants
 	double Ak = C(8);
 	double Bk = C(9);
-	double Qk = sqrt(Ak/(P + Bk));
+	double Qk = sqrt(Ak/(pstar + Bk));
 	double Fk;
 
-	if (P > C(13)){ //Shock
-		Fk = (P - C(13))*Qk;
+	if (pstar > C(13)){ //Shock
+		Fk = (pstar - C(13))*Qk;
 	}
 
 	else { //Rarefraction
-		Fk = C(4)*C(0)*(pow((P + Pref)/(C(13) + Pref), C(1)) - 1);
+		Fk = C(4)*C(0)*(pow((pstar + Pref)/(C(13) + Pref), C(1)) - 1);
 	}
 	return Fk;
 }
 
-double StiffenedGas::fprimek(double P){
+double StiffenedGas::fprimek(double pstar){
 	double Ak = C(8);
 	double Bk = C(9);
-	double Qk = sqrt(Ak/(P + Bk)); 
+	double Qk = sqrt(Ak/(pstar + Bk)); 
 	double Fkprime;
 
-	if (P > C(13)){ //Shock
-		Fkprime = Qk*(1 - (P - C(13))/(2.*(P + Bk))); 
+	if (pstar > C(13)){ //Shock
+		Fkprime = Qk*(1 - (pstar - C(13))/(2.*(pstar + Bk))); 
 	}
 
 	else { //Rarefraction
-		Fkprime = (1./(C(11)*C(0)))*pow((P + Pref)/(C(13) + Pref), -C(2));
+		Fkprime = (C(0)/(C(10)*(C(13) + Pref)))*pow((pstar + Pref)/(C(13) + Pref), -C(2));
 	}
 	return Fkprime;
 }
