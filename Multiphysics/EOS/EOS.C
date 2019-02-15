@@ -1,9 +1,10 @@
 #include "EOS.h"
 
 EOS::EOS()
-	 : y(1.4), Pref(0.0) {
+	 : y(1.4) {
 		C = Eigen::Matrix<double, 14, 1>::Zero();
 	 }
+
 
 //Obtaining internal energy (e) from conserved variable total E
 double EOS::internalE(Eigen::MatrixXd U, int i){
@@ -34,11 +35,6 @@ vector EOS::f(vector U){
 void EOS::testing(){
 	std::cout << C << std::endl;
 }
-
- void EOS::assign_EOS_parameters(double gamma, double Pinfi){
- 	y = gamma;
- 	Pref = Pinfi;
- }
 
 /*----------------------------------------------------------------------------------
 	Ideal Gas EOS

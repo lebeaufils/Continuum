@@ -15,15 +15,12 @@ typedef Eigen::MatrixXd matrix;
 struct EOS
 {
 	double y;
-	double Pref;
-
 	Eigen::Matrix<double, 14, 1> C;
 
 	EOS();
 	virtual ~EOS() {};
 
 	virtual void GetGamma() = 0;
-	void assign_EOS_parameters(double, double);
 
 	double internalE(Eigen::MatrixXd, int);
 	double soundspeed(Eigen::MatrixXd, int);
@@ -65,9 +62,9 @@ struct IdealGas : public virtual EOS
 
 struct StiffenedGas : public virtual EOS
 {
-	//double Pref;
+	double Pref;
 
-	StiffenedGas() : EOS() {}
+	StiffenedGas() : EOS(), Pref(0) {}
 	~StiffenedGas() {};
 
 	void GetGamma();
