@@ -94,19 +94,25 @@ int main(void){
 	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 
-	gfmTests Tests(400, 1.0); //(N, L)
+	gfmTests Tests(100, 1.0); //(N, L)
 	//Tests.testA();
 	Tests.test_example_1();
 
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 	
-	//eos1->testing();
-	eos1->y_constants(Tests.initialL);	
+	//eos1->assign_EOS_parameters(Tests.yL, Tests.PrefL);
+	//eos2->assign_EOS_parameters(Tests.yR, Tests.PrefR);
+	//calculating constants
+	eos1->y_constants(Tests.initialL); 
 	eos2->y_constants(Tests.initialR);
-	std::cout << gfmProblem.testingcompute_star_pressure(eos1, eos2) << std::endl;
+
+	//std::cout << eos1->y << '\t' << eos1->Pref << '\t' << eos2->y << '\t' << eos2->Pref << std::endl;
+	//eos1->y_constants(Tests.initialL);	
+	//eos2->y_constants(Tests.initialR);
+	
 
 	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
-	/*
+	
 	try{
 		gfmProblem.initial_conditions_MUSCL_RP(eos1, eos2, Tests);
 	}
@@ -132,14 +138,15 @@ int main(void){
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	gfmProblem.output_MUSCL(eos1, eos2);
+	//gfmProblem.output_MUSCL(eos1, eos2);
 	try{
-		gfmProblem.exact_solver(Tests);
+		//gfmProblem.exact_solver(Tests);
+		//gfmProblem.testingexact_solver(Tests, eos1, eos2);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	*/
+	
 	delete eos1; delete eos2;
 
 

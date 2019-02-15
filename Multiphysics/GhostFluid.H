@@ -22,6 +22,7 @@ class GhostFluidMethods : public LevelSetFunction
 
 	//constants storage
 	matrix C;
+
 public:
 	//GhostFluidMethods(double, eulerTests, HLLC);
 	//GhostFluidMethods(double, eulerTests, MUSCL);
@@ -105,7 +106,8 @@ public:
 	double testingcompute_star_velocity(double, EOS*, EOS*);
 	double testingcompute_shock_density(double, EOS*);
 	double testingcompute_rarefraction_density(double, EOS*);
-	void testingexact_solver(gfmTests); 
+	//void testingexact_solver(gfmTests, EOS*, EOS*); 
+	//void testingexact_solver(gfmTests, EOS*, EOS*, EOS*);
 
 };
 
