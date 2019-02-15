@@ -94,7 +94,7 @@ int main(void){
 	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 
-	gfmTests Tests(100, 1.0); //(N, L)
+	gfmTests Tests(400, 1.0); //(N, L)
 	//Tests.testA();
 	Tests.test_example_1();
 
@@ -134,7 +134,7 @@ int main(void){
 	}
 	gfmProblem.output_MUSCL(eos1, eos2);
 	try{
-		gfmProblem.testingexact_solver(Tests, eos1, eos2);
+		gfmProblem.exact_solver(Tests, eos1, eos2);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 

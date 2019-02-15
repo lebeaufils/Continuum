@@ -32,7 +32,7 @@ public:
 
 	
 	void ghost_boundary(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //original GFM
-	void ghost_boundary_RP(RPsolvers*, EOS*, int, RPsolvers*, EOS*, int, int); //RP based
+	void ghost_boundary_RP(RPsolvers*, EOS*, RPsolvers*, EOS*, int); //RP based
 
 	//HLLC
 	//void initialise_HLLC(gfmTests);
@@ -66,7 +66,7 @@ public:
 	void output_MUSCL(EOS*, EOS*, EOS*, EOS*);
 
 	//EXACT
-	void y_constants(gfmTests);
+	/*void y_constants(gfmTests);
 	double fk(double, vector, int);
 	double fprimek(double, vector, int);
 	double f(double, vector, int, vector, int);
@@ -77,7 +77,7 @@ public:
 	double compute_star_velocity(double, vector, int, vector, int);
 	double compute_shock_density(double, vector, int);
 	double compute_rarefraction_density(double, vector, int);
-	void exact_solver(gfmTests); 
+	void exact_solver(gfmTests); */
 	//remember to check that internal energy is divided by density (specific)
 
 	//template <typename T> void initial_conditions(T, EOS*, EOS*, gfmTests){static_assert(sizeof(T) == 0, "Specialised calls only")}
@@ -97,15 +97,15 @@ public:
 
 
 	//TESTING
-	double testingf(double, EOS*, EOS*);
-	double testingfprime(double, EOS*, EOS*);
-	void testingcheck_pressure_pos_condition(EOS*, EOS*);
-	double testingnewton_raphson(double, EOS*, EOS*);
-	double testingcompute_star_pressure(EOS*, EOS*);
-	double testingcompute_star_velocity(double, EOS*, EOS*);
-	double testingcompute_shock_density(double, EOS*);
-	double testingcompute_rarefraction_density(double, EOS*);
-	void testingexact_solver(gfmTests, EOS*, EOS*); 
+	double f(double, EOS*, EOS*);
+	double fprime(double, EOS*, EOS*);
+	void check_pressure_pos_condition(EOS*, EOS*);
+	double newton_raphson(double, EOS*, EOS*);
+	double compute_star_pressure(EOS*, EOS*);
+	double compute_star_velocity(double, EOS*, EOS*);
+	double compute_shock_density(double, EOS*);
+	double compute_rarefraction_density(double, EOS*);
+	void exact_solver(gfmTests, EOS*, EOS*); 
 
 };
 

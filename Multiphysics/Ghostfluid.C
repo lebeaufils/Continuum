@@ -25,7 +25,7 @@ void GhostFluidMethods::ghost_boundary(RPsolvers* Ureal, EOS* eosReal, RPsolvers
 	//std::cout << dreal << '\t' << velocityreal << '\t' << Preal << std::endl;
 }
 
-void GhostFluidMethods::ghost_boundary_RP(RPsolvers* Uleft, EOS* eosleft, int matleft, RPsolvers* Uright, EOS* eosright, int matright, int i){
+void GhostFluidMethods::ghost_boundary_RP(RPsolvers* Uleft, EOS* eosleft, RPsolvers* Uright, EOS* eosright, int i){
 //Exact riemannsolver for idealgas and stiffened gas. Ghost point values are the RP star states.
 //Consider an interface between i and i+1
 	//converting to primitive variables
@@ -41,14 +41,17 @@ void GhostFluidMethods::ghost_boundary_RP(RPsolvers* Uleft, EOS* eosleft, int ma
 	vector WL(dl, ul, Pl);
 	vector WR(dr, ur, Pr);
 
+	eosleft->y_constants(WL);
+	eosright->y_constants(WR);
+
 	//Solution of wavestructure within the domain of interest
-	double pstar = compute_star_pressure(WL, matleft, WR, matright);
+	double pstar = compute_star_pressure(eosleft, eosright);
 	//std::cout << "pstar = " << pstar << std::endl;
-	double ustar = compute_star_velocity(pstar, WL, matleft, WR, matright);
-	double dshockL = compute_shock_density(pstar, WL, matleft);
-	double dshockR = compute_shock_density(pstar, WR, matright);
-	double drareL = compute_rarefraction_density(pstar, WL, matleft);
-	double drareR = compute_rarefraction_density(pstar, WR, matright);
+	double ustar = compute_star_velocity(pstar, eosleft, eosright);
+	double dshockL = compute_shock_density(pstar, eosleft);
+	double dshockR = compute_shock_density(pstar, eosright);
+	double drareL = compute_rarefraction_density(pstar, eosleft);
+	double drareR = compute_rarefraction_density(pstar, eosright);
 
 	double Lghostdensity, Rghostdensity;
 	if (pstar > Pl){
@@ -1024,7 +1027,7 @@ void GhostFluidMethods::initial_conditions_MUSCL_RP(EOS* eos1, EOS* eos2, gfmTes
 	var1 = new MUSCL(Test);
 	var2 = new MUSCL(Test);
 
-	y_constants(Test);
+	//y_constants(Test);
 
 	vector euler1;
 	vector euler2;
@@ -1032,6 +1035,9 @@ void GhostFluidMethods::initial_conditions_MUSCL_RP(EOS* eos1, EOS* eos2, gfmTes
 	//setting material EOS parameter
 	eos1->y = Test.yL;
 	eos2->y = Test.yR;
+
+	eos1->y_constants(Test.initialL);
+	eos2->y_constants(Test.initialR);
 
 	//initial values for conserved variables
 	euler1 = eos1->conservedVar(Test.initialL);
@@ -1055,7 +1061,7 @@ void GhostFluidMethods::initial_conditions_MUSCL_RP(EOS* eos1, EOS* eos2, gfmTes
 		//std::cout << phi(i) << '\t' << testsgn << std::endl;
 		if (testsgn > -2 && testsgn < 1 && i!=N){
 			//std::cout << "boundary is at i = " << i << std::endl;
-			ghost_boundary_RP(var1, eos1, 0, var2, eos2, 1, i+1); //matrix 2 contains ghost points
+			ghost_boundary_RP(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
 		}
 	}
 
@@ -1090,7 +1096,7 @@ void GhostFluidMethods::solver_MUSCL_RP(EOS* eos1, EOS* eos2, gfmTests Test){
 			//std::cout << phi(i) << '\t' << testsgn << std::endl;
 			if (testsgn > -2 && testsgn < 1 && i!=N){
 				//std::cout << count << " boundary is at i = " << i << std::endl;
-				ghost_boundary_RP(var1, eos1, 0, var2, eos2, 1, i+1); //matrix 2 contains ghost points
+				ghost_boundary_RP(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
 			}
 
 			//if (count==0) std::cout << var1->U.row(i) << std::endl; 
@@ -1266,6 +1272,7 @@ void GhostFluidMethods::output_MUSCL(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4)
 //-----------------------------------------------------------------
 //	EXACT
 //-----------------------------------------------------------------
+/*
 void GhostFluidMethods::y_constants(gfmTests Test){
 	for (int i=0; i<Test.number_of_materials; i++){
 		// The order of materials stored is
@@ -1607,9 +1614,9 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 
 		std::cout << "Pstar = " << pstar << '\t' << "ustar = " << ustar << std::endl;
 
-		/*-------------------------------
-			output
-		-------------------------------*/
+		//-------------------------------
+		//	output
+		//-------------------------------//
 		std::ofstream outfile;
 		outfile.open("dataexact.txt");
 
@@ -1895,9 +1902,9 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 
 		}
 
-		/*-------------------------------
-			output
-		-------------------------------*/
+		//-------------------------------
+		//	output
+		//-------------------------------
 		std::ofstream outfile;
 		outfile.open("dataexact.txt");
 
@@ -1933,21 +1940,21 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 	}
 	
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////
 //////					Testing            ////////////////////
 ///////////////////////////////////////////////////////////////
 
-double GhostFluidMethods::testingf(double P, EOS* eosleft, EOS* eosright){
+double GhostFluidMethods::f(double P, EOS* eosleft, EOS* eosright){
 	double du = (eosright->C(12) - eosleft->C(12)); //velocity difference
 	return eosleft->fk(P) + eosright->fk(P) + du;   
 }
 
-double GhostFluidMethods::testingfprime(double P, EOS* eosleft, EOS* eosright){
+double GhostFluidMethods::fprime(double P, EOS* eosleft, EOS* eosright){
 	return eosleft->fprimek(P) + eosright->fprimek(P);   
 }
 
-void GhostFluidMethods::testingcheck_pressure_pos_condition(EOS* eosleft, EOS* eosright) { 
+void GhostFluidMethods::check_pressure_pos_condition(EOS* eosleft, EOS* eosright) { 
 	//(Δu)crit ≡ 2aL/γ−1 + 2aR/γ−1 ≤ uR −uL , (4.82) Toro pg 127
 	double du_crit = eosleft->C(4)*eosleft->C(0) + eosright->C(4)*eosright->C(0);
 	double du = eosright->C(12) - eosleft->C(12);
@@ -1959,12 +1966,12 @@ void GhostFluidMethods::testingcheck_pressure_pos_condition(EOS* eosleft, EOS* e
 	}
 }
 
-double GhostFluidMethods::testingnewton_raphson(double Pk, EOS* eosleft, EOS* eosright){
-	double Pk_1 = Pk - testingf(Pk, eosleft, eosright)/testingfprime(Pk, eosleft, eosright);
+double GhostFluidMethods::newton_raphson(double Pk, EOS* eosleft, EOS* eosright){
+	double Pk_1 = Pk - f(Pk, eosleft, eosright)/fprime(Pk, eosleft, eosright);
 	return Pk_1;
 }
 
-double GhostFluidMethods::testingcompute_star_pressure(EOS* eosleft, EOS* eosright){
+double GhostFluidMethods::compute_star_pressure(EOS* eosleft, EOS* eosright){
 //------------------------------------------
 	double TOL = 1e-6;
 	auto relative_pressure_change = [](double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
@@ -1974,7 +1981,7 @@ double GhostFluidMethods::testingcompute_star_pressure(EOS* eosleft, EOS* eosrig
 //-------------------------------------------
 	//check positivity condition
 	try {
-		testingcheck_pressure_pos_condition(eosleft, eosright);
+		check_pressure_pos_condition(eosleft, eosright);
 	} 
 	catch(const char* c){
 		std::cout << c << std::endl;
@@ -2027,7 +2034,7 @@ double GhostFluidMethods::testingcompute_star_pressure(EOS* eosleft, EOS* eosrig
 	int count = 0;
 	//std::cout << p0 << std::endl;
 	do{
-		Pk_1 = testingnewton_raphson(Pk, eosleft, eosright);
+		Pk_1 = newton_raphson(Pk, eosleft, eosright);
 		CHA = relative_pressure_change(Pk_1, Pk);
 		Pk = Pk_1; //Set the iterate as the new guess
 		//std::cout << CHA << '\t' << Pk << std::endl;
@@ -2042,12 +2049,12 @@ double GhostFluidMethods::testingcompute_star_pressure(EOS* eosleft, EOS* eosrig
 	return Pk;
 }
 
-double GhostFluidMethods::testingcompute_star_velocity(double pstar, EOS* eosleft, EOS* eosright){
+double GhostFluidMethods::compute_star_velocity(double pstar, EOS* eosleft, EOS* eosright){
 	double ustar = 0.5*(eosleft->C(12) + eosright->C(12)) + 0.5*(eosright->fk(pstar) - eosleft->fk(pstar));
 	return ustar;
 }
 
-double GhostFluidMethods::testingcompute_shock_density(double pstar, EOS* eos){
+double GhostFluidMethods::compute_shock_density(double pstar, EOS* eos){
 	//turn this into a stored variable so the iteration does not have to be called multiple times
 	//From the Hugoniot jump conditions, see TORO 3.1.3 (substituting the expressio n for internal energy)
 	double Pratio = pstar/eos->C(13);
@@ -2055,12 +2062,12 @@ double GhostFluidMethods::testingcompute_shock_density(double pstar, EOS* eos){
 	return dshock;
 }
 
-double GhostFluidMethods::testingcompute_rarefraction_density(double pstar, EOS* eos){
+double GhostFluidMethods::compute_rarefraction_density(double pstar, EOS* eos){
 	double drare = eos->C(11)*pow(pstar/eos->C(13), 1./eos->C(10));
 	return drare;
 }
 
-void GhostFluidMethods::testingexact_solver(gfmTests Test, EOS* eosleft, EOS* eosright){
+void GhostFluidMethods::exact_solver(gfmTests Test, EOS* eosleft, EOS* eosright){
 	//If there are 2 rarefraction waves, the exact solution no longer holds.
 
 	//setting material EOS parameter
@@ -2074,7 +2081,7 @@ void GhostFluidMethods::testingexact_solver(gfmTests Test, EOS* eosleft, EOS* eo
 	eosright->y_constants(WR);
 	double yL = eosleft->C(10);
 	double yR = eosright->C(10);
-	
+
 	//-----------------------------------------------------------
 	//Let the exact solution have a resolution of 1000 grid points
 	int newN = 1000;
@@ -2086,12 +2093,12 @@ void GhostFluidMethods::testingexact_solver(gfmTests Test, EOS* eosleft, EOS* eo
 
 		//-----------------Sampling------------------
 		//Solution of wavestructure within the domain of interest
-		double pstar = testingcompute_star_pressure(eosleft, eosright);
-		double ustar = testingcompute_star_velocity(pstar, eosleft, eosright);
-		double dshockL = testingcompute_shock_density(pstar, eosleft);
-		double dshockR = testingcompute_shock_density(pstar, eosright);
-		double drareL = testingcompute_rarefraction_density(pstar, eosleft);
-		double drareR = testingcompute_rarefraction_density(pstar, eosright);
+		double pstar = compute_star_pressure(eosleft, eosright);
+		double ustar = compute_star_velocity(pstar, eosleft, eosright);
+		double dshockL = compute_shock_density(pstar, eosleft);
+		double dshockR = compute_shock_density(pstar, eosright);
+		double drareL = compute_rarefraction_density(pstar, eosleft);
+		double drareR = compute_rarefraction_density(pstar, eosright);
 
 		//primitive variables of left and right states
 		double dL = WL(0); double dR = WR(0);
