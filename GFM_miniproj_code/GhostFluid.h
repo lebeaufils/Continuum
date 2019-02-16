@@ -74,6 +74,8 @@ public:
 
 	double compute_star_pressure_SG(EOS*, EOS*);
 	void exact_solver_SG(gfmTests, EOS*, EOS*); 
+	double compute_shock_density_SG(double, StiffenedGas*);
+	double compute_rarefraction_density_SG(double, StiffenedGas*);
 
 };
 
