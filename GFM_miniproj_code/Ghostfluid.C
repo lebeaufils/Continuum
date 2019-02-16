@@ -681,7 +681,7 @@ void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, gfmTests Tes
 	}
 
 	for (int i=0; i<N; i++){
-		std::cout << i << '\t' << phi(i+1) << '\t' << get_sgn(phi(i+1)) << var1->U.row(i+2) << '\t' << '\t' << var2->U.row(i+2) << std::endl;
+		//std::cout << i << '\t' << phi(i+1) << '\t' << get_sgn(phi(i+1)) << var1->U.row(i+2) << '\t' << '\t' << var2->U.row(i+2) << std::endl;
 	}
 
 	var1->boundary_conditions();
@@ -727,14 +727,10 @@ void GhostFluidMethods::solver_RP(EOS* eos1, EOS* eos2, gfmTests Test){
 				var1->compute_fluxes(eos1, i);
 			}
 			if (phi(i-1) > 0){
-					if (get_sgn(phi(i-2)) <= 0) {
-						//std::cout << "phi > 0 and phi-1 < 0" << std::endl;
-						var2->compute_fluxes(eos2, i-1);
-				}
 				var2->compute_fluxes(eos2, i);
 			}
 			//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
-			if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+			//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
 		}
 
 		for (int i=1; i<N+2; i++){
@@ -953,9 +949,8 @@ double GhostFluidMethods::compute_star_pressure(EOS* eosleft, EOS* eosright){
 			double pTR = pow((soundspeed1 + soundspeed2 - 0.5*(y1-1)*(eosright->C(12) - eosleft->C(12)))/((soundspeed1/pow(eosleft->C(13), eosleft->C(1))) + (soundspeed2/pow(eosright->C(13), eosright->C(1)))), eosleft->C(3));
 			p0 = pTR;
 		}
-		else {
-			throw "Exact solver attempted on two rarefraction waves with an EOS jump.";
-		}
+
+		else p0 = pPV;
 	}
 	//If the pressure difference is large or if the guess is larger than Pmax
 	else {

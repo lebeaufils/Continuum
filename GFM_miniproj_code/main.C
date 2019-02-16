@@ -65,9 +65,9 @@ int main(void){
 	//EOS* eos1 = new StiffenedGas();
 	//EOS* eos2 = new StiffenedGas();
 
-	gfmTests Tests(100, 1.0); //(N, L)
-	//Tests.testA();
-	Tests.test_example_1();
+	gfmTests Tests(400, 1.0); //(N, L)
+	Tests.testA();
+	//Tests.test_example_1();
 
 	//Tests.set_EOS(eos1, eos2);
 
@@ -107,7 +107,7 @@ int main(void){
 	}
 	gfmProblem.output(eos1, eos2);
 	try{
-		//gfmProblem.exact_solver(Tests, eos1, eos2);
+		gfmProblem.exact_solver(Tests, eos1, eos2);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
