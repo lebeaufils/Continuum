@@ -681,7 +681,7 @@ void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, gfmTests Tes
 	}
 
 	for (int i=0; i<N; i++){
-		//std::cout << i << '\t' << phi(i+1) << '\t' << get_sgn(phi(i+1)) << var1->U.row(i+2) << '\t' << '\t' << var2->U.row(i+2) << std::endl;
+		std::cout << i << '\t' << phi(i+1) << '\t' << get_sgn(phi(i+1)) << var1->U.row(i+2) << '\t' << '\t' << var2->U.row(i+2) << std::endl;
 	}
 
 	var1->boundary_conditions();
@@ -726,11 +726,15 @@ void GhostFluidMethods::solver_RP(EOS* eos1, EOS* eos2, gfmTests Test){
 			if(phi(i-1) < 0){
 				var1->compute_fluxes(eos1, i);
 			}
-			if (phi(i-1) >= 0){
+			if (phi(i-1) > 0){
+					if (get_sgn(phi(i-2)) <= 0) {
+						//std::cout << "phi > 0 and phi-1 < 0" << std::endl;
+						var2->compute_fluxes(eos2, i-1);
+				}
 				var2->compute_fluxes(eos2, i);
 			}
 			//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
-			//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+			if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
 		}
 
 		for (int i=1; i<N+2; i++){
@@ -962,7 +966,7 @@ double GhostFluidMethods::compute_star_pressure(EOS* eosleft, EOS* eosright){
 		p0 = pTS;
 	}
 
-	std::cout << "initial pressure = "<< p0 << std::endl;
+	//std::cout << "initial pressure = "<< p0 << std::endl;
 	double Pk; Pk = p0; //First guess
 	double Pk_1;
 	double CHA = 0;
@@ -1621,7 +1625,7 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 
 	//-----------------------------------------------------------
 	//Let the exact solution have a resolution of 1000 grid points
-	int newN = 100;//1000;
+	int newN = 1000;//1000;
 	double newdx = Test.L/static_cast<double>(newN);
 	matrix W(newN, 3);
 	//-----------------------------------------------------------
@@ -1674,12 +1678,12 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 				if (pstar > pL){
 					//Left of Shock Wave (unaffected by shock)
 					if (S < SL){
-						std::cout << i << '\t' << "WL" << std::endl;
+						//std::cout << i << '\t' << "WL" << std::endl;
 						W.row(i) = WL;
 					}
 					//Right of Shock Wave (shocked material, star state)
 					else {
-						std::cout << i << '\t' << "WLstar_shock" << std::endl;
+						//std::cout << i << '\t' << "WLstar_shock" << std::endl;
 						W(i, 0) = dshockL;
 						W(i, 1) = ustar;
 						W(i, 2) = pstar;
@@ -1689,20 +1693,20 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 				else {
 					//Left of fastest rarefraction wave (unaffected by rarefraction)
 					if (S < SHL){
-						std::cout << i << '\t' << "WL" << std::endl;
+						//std::cout << i << '\t' << "WL" << std::endl;
 						W.row(i) = WL;
 					}
 					//Out of the rarefraction fan, within the left star state
 					else if (S > STL){
-						std::cout << i << '\t' << "WLstar_rare" << std::endl;
+						//std::cout << i << '\t' << "WLstar_rare" << std::endl;
 						W(i, 0) = drareL;
 						W(i, 1) = ustar;
 						W(i, 2) = pstar;
-						//std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
+						////std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
 					}
 					//Within the rarefraction fan
 					else {
-						std::cout << i << '\t' << "WLfan" << std::endl;
+						//std::cout << i << '\t' << "WLfan" << std::endl;
 						double dLfan = dL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(4));
 						double uLfan = SGl->C(5)*(SGl->C(0) + SGl->C(7)*uL + S);
 						double pLfan = pL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(3));
@@ -1717,12 +1721,12 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 				if (pstar > pR){
 					//Right of Shock Wave (unaffected by shock)
 					if (S > SR){
-						std::cout << i << '\t' << "WR" << std::endl;
+						//std::cout << i << '\t' << "WR" << std::endl;
 						W.row(i) = WR;
 					}
 					//Left of Shock Wave (shocked material, star state)
 					else {
-						std::cout << i << '\t' << "WRstar_shock" << std::endl;
+						//std::cout << i << '\t' << "WRstar_shock" << std::endl;
 						W(i, 0) = dshockR;
 						W(i, 1) = ustar;
 						W(i, 2) = pstar;
@@ -1732,20 +1736,20 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 				else {
 					//Right of fastest rarefraction wave (unaffected by rarefraction)
 					if (S > SHR){
-						std::cout << i << '\t' << "WR" << std::endl;
+						//std::cout << i << '\t' << "WR" << std::endl;
 						W.row(i) = WR;
 					}
 					//Out of the rarefraction fan, within the right star state
 					else if (S < STR){
-						std::cout << i << '\t' << "WRstar_rare" << std::endl;
+						//std::cout << i << '\t' << "WRstar_rare" << std::endl;
 						W(i, 0) = drareR;
 						W(i, 1) = ustar;
 						W(i, 2) = pstar;
-						//std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
+						////std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
 					}
 					//Within the rarefraction fan
 					else {
-						std::cout << i << '\t' << "WRfan" << std::endl;
+						//std::cout << i << '\t' << "WRfan" << std::endl;
 						double dRfan = dR*pow(SGr->C(5) - (SGr->C(6)/SGr->C(0))*(uR - S), SGr->C(4));
 						double uRfan = SGr->C(5)*(-SGr->C(0) + SGr->C(7)*uR + S);
 						double pRfan = pR*pow(SGr->C(5) - (SGr->C(6)/SGr->C(0))*(uR - S), SGr->C(3));
@@ -1787,8 +1791,6 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 		throw "Exact solver is only avaliable for a single material interface.";
 	}
 
-
-
 }
 
 //testing
@@ -1804,6 +1806,8 @@ double GhostFluidMethods::compute_rarefraction_density_SG(double pstar, Stiffene
 	double drare = eos->C(11)*pow((pstar + eos->Pref)/(eos->C(13) + eos->Pref), 1./eos->C(10));
 	return drare;
 }
+
+
 
 
 

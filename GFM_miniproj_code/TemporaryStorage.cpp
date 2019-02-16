@@ -1,3 +1,187 @@
+
+	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eos1);
+	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eos2);
+
+	if (SGl == NULL && SGr == NULL){
+
+		//After setting the real fluids, populate the empty cells with ghost values
+		for (int i=1; i<N+1; i++){
+			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+			//std::cout << phi(i) << '\t' << testsgn << std::endl;
+			if (testsgn > -2 && testsgn < 1 && i!=N){
+				//std::cout << "boundary is at i = " << i << std::endl;
+				ghost_boundary_RP(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
+			}
+		}
+
+	}
+
+	else if (SGl == NULL || SGr == NULL){
+		throw "Solver attempted on two different equations of states";
+	}
+
+	else {
+		for (int i=1; i<N+1; i++){
+			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+			//std::cout << phi(i) << '\t' << testsgn << std::endl;
+			if (testsgn > -2 && testsgn < 1 && i!=N){
+				//std::cout << "boundary is at i = " << i << std::endl;
+				ghost_boundary_RP_SG(var1, SGl, var2, SGr, i+1); //matrix 2 contains ghost points
+			}
+		}
+	}
+
+
+
+	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eos1);
+	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eos2);
+
+	if (SGl == NULL && SGr == NULL){	
+		do{
+			//compute ghost fluid boundaries
+			for (int i=1; i<N+1; i++){
+				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+				//std::cout << phi(i) << '\t' << testsgn << std::endl;
+				if (testsgn > -2 && testsgn < 1 && i!=N){
+					//std::cout << count << " boundary is at i = " << i << std::endl;
+					ghost_boundary_RP(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
+				}
+
+				//if (count==0) std::cout << var1->U.row(i) << std::endl; 
+			}
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+
+			for (int i=2; i<N+2; i++){
+				//std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//reconstruct data to piecewise linear representation
+			var1->data_reconstruction(a);
+			var2->data_reconstruction(a);
+
+
+			for (int i=1; i<N+2; i++){
+				//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
+				if(phi(i-1) < 0){
+					var1->compute_fluxes(eos1, i);
+				}
+				if (phi(i-1) >= 0){
+					var2->compute_fluxes(eos2, i);
+				}
+				//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
+				//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+			}
+
+			for (int i=1; i<N+2; i++){
+				//if (count == 1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << '\t' << var2->F.row(i) << std::endl;
+			}
+
+
+			//set timestep following CFL conditions with max wavespeed between both materials
+			Smax = fmax(var1->Smax, var2->Smax);
+			dt = CFL*(dx/Smax); 
+			if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+			//updating both materials, looping through real and ghost points
+			for (int i=2; i<N+2; i++){
+				if (phi(i-1) < 0){
+					var1->conservative_update_formula(dt, dx, i);
+				}
+				if (phi(i-1) >=0) {
+					var2->conservative_update_formula(dt, dx, i);
+				}
+				//if (count==0) std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//evolving the levelset equation
+			update_levelset(dt);
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+			
+			t += dt;
+			count += 1;
+
+		}while(t<Test.tstop);
+		std::cout << count << std::endl;
+	}
+//If it is stiffened gas
+	else {
+		do{
+			//compute ghost fluid boundaries
+			for (int i=1; i<N+1; i++){
+				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+				//std::cout << phi(i) << '\t' << testsgn << std::endl;
+				if (testsgn > -2 && testsgn < 1 && i!=N){
+					//std::cout << count << " boundary is at i = " << i << std::endl;
+					ghost_boundary_RP_SG(var1, SGl, var2, SGr, i+1); //matrix 2 contains ghost points
+				}
+
+				if (count==0) std::cout << var1->U.row(i) << std::endl; 
+			}
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+
+			for (int i=2; i<N+2; i++){
+				//std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//reconstruct data to piecewise linear representation
+			var1->data_reconstruction(a);
+			var2->data_reconstruction(a);
+
+
+			for (int i=1; i<N+2; i++){
+				//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
+				if(phi(i-1) < 0){
+					var1->compute_fluxes(eos1, i);
+				}
+				if (phi(i-1) >= 0){
+					var2->compute_fluxes(eos2, i);
+				}
+				//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
+				//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+			}
+
+			for (int i=1; i<N+2; i++){
+				//if (count == 1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << '\t' << var2->F.row(i) << std::endl;
+			}
+
+
+			//set timestep following CFL conditions with max wavespeed between both materials
+			Smax = fmax(var1->Smax, var2->Smax);
+			dt = CFL*(dx/Smax); 
+			if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+			//updating both materials, looping through real and ghost points
+			for (int i=2; i<N+2; i++){
+				if (phi(i-1) < 0){
+					var1->conservative_update_formula(dt, dx, i);
+				}
+				if (phi(i-1) >=0) {
+					var2->conservative_update_formula(dt, dx, i);
+				}
+				//if (count==0) std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//evolving the levelset equation
+			update_levelset(dt);
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+			
+			t += dt;
+			count += 1;
+
+		}while(t<Test.tstop);
+		std::cout << count << std::endl;		
+	}
+
+
+
 ///////////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------
 //	EXACT

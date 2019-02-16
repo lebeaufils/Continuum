@@ -100,12 +100,12 @@ void StiffenedGas::GetGamma(){
 }
 
 double StiffenedGas::Pressure(Eigen::MatrixXd U, int i){
-	double Pressure = (y-1)*(U(i, 2) - 0.5*U(i, 0)*pow((U(i, 1)/U(i, 0)),2.0)) + y*Pref;
+	double Pressure = (y-1)*(U(i, 2) - 0.5*U(i, 0)*pow((U(i, 1)/U(i, 0)),2.0)) - y*Pref;
 	return Pressure;
 }
 
 double StiffenedGas::PressureScalar(vector U){
-	double Pressure = (y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0)) + y*Pref;
+	double Pressure = (y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0)) - y*Pref;
 	return Pressure;
 }
 
@@ -113,7 +113,7 @@ vector StiffenedGas::conservedVar(vector W){
 	vector consV;
 	consV(0) = W(0); //Density
 	consV(1) = W(0)*W(1); //Density * Velocity
-	consV(2) = (W(2)/(y-1) - y*Pref) + 0.5*W(0)*W(1)*W(1); //Total Energy
+	consV(2) = ((W(2)+y*Pref)/(y-1)) + 0.5*W(0)*W(1)*W(1); //Total Energy
 	return consV;
 }
 
