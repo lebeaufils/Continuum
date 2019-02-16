@@ -966,7 +966,6 @@ double GhostFluidMethods::compute_star_pressure(EOS* eosleft, EOS* eosright){
 	double Pk; Pk = p0; //First guess
 	double Pk_1;
 	double CHA = 0;
-	double mixTOL;
 
 	int count = 0;
 	//std::cout << p0 << std::endl;
@@ -976,9 +975,8 @@ double GhostFluidMethods::compute_star_pressure(EOS* eosleft, EOS* eosright){
 		Pk = Pk_1; //Set the iterate as the new guess
 		//std::cout << CHA << '\t' << Pk << std::endl;
 		count += 1;
-		mixTOL = TOL*(1 + Pk);
 
-		if (CHA < mixTOL) break;
+		if (CHA < TOL) break;
 		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
 	}while(count < 20);
 
@@ -1612,26 +1610,25 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 	}*/
 
 	std::cout << "initial pressure = "<< p0 << std::endl;
-	double Pk; Pk = p0; //First guess
+	double Pk; Pk = 1e+07;//p0; //First guess
 	double Pk_1;
 	double CHA = 0;
-	double mixTOL;
 
 	int count = 0;
 	//std::cout << p0 << std::endl;
 	do{
 		Pk_1 = newton_raphson(Pk, eosleft, eosright);
+		std::cout << "Pk =" << Pk  << '\t' << Pk_1 << std::endl;
 		CHA = relative_pressure_change(Pk_1, Pk);
 		Pk = Pk_1; //Set the iterate as the new guess
 		//std::cout << CHA << '\t' << Pk << std::endl;
 		count += 1;
-		mixTOL = TOL*(1 + Pk);
 
-		if (CHA < mixTOL) break;
+		if (CHA < TOL) break;
 		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
 	}while(count < 20);
 
-	//std::cout << count <<std::endl;
+	std::cout << count <<std::endl;
 	return Pk;
 }
 

@@ -144,7 +144,7 @@ double IdealGas::fk(double P){
 	//data-dependent constants
 	double Ak = C(8);
 	double Bk = C(9);
-	double Qk = sqrt(Ak/(P + Bk));
+	double Qk = sqrt(Ak/(P + Bk)); // Reciprocal of mass flux
 
 	//density = C(11);
 	//velocity = C(12);
@@ -189,7 +189,7 @@ void StiffenedGas::y_constants(vector W){
 	C(6) = (y-1)/(y+1);
 	C(7) = (y-1)/2.;
 	C(8) = (2./(y+1))/W(0);//Ak
-	C(9) = W(2)*((y-1)/(y+1)) + Pref*(2*y)/(y+1);  //Bk
+	C(9) = W(2)*((y-1)/(y+1)) + Pref*(2*y)/(y+1);  //Bk (W(2)+y*Pref)*((y-1)/(y+1));
 	C(10) = y;
 	C(11) = W(0);
 	C(12) = W(1);
@@ -201,6 +201,9 @@ double StiffenedGas::fk(double pstar){
 	double Ak = C(8);
 	double Bk = C(9);
 	double Qk = sqrt(Ak/(pstar + Bk));
+	//double dstar = C(11)*((2*y*Pref + (y-1)*C(13) + (y+1)*pstar)/(2*y*Pref + (y+1)*C(13) + (y-1)*pstar));
+	//double Qk = sqrt((C(13) - pstar)/(1./dstar - 1./C(11)));
+
 	double Fk;
 
 	if (pstar > C(13)){ //Shock
@@ -217,6 +220,8 @@ double StiffenedGas::fprimek(double pstar){
 	double Ak = C(8);
 	double Bk = C(9);
 	double Qk = sqrt(Ak/(pstar + Bk)); 
+	//double dstar = C(11)*((2*y*Pref + (y-1)*C(13) + (y+1)*pstar)/(2*y*Pref + (y+1)*C(13) + (y-1)*pstar));
+	//double Qk = sqrt((C(13) - pstar)/(1./dstar - 1./C(11)));
 	double Fkprime;
 
 	if (pstar > C(13)){ //Shock
@@ -224,7 +229,7 @@ double StiffenedGas::fprimek(double pstar){
 	}
 
 	else { //Rarefraction
-		Fkprime = (C(0)/(C(10)*(C(13) + Pref)))*pow((pstar + Pref)/(C(13) + Pref), -C(2));
+		Fkprime = (1./(C(0)*C(11)))*pow((pstar + Pref)/(C(13) + Pref), -C(2));
 	}
 	return Fkprime;
 }

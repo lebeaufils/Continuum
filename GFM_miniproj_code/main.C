@@ -69,7 +69,7 @@ int main(void){
 	EOS* eos4 = new IdealGas();
 
 	gfmTests Tests(400, 1.0); //(N, L)
-	Tests.testF();
+	Tests.testE();
 	//Tests.test_example_1();
 
 	Tests.set_EOS(eos1, eos2);
@@ -88,8 +88,18 @@ int main(void){
 
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 	
-	std::cout << gfmProblem.compute_star_pressure(eos3, eos4) << std::endl;
-	std::cout << gfmProblem.compute_star_pressure_SG(eos1, eos2) << std::endl;
+	//std::cout << eos1->C << std::endl << std::endl;
+	//std::cout << eos3->C << std::endl;
+
+	//std::cout << eos1->fk(1.8279e+08)  << '\t' << eos2->fk(1.8279e+08) << std::endl;
+	//std::cout << eos3->fk(1.8279e+08)  << '\t' << eos4->fk(1.8279e+08) << std::endl << std::endl;
+
+	//std::cout << eos1->fprimek(1.8279e+08)  << '\t' << eos2->fprimek(1.8279e+08) << std::endl;
+	//std::cout << eos3->fprimek(1.8279e+08)  << '\t' << eos4->fprimek(1.8279e+08) << std::endl;
+	//std::cout << gfmProblem.newton_raphson(1e+07, eos1, eos2) << std::endl;
+	//std::cout << gfmProblem.newton_raphson(1e+07, eos3, eos4) << std::endl;
+	//std::cout << gfmProblem.compute_star_pressure(eos3, eos4) << std::endl;
+	//std::cout << gfmProblem.compute_star_pressure_SG(eos1, eos2) << std::endl;
 
 	try{
 		gfmProblem.exact_solver_SG(Tests, eos1, eos2);
