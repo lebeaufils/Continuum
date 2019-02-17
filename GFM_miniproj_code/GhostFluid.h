@@ -77,6 +77,10 @@ public:
 	double compute_shock_density_SG(double, StiffenedGas*);
 	double compute_rarefraction_density_SG(double, StiffenedGas*);
 
+	void ghost_boundary_RP_SG(MUSCL*, EOS*, MUSCL*, EOS*, int); //RP based
+	void initial_conditions_RP_SG(EOS*, EOS*, gfmTests);
+	void solver_RP_SG(EOS*, EOS*, gfmTests);
+
 	//void ghost_boundary_RP_SG(MUSCL*, StiffenedGas*, MUSCL*, StiffenedGas*, int); //RP based
 
 };

@@ -1005,8 +1005,8 @@ void GhostFluidMethods::exact_solver(gfmTests Test, EOS* eosleft, EOS* eosright)
 	//If there are 2 rarefraction waves, the exact solution no longer holds.
 
 	//setting material EOS parameter
-	//eosleft->y = Test.yL;
-	//eosright->y = Test.yR;
+	eosleft->y = Test.yL;
+	eosright->y = Test.yR;
 
 	vector WL = Test.initialL;	
 	vector WR = Test.initialR;
@@ -1529,7 +1529,7 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 		throw "StiffenedGas exact solver called on non SG EOS";
 	}
 
-	double pPV, p0;
+	/*double pPV, p0;
 	double soundspeed1 = eosleft->C(0);
 	double soundspeed2 = eosright->C(0);
 	pPV = 0.5*(eosleft->C(13) + eosright->C(13)) - (1./8.)*(eosright->C(12) - eosleft->C(12))*(eosleft->C(11) + eosright->C(11))*(soundspeed1 + soundspeed2);
@@ -1567,13 +1567,13 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 		p0 = pTS;
 
 		//std::cout << "pTS = " << pTS << std::endl;
-	}
-
+	}*/
+///////////////////////VERY UNSTABLE NEWTON METHOD, FAILS IF INITIAL PRESSURE GUESS IS > 4E-7////////////////
 	//lets cheat by using the geometric mean
-	p0 = sqrt(eosleft->C(13)*eosright->C(13));
+	double p0 = sqrt(eosleft->C(13)*eosright->C(13));
 
 	std::cout << "initial pressure = "<< p0 << std::endl;
-	double Pk; Pk = p0; //First guess
+	double Pk; Pk = p0; //First guess 1e6;//
 	double Pk_1;
 	double CHA = 0;
 
@@ -1599,11 +1599,14 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 	//If there are 2 rarefraction waves, the exact solution no longer holds.
 
 	//setting material EOS parameter
-	//eosleft->y = Test.yL;
-	//eosright->y = Test.yR;
+	eosleft->y = Test.yL;
+	eosright->y = Test.yR;
 
 	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
 	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
+
+	SGl->Pref = Test.Pref1;
+	SGr->Pref = Test.Pref2;
 
 	if(SGl == NULL || SGr == NULL) { 
 		throw "StiffenedGas exact solver called on non SG EOS";
@@ -1802,8 +1805,201 @@ double GhostFluidMethods::compute_rarefraction_density_SG(double pstar, Stiffene
 	return drare;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void GhostFluidMethods::ghost_boundary_RP_SG(MUSCL* Uleft, EOS* eosleft, MUSCL* Uright, EOS* eosright, int i){
+//Exact riemannsolver for idealgas and stiffened gas. Ghost point values are the RP star states.
+//Consider an interface between i and i+1
+	//converting to primitive variables
+	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
+	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
+	//CHANGE THIS
+
+	double dl = Uleft->U(i-1, 0);
+	double dr = Uright->U(i+2, 0);
+
+	double ul = Uleft->U(i-1, 1)/Uleft->U(i-1, 0);
+	double ur = Uright->U(i+2, 1)/Uright->U(i+2, 0);
+
+	double Pl = eosleft->Pressure(Uleft->U, i-1);
+	double Pr = eosright->Pressure(Uright->U, i+2);
+
+	vector WL(dl, ul, Pl);
+	vector WR(dr, ur, Pr);
+
+	eosleft->y_constants(WL);
+	eosright->y_constants(WR);
+
+	//Solution of wavestructure within the domain of interest
+	double pstar = compute_star_pressure_SG(eosleft, eosright);
+	//std::cout << "pstar = " << pstar << std::endl;
+	double ustar = compute_star_velocity(pstar, eosleft, eosright);
+	double dshockL = compute_shock_density_SG(pstar, SGl);
+	double dshockR = compute_shock_density_SG(pstar, SGr);
+	double drareL = compute_rarefraction_density_SG(pstar, SGl);
+	double drareR = compute_rarefraction_density_SG(pstar, SGr);
+
+	double Lghostdensity, Rghostdensity;
+	if (pstar > Pl){
+		//std::cout << "dshockL" << std::endl;
+		Lghostdensity = dshockL;
+	}
+	else{
+		//std::cout << "drareL" << std::endl;
+		Lghostdensity = drareL;
+	}
+
+	if (pstar > Pr){
+		//std::cout << "dshockR" << std::endl;
+		Rghostdensity = dshockR;
+	}
+	else{
+		//std::cout << "drareR" << std::endl;
+		Rghostdensity = drareR;
+	}
+	//ghost fluid for left and right material
+	vector WLghost(Lghostdensity, ustar, pstar);
+	vector WRghost(Rghostdensity, ustar, pstar);
+
+	//Redefining the real fluids at the boundary
+	Uleft->U.row(i) = eosleft->conservedVar(WLghost);
+	Uright->U.row(i+1) = eosright->conservedVar(WRghost);
+	for (int j=0; j<4; j++){
+		//Defining the states at ghost fluid cells
+		Uleft->U.row(i+j+1) = eosleft->conservedVar(WLghost);
+		Uright->U.row(i-j) = eosright->conservedVar(WRghost);
+	}
+}
 
 
+void GhostFluidMethods::initial_conditions_RP_SG(EOS* eos1, EOS* eos2, gfmTests Test){
+
+	vector euler1;
+	vector euler2;
+
+	//setting material EOS parameter
+	eos1->y = Test.yL;
+	eos2->y = Test.yR;
+
+	eos1->y_constants(Test.initialL);
+	eos2->y_constants(Test.initialR);
+
+	//initial values for conserved variables
+	euler1 = eos1->conservedVar(Test.initialL);
+	euler2 = eos2->conservedVar(Test.initialR);
+
+
+	for (int i=0; i<N; i++){
+		X(i+1) = (i+0.5)*dx;
+		signed_distance_function_1D(i); //refers to x(i+1)
+		if (X(i+1)  < x0){
+			var1->U.row(i+2) = euler1; //setting real values of material 1
+		}
+		else{
+			var2->U.row(i+2) = euler2; //setting real values of material 2
+		}
+	}
+
+
+	//After setting the real fluids, populate the empty cells with ghost values
+	for (int i=1; i<N+1; i++){
+		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+		//std::cout << phi(i) << '\t' << testsgn << std::endl;
+		if (testsgn > -2 && testsgn < 1 && i!=N){
+			//std::cout << "boundary is at i = " << i << std::endl;
+			ghost_boundary_RP_SG(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
+		}
+	}
+
+	for (int i=0; i<N; i++){
+		//std::cout << i << '\t' << phi(i+1) << '\t' << get_sgn(phi(i+1)) << var1->U.row(i+2) << '\t' << '\t' << var2->U.row(i+2) << std::endl;
+	}
+
+	var1->boundary_conditions();
+	var2->boundary_conditions();
+	boundary_conditions(); //levelsetfunction
+}
+
+void GhostFluidMethods::solver_RP_SG(EOS* eos1, EOS* eos2, gfmTests Test){
+	slopeLimiter a;
+
+	a = var1->getLimiter();
+
+	double t = 0.0;
+
+	do{
+		//compute ghost fluid boundaries
+		for (int i=1; i<N+1; i++){
+			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+			//std::cout << phi(i) << '\t' << testsgn << std::endl;
+			if (testsgn > -2 && testsgn < 1 && i!=N){
+				//std::cout << count << " boundary is at i = " << i << std::endl;
+				ghost_boundary_RP_SG(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
+			}
+
+			//if (count==0) std::cout << var1->U.row(i) << std::endl; 
+		}
+
+		var1->boundary_conditions();
+		var2->boundary_conditions();
+
+		for (int i=2; i<N+2; i++){
+			//std::cout << var1->U.row(i) << std::endl;
+		}
+
+		//reconstruct data to piecewise linear representation
+		var1->data_reconstruction(a);
+		var2->data_reconstruction(a);
+
+
+		for (int i=1; i<N+2; i++){
+			//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
+			if(phi(i-1) < 0){
+				var1->compute_fluxes(eos1, i);
+			}
+			if (phi(i-1) > 0){
+				var2->compute_fluxes(eos2, i);
+			}
+			//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
+			//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+		}
+
+		for (int i=1; i<N+2; i++){
+			//if (count == 1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << '\t' << var2->F.row(i) << std::endl;
+		}
+
+
+		//set timestep following CFL conditions with max wavespeed between both materials
+		Smax = fmax(var1->Smax, var2->Smax);
+		dt = CFL*(dx/Smax); 
+		if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+		//updating both materials, looping through real and ghost points
+		for (int i=2; i<N+2; i++){
+			if (phi(i-1) < 0){
+				var1->conservative_update_formula(dt, dx, i);
+			}
+			if (phi(i-1) >=0) {
+				var2->conservative_update_formula(dt, dx, i);
+			}
+			//if (count==0) std::cout << var1->U.row(i) << std::endl;
+		}
+
+		//evolving the levelset equation
+		update_levelset(dt);
+
+		var1->boundary_conditions();
+		var2->boundary_conditions();
+		
+		t += dt;
+		count += 1;
+		//if (count == 50) t = Test.tstop;
+
+	}while(t<Test.tstop);
+	std::cout << count << std::endl;
+
+}
+///////////////////////////////////////////////////////////////////
 
 
 

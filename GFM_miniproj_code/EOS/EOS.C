@@ -62,6 +62,16 @@ double IdealGas::PressureScalar(vector U){
 	double Pressure = (y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
 	return Pressure;
 }
+/*
+double IdealGas::soundspeed(Eigen::MatrixXd U, int i){
+	double a = sqrt(y*(Pressure(U, i)/U(i, 0)));
+	return a;
+}
+
+double IdealGas::soundspeedScalar(vector U){
+	double a = sqrt(y*(PressureScalar(U)/U(0)));
+	return a;
+}*/
 
 vector IdealGas::conservedVar(vector W){
 	vector consV;
@@ -107,6 +117,16 @@ double StiffenedGas::Pressure(Eigen::MatrixXd U, int i){
 double StiffenedGas::PressureScalar(vector U){
 	double Pressure = (y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0)) - y*Pref;
 	return Pressure;
+}
+
+double StiffenedGas::soundspeed(Eigen::MatrixXd U, int i){
+	double a = sqrt(y*((Pressure(U, i) + Pref)/U(i, 0)));
+	return a;
+}
+
+double StiffenedGas::soundspeedScalar(vector U){
+	double a = sqrt(y*((PressureScalar(U) + Pref)/U(0)));
+	return a;
 }
 
 vector StiffenedGas::conservedVar(vector W){

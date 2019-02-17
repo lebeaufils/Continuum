@@ -59,14 +59,14 @@ int main(void){
 
 	delete eos1; delete eos2; delete eos3; delete eos4;
 */
-	EOS* eos1 = new IdealGas();
-	EOS* eos2 = new IdealGas();
+	//EOS* eos1 = new IdealGas();
+	//EOS* eos2 = new IdealGas();
 
-	//EOS* eos1 = new StiffenedGas();
-	//EOS* eos2 = new StiffenedGas();
+	EOS* eos1 = new StiffenedGas();
+	EOS* eos2 = new StiffenedGas();
 
-	gfmTests Tests(400, 1.0); //(N, L)
-	Tests.testA();
+	gfmTests Tests(100, 1.0); //(N, L)
+	Tests.testE();
 	//Tests.test_example_1();
 
 	//Tests.set_EOS(eos1, eos2);
@@ -74,20 +74,20 @@ int main(void){
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 
 	try{
-		//gfmProblem.exact_solver_SG(Tests, eos1, eos2);
+		gfmProblem.exact_solver_SG(Tests, eos1, eos2);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
 	
 	try{
-		gfmProblem.initial_conditions_RP(eos1, eos2, Tests);
+		gfmProblem.initial_conditions_RP_SG(eos1, eos2, Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
 	try{
-		gfmProblem.solver_RP(eos1, eos2, Tests);
+		gfmProblem.solver_RP_SG(eos1, eos2, Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
@@ -107,7 +107,7 @@ int main(void){
 	}
 	gfmProblem.output(eos1, eos2);
 	try{
-		gfmProblem.exact_solver(Tests, eos1, eos2);
+		//gfmProblem.exact_solver(Tests, eos1, eos2);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 

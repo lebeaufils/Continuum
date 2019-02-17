@@ -228,7 +228,7 @@ void gfmTests::testF(){ //Water - Air shock tube
 	Pref2 = 0; 
 }
 
-void gfmTests::set_EOS(EOS* eosL, EOS* eosR){
+/*void gfmTests::set_EOS(EOS* eosL, EOS* eosR){
 	eosL->y = yL;
 	eosR->y = yR;
 
@@ -241,7 +241,7 @@ void gfmTests::set_EOS(EOS* eosL, EOS* eosR){
 	if (SGr){
 		SGr->Pref = Pref2;
 	}
-}
+}*/
 
 
 

@@ -23,11 +23,11 @@ struct EOS
 	virtual void GetGamma() = 0;
 
 	double internalE(Eigen::MatrixXd, int);
-	double soundspeed(Eigen::MatrixXd, int);
-	double soundspeedScalar(vector);
 	vector f(vector);
 	virtual double Pressure(Eigen::MatrixXd, int) = 0;
 	virtual double PressureScalar(vector) = 0; //used for muscl
+	virtual double soundspeed(Eigen::MatrixXd, int);
+	virtual double soundspeedScalar(vector);
 	virtual vector conservedVar(vector) = 0;
 
 	void testing();
@@ -49,6 +49,8 @@ struct IdealGas : public virtual EOS
 
 	double Pressure(Eigen::MatrixXd, int);
 	double PressureScalar(vector); //used for muscl
+	//double soundspeed(Eigen::MatrixXd, int);
+	//double soundspeedScalar(vector);
 	vector conservedVar(vector);
 
 	//exact
@@ -71,6 +73,8 @@ struct StiffenedGas : public virtual EOS
 
 	double Pressure(Eigen::MatrixXd, int);
 	double PressureScalar(vector); //used for muscl
+	double soundspeed(Eigen::MatrixXd, int);
+	double soundspeedScalar(vector);
 	vector conservedVar(vector);
 
 	//exact

@@ -81,7 +81,7 @@ struct gfmTests : public virtual standardTests
 	//void testS(); //settings file
 
 	//Set EOS parameters
-	void set_EOS(EOS*, EOS*);
+	//void set_EOS(EOS*, EOS*);
 };
 	
 
