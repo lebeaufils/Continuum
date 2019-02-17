@@ -1572,7 +1572,7 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 	//lets cheat by using the geometric mean
 	double p0 = sqrt(eosleft->C(13)*eosright->C(13));
 
-	std::cout << "initial pressure = "<< p0 << std::endl;
+	//std::cout << "initial pressure = "<< p0 << std::endl;
 	double Pk; Pk = p0; //First guess 1e6;//
 	double Pk_1;
 	double CHA = 0;
@@ -1581,7 +1581,7 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 	//std::cout << p0 << std::endl;
 	do{
 		Pk_1 = newton_raphson(Pk, eosleft, eosright);
-		std::cout << "Pk =" << Pk  << '\t' << Pk_1 << std::endl;
+		//std::cout << "Pk =" << Pk  << '\t' << Pk_1 << std::endl;
 		CHA = relative_pressure_change(Pk_1, Pk);
 		Pk = Pk_1; //Set the iterate as the new guess
 		//std::cout << CHA << '\t' << Pk << std::endl;
@@ -1591,7 +1591,7 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
 	}while(count < 20);
 
-	std::cout << count <<std::endl;
+	//std::cout << count <<std::endl;
 	return Pk;
 }
 
@@ -1656,10 +1656,10 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 		double STL = ustar - cstarL; double STR = ustar + cstarR; //tail of fan
 		
 		//std::cout << drareL << '\t' << drareR << std::endl;
-		std::cout << "Shockspeeds = ";
-		std::cout << SL << '\t' << SR << std::endl;
-		std::cout << SHL << '\t' << SHR << std::endl;
-		std::cout << STL << '\t' << STR << std::endl; 
+		//std::cout << "Shockspeeds = ";
+		//std::cout << SL << '\t' << SR << std::endl;
+		//std::cout << SHL << '\t' << SHR << std::endl;
+		//std::cout << STL << '\t' << STR << std::endl; 
 
 		//Sampling is based on the position of wave with respect to time in x-t space,
 		// characterised by its "speed" S = x/t.
@@ -1700,14 +1700,13 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 						W(i, 0) = drareL;
 						W(i, 1) = ustar;
 						W(i, 2) = pstar;
-						////std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
 					}
 					//Within the rarefraction fan
 					else {
 						//std::cout << i << '\t' << "WLfan" << std::endl;
 						double dLfan = dL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(4));
 						double uLfan = SGl->C(5)*(SGl->C(0) + SGl->C(7)*uL + S);
-						double pLfan = pL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(3));
+						double pLfan = (pL + SGl->Pref)*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(3)) - SGl->Pref;
 						vector WLfan(dLfan, uLfan, pLfan);
 						W.row(i) = WLfan;
 					}
@@ -1743,7 +1742,6 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 						W(i, 0) = drareR;
 						W(i, 1) = ustar;
 						W(i, 2) = pstar;
-						////std::cout << i << '\t' << S << '\t' << W.row(i) << std::endl;
 					}
 					//Within the rarefraction fan
 					else {
@@ -1771,11 +1769,11 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 			double S = (xPos - x0)/Test.tstop;
 			double e;
 			if (S <= ustar){
-				e = W(i, 2)/(W(i, 0)*(yL-1));
+				e = (W(i, 2) + SGl->y*SGl->Pref)/(W(i, 0)*(yL-1));
 			}
 
 			else {
-				e = W(i, 2)/(W(i, 0)*(yR-1));
+				e = (W(i, 2) + SGr->y*SGr->Pref)/(W(i, 0)*(yR-1));
 			}
 
 			outfile << xPos << '\t' << W(i, 0) << '\t' << W(i, 1)
