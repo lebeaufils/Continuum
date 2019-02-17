@@ -45,7 +45,11 @@ public:
 
 	//RP based GFM solver
 	void initial_conditions_RP(EOS*, EOS*, gfmTests);
+	void initial_conditions_RP(EOS*, EOS*, EOS*, gfmTests);
+	//void initial_conditions_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
 	void solver_RP(EOS*, EOS*, gfmTests);
+	void solver_RP(gfmTests);	
+	//void solver_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
 
 	//output
 	void output(EOS*, EOS*);

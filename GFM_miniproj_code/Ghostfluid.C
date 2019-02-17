@@ -643,9 +643,6 @@ void GhostFluidMethods::solver(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4, gfmTe
 
 void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, gfmTests Test){
 
-	vector euler1;
-	vector euler2;
-
 	//setting material EOS parameter
 	eos1->y = Test.yL;
 	eos2->y = Test.yR;
@@ -654,8 +651,8 @@ void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, gfmTests Tes
 	eos2->y_constants(Test.initialR);
 
 	//initial values for conserved variables
-	euler1 = eos1->conservedVar(Test.initialL);
-	euler2 = eos2->conservedVar(Test.initialR);
+	vector euler1 = eos1->conservedVar(Test.initialL);
+	vector euler2 = eos2->conservedVar(Test.initialR);
 
 
 	for (int i=0; i<N; i++){
@@ -687,6 +684,228 @@ void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, gfmTests Tes
 	var1->boundary_conditions();
 	var2->boundary_conditions();
 	boundary_conditions(); //levelsetfunction
+}
+
+void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, EOS* eos3, gfmTests Test){
+
+	//setting material EOS parameter
+	eos1->y = Test.yL;
+	eos3->y = Test.yR;
+	if (Test.yM1 != 0){
+		eos2->y = Test.yM1;
+	}
+	else {
+		throw "Number of materials do not match the chosen solver.";
+	}
+
+	//initial values for conserved variables
+	vector euler1 = eos1->conservedVar(Test.initialL);
+	vector euler2 = eos2->conservedVar(Test.initialM1);
+	vector euler3 = eos3->conservedVar(Test.initialR);
+
+	for (int i=0; i<N; i++){
+		X(i+1) = (i+0.5)*dx;
+		signed_distance_function_1D_2(i);
+		if (X(i+1)  <= x0){
+			var1->U.row(i+2) = euler1; //setting real values of Left initial condition
+		}
+		else if (X(i+1) > x1){
+			var1->U.row(i+2) = euler3; //setting real values of Right initial condition
+		}
+		else{
+			var2->U.row(i+2) = euler2; //Middle initial condition
+		}
+
+		//std::cout << var1->U.row(i) << '\t' << var2->U.row(i) << std::endl;
+	}
+
+	//After setting the real fluids, populate the empty cells with ghost values
+	for (int i=1; i<N+1; i++){
+		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+		//std::cout << phi(i) << '\t' << testsgn << std::endl;
+		if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+			if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+				//to the left of interface, the ghostfluid is in var2
+				ghost_boundary_RP(var1, eos1, var2, eos2, i+1);
+			}
+			else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+			//std::cout << var2->U.row(i+1-j) << std::endl;
+			//to the left of interface, the ghostfluid is in var1
+				//note that we are now in the right material which has EOS: eos3
+				ghost_boundary_RP(var2, eos2, var1, eos3, i+1);
+			}
+		} 
+	}
+
+	var1->boundary_conditions();
+	var2->boundary_conditions();
+	boundary_conditions(); //levelsetfunction
+}
+
+
+void GhostFluidMethods::solver_RP(gfmTests Test){
+	slopeLimiter a;
+
+	a = var1->getLimiter();
+
+	EOS* eosL = new IdealGas();
+	EOS* eosR = new IdealGas();
+	//IdealGas eosM2;
+
+	double t = 0.0;
+
+	if (Test.number_of_materials == 2){
+		initial_conditions_RP(eosL, eosR, Test);
+
+		do{			
+			//compute ghost fluid boundaries
+			for (int i=1; i<N+1; i++){
+				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+				//std::cout << phi(i) << '\t' << testsgn << std::endl;
+				if (testsgn > -2 && testsgn < 1 && i!=N){
+					//std::cout << count << " boundary is at i = " << i << std::endl;
+					ghost_boundary_RP(var1, eosL, var2, eosR, i+1); //matrix 2 contains ghost points
+				}
+
+				//if (count==0) std::cout << var1->U.row(i) << std::endl; 
+			}
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+
+			for (int i=2; i<N+2; i++){
+				//std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//reconstruct data to piecewise linear representation
+			var1->data_reconstruction(a);
+			var2->data_reconstruction(a);
+
+
+			for (int i=1; i<N+2; i++){
+				//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
+				if(phi(i-1) < 0){
+					var1->compute_fluxes(eosL, i);
+				}
+				if (phi(i-1) > 0){
+					var2->compute_fluxes(eosR, i);
+				}
+				//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
+				//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+			}
+
+			//set timestep following CFL conditions with max wavespeed between both materials
+			Smax = fmax(var1->Smax, var2->Smax);
+			dt = CFL*(dx/Smax); 
+			if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+			//updating both materials, looping through real and ghost points
+			for (int i=2; i<N+2; i++){
+				if (phi(i-1) < 0){
+					var1->conservative_update_formula(dt, dx, i);
+				}
+				if (phi(i-1) >=0) {
+					var2->conservative_update_formula(dt, dx, i);
+				}
+				//if (count==0) std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//evolving the levelset equation
+			update_levelset(dt);
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+			
+			t += dt;
+			count += 1;
+
+		}while(t < Test.tstop);
+		std::cout << count << std::endl;
+		output(eosL, eosR);
+	}
+
+	else if (Test.number_of_materials == 3){
+		EOS* eosM1 = new IdealGas();
+		initial_conditions_RP(eosL, eosM1, eosR, Test);
+		do{
+			//compute ghost fluid boundaries
+			for (int i=1; i<N+1; i++){
+				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+				//std::cout << phi(i) << '\t' << testsgn << std::endl;
+				if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+						ghost_boundary_RP(var1, eosL, var2, eosM1, i+1);
+					}
+					else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+						ghost_boundary_RP(var2, eosM1, var1, eosR, i+1);
+					}
+				} 
+			}
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+
+			//reconstruct data to piecewise linear representation
+			var1->data_reconstruction(a);
+			var2->data_reconstruction(a);
+
+			//compute fluxes at current timestep		
+			bool flag = true;
+			//std::cout << "test1" << std::endl;
+			for (int i=1; i<N+2; i++){
+				if (phi(i-1) < 0 && flag==true){
+					//std::cout <<"a " << i << std::endl;
+					var1->compute_fluxes(eosL, i);
+					//if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eos1, i+1);
+				}
+				if (phi(i-1) >= 0){
+					//std::cout <<"b " << i << std::endl;
+					if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eosM1, i-1); //?
+					var2->compute_fluxes(eosM1, i);
+					//if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eos1, i+1);
+					flag = false;
+				}
+				if (phi(i-1) < 0 && flag == false){
+					//std::cout <<"c " << i << std::endl;
+					if (get_sgn(phi(i-2)) > 0) var1->compute_fluxes(eosR, i-1);
+					var1->compute_fluxes(eosR, i);
+				}
+				//if (count == 0 ) std::cout << var1->U.row(i) << std::endl; //'\t' << var2->U.row(i) << std::endl;
+				//if (count ==1 )std::cout << i << '\t' << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+			}
+
+			//set timestep following CFL conditions with max wavespeed between both materials
+			Smax = fmax(var1->Smax, var2->Smax);
+			dt = CFL*(dx/Smax); 
+			if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+			//updating both materials, looping through real and ghost points
+			for (int i=2; i<N+2; i++){
+				if (phi(i-1) < 0){
+					var1->conservative_update_formula(dt, dx, i);
+				}
+				if (phi(i-1) >=0) {
+					var2->conservative_update_formula(dt, dx, i);
+				}
+				//if (count==0) std::cout << var1->U.row(i) << std::endl;
+			}
+
+			//evolving the levelset equation
+			update_levelset(dt);
+
+			var1->boundary_conditions();
+			var2->boundary_conditions();
+			
+			t += dt;
+			count += 1;
+
+		}while(t<Test.tstop);
+		std::cout << count << std::endl;
+		output(eosL, eosM1, eosR);
+		delete eosM1;
+	}
+
+	delete eosL; delete eosR;
 }
 
 void GhostFluidMethods::solver_RP(EOS* eos1, EOS* eos2, gfmTests Test){

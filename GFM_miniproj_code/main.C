@@ -6,11 +6,11 @@ int main(void){
 	//do the same for choice of solver.
 	//switch can be activated through user input or mapping through filename
 
- /*	EOS* eos1 = new IdealGas();
+ 	EOS* eos1 = new IdealGas();
 	EOS* eos2 = new IdealGas();
 	EOS* eos3 = new IdealGas();
 
-	gfmTests Tests(400, 1.0); //(N, L)
+	gfmTests Tests(1000, 1.0); //(N, L)
 
 	Tests.testB();
 	//Tests.test_example_1();
@@ -19,22 +19,22 @@ int main(void){
 	//gfmProblem.initial_conditions_HLLC(eos1, eos2, Tests);
 
 	try{
-		gfmProblem.initial_conditions(eos1, eos2, eos3, Tests);
+		//gfmProblem.initial_conditions_RP(eos1, eos2, eos3, Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	gfmProblem.solver(eos1, eos2, eos3, Tests);
+	gfmProblem.solver_RP(Tests);
 	try{
 		gfmProblem.exact_solver(Tests, eos1, eos2, eos3);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	gfmProblem.output(eos1, eos2, eos3);
+	//gfmProblem.output(eos1, eos2, eos3);
 
 	delete eos1; delete eos2; delete eos3;
-*/
+
 
 /*	//Note no exact solver exists for such a configuration
 	EOS* eos1 = new IdealGas();
@@ -62,10 +62,10 @@ int main(void){
 	//EOS* eos1 = new IdealGas();
 	//EOS* eos2 = new IdealGas();
 
-	EOS* eos1 = new StiffenedGas();
+/*	EOS* eos1 = new StiffenedGas();
 	EOS* eos2 = new StiffenedGas();
 
-	gfmTests Tests(100, 1.0); //(N, L)
+	gfmTests Tests(400, 1.0); //(N, L)
 	Tests.testE();
 	//Tests.test_example_1();
 
@@ -114,7 +114,7 @@ int main(void){
 	}
 	
 	delete eos1; delete eos2;
-
+*/
 
 /*
 	//note exact solver for stiffened gas not written yet
