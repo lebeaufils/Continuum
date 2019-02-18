@@ -73,8 +73,7 @@ struct gfmTests : public virtual standardTests
 	void testC();
 	void testB_Wang();
 	void testD();
-	void testE();
-	void testF();
+	void testSG();
 
 	//custom tests
 	//void testN(); //user input

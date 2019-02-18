@@ -194,7 +194,7 @@ void gfmTests::testB_Wang(){
 	yR = 1.4;
 }
 
-void gfmTests::testE(){ //Water - Air shock tube
+void gfmTests::testSG(){ //Water - Air shock tube
 	vector Left(1000, 0.0, 1e9); //Water
 	vector Right(50, 0.0, 1e5); //Air
 
@@ -209,23 +209,6 @@ void gfmTests::testE(){ //Water - Air shock tube
 
 	Pref1 = 6e8;
 	Pref2 = 0.0; 
-}
-
-void gfmTests::testF(){ //Water - Air shock tube
-	vector Left(1000, 0.0, 1e9); //Water
-	vector Right(50, 0.0, 1e5); //Air
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.7;
-	tstop = 0.00023744;
-
-	yL = 4.4;
-	yR = 4.4;
-
-	Pref1 = 6e8;
-	Pref2 = 0; 
 }
 
 /*void gfmTests::set_EOS(EOS* eosL, EOS* eosR){

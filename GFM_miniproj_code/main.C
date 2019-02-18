@@ -38,12 +38,12 @@ int main(void){
 */
 	//Note no exact solver exists for such a configuration
 
-	gfmTests Tests(400, 1.0); //(N, L)
+/*	gfmTests Tests(400, 1.0); //(N, L)
 
 	//Tests.testB_Wang();
-	Tests.testB();
+	Tests.testSG();
 
-	GhostFluidMethods gfmProblem(0.6, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
+	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 
 	try{
 		gfmProblem.solver_RP(Tests);
@@ -57,17 +57,15 @@ int main(void){
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	
+*/	
 
 
-	//EOS* eos1 = new IdealGas();
-	//EOS* eos2 = new IdealGas();
 
-/*	EOS* eos1 = new StiffenedGas();
+	EOS* eos1 = new StiffenedGas();
 	EOS* eos2 = new StiffenedGas();
 
 	gfmTests Tests(400, 1.0); //(N, L)
-	Tests.testE();
+	Tests.testSG();
 	//Tests.test_example_1();
 
 	//Tests.set_EOS(eos1, eos2);
@@ -93,46 +91,10 @@ int main(void){
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
-	try{
-		//gfmProblem.initial_conditions(eos1, eos2, Tests);
-	}
-	catch (const char* c){
-		std::cout << c << std::endl; 
-	}
-
-	try{
-		//gfmProblem.solver(eos1, eos2, Tests);
-	}
-	catch (const char* c){
-		std::cout << c << std::endl; 
-	}
 	gfmProblem.output(eos1, eos2);
-	try{
-		//gfmProblem.exact_solver(Tests, eos1, eos2);
-	}
-	catch (const char* c){
-		std::cout << c << std::endl; 
-	}
-	
+
 	delete eos1; delete eos2;
-*/
 
-/*
-	//note exact solver for stiffened gas not written yet
-	EOS* IG = new IdealGas();
-	eulerTests Test(400, 1.0);
-	//Test.test1_stationary();
-	Test.test6();
 
-	EXACT var(Test, IG);
-	var.initial_conditions();
-
-	var.sampling(Test.tstop);
-	var.output();
-
-	delete IG;
-
-    return 0;
- */
 }
 

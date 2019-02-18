@@ -35,34 +35,37 @@ public:
 	void ghost_boundary_RP(MUSCL*, EOS*, MUSCL*, EOS*, int); //RP based
 
 	//MUSCL
+	void update_levelset(double);	
+	//Initial conditions
 	void initial_conditions(EOS*, EOS*, gfmTests);
 	void initial_conditions(EOS*, EOS*, EOS*, gfmTests);
 	void initial_conditions(EOS*, EOS*, EOS*, EOS*, gfmTests);
-	void update_levelset(double);	
-	void solver(EOS*, EOS*, gfmTests);
-	void solver(EOS*, EOS*, EOS*, gfmTests);	
-	void solver(EOS*, EOS*, EOS*, EOS*, gfmTests);
-
-	//RP based GFM solver
-	void initial_conditions_RP(EOS*, EOS*, gfmTests);
-	void initial_conditions_RP(EOS*, EOS*, EOS*, gfmTests);
-	void initial_conditions_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
-	void solver_RP(EOS*, EOS*, gfmTests);
-	void solver_RP(gfmTests);	
-	//void solver_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
+	//Solver
+	void solver(gfmTests);
+		//void solver(EOS*, EOS*, gfmTests);
+		//void solver(EOS*, EOS*, EOS*, gfmTests);	
+		//void solver(EOS*, EOS*, EOS*, EOS*, gfmTests);
 
 	//output
 	void output(EOS*, EOS*);
 	void output(EOS*, EOS*, EOS*);
 	void output(EOS*, EOS*, EOS*, EOS*);
 
+	//RP based GFM solver
+	//initial conditions
+	void initial_conditions_RP(EOS*, EOS*, gfmTests);
+	void initial_conditions_RP(EOS*, EOS*, EOS*, gfmTests);
+	void initial_conditions_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
+	//solver
+	void solver_RP(gfmTests);	
+	//void solver_RP(EOS*, EOS*, gfmTests);
+	//void solver_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
 
 	//void update_levelset_ENO();
 	//void update_levelset_WENO();
 	//void update_levelset_TVD();
 
 	//void reinitialise();
-
 
 	//EXACT
 	double f(double, EOS*, EOS*);
