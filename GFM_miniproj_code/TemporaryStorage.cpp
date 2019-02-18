@@ -358,7 +358,7 @@ void GhostFluidMethods::ghost_boundary_RP_SG(MUSCL* Uleft, StiffenedGas SGl, MUS
 }
 
 
-void GhostFluidMethods::initial_conditions_RP_SG(StiffenedGas SGl, StiffenedGas SGr, gfmTests Test){
+void GhostFluidMethods::initial_conditions_RP_SG(StiffenedGas &SGl, StiffenedGas &SGr, gfmTests Test){
 
 	vector euler1;
 	vector euler2;

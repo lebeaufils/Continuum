@@ -80,14 +80,14 @@ public:
 	//void exact_solver(gfmTests, EOS*, EOS*, EOS*);
 	void exact_solver(gfmTests);
 
-	double compute_star_pressure_SG(EOS*, EOS*);
-	void exact_solver_SG(gfmTests, EOS*, EOS*); 
-	double compute_shock_density_SG(double, StiffenedGas*);
-	double compute_rarefraction_density_SG(double, StiffenedGas*);
+	double compute_star_pressure_SG(StiffenedGas, StiffenedGas);
+	void exact_solver_SG(gfmTests); 
+	double compute_shock_density_SG(double, StiffenedGas);
+	double compute_rarefraction_density_SG(double, StiffenedGas);
 
-	void ghost_boundary_RP_SG(MUSCL*, EOS*, MUSCL*, EOS*, int); //RP based
-	void initial_conditions_RP_SG(EOS*, EOS*, gfmTests);
-	void solver_RP_SG(EOS*, EOS*, gfmTests);
+	void ghost_boundary_RP_SG(MUSCL*, StiffenedGas, MUSCL*, StiffenedGas, int); //RP based
+	void initial_conditions_RP_SG(StiffenedGas&, StiffenedGas&, gfmTests);
+	void solver_RP_SG(gfmTests);
 
 	//void ghost_boundary_RP_SG(MUSCL*, StiffenedGas*, MUSCL*, StiffenedGas*, int); //RP based
 

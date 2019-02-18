@@ -2719,7 +2719,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test, EOS* eosleft, EOS* eosmiddle
 */
 ///FOR STIFFENED GAS////////////////////////////
 
-double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
+double GhostFluidMethods::compute_star_pressure_SG(StiffenedGas SG1, StiffenedGas SG2){
 //------------------------------------------
 	double TOL = 1e-6;
 	auto relative_pressure_change = [](double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
@@ -2727,6 +2727,10 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 		return CHA;
 	};	
 //-------------------------------------------
+
+	EOS* eosleft = &SG1;
+	EOS* eosright = &SG2;
+
 	//check positivity condition
 	try {
 		check_pressure_pos_condition(eosleft, eosright);
@@ -2734,13 +2738,6 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 	catch(const char* c){
 		std::cout << c << std::endl;
 		std::cout << "vacuum generated, terminating program" << std::endl;
-	}
-
-	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
-	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
-
-	if(SGl == NULL || SGr == NULL) { 
-		throw "StiffenedGas exact solver called on non SG EOS";
 	}
 
 	/*double pPV, p0;
@@ -2784,7 +2781,7 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 	}*/
 ///////////////////////VERY UNSTABLE NEWTON METHOD, FAILS IF INITIAL PRESSURE GUESS IS > 4E-7////////////////
 	//lets cheat by using the geometric mean
-	double p0 = sqrt(eosleft->C(13)*eosright->C(13));
+	double p0 = sqrt(SG1.C(13)*SG2.C(13));
 
 	//std::cout << "initial pressure = "<< p0 << std::endl;
 	double Pk; Pk = p0; //First guess 1e6;//
@@ -2809,31 +2806,29 @@ double GhostFluidMethods::compute_star_pressure_SG(EOS* eosleft, EOS* eosright){
 	return Pk;
 }
 
-void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosright){
+void GhostFluidMethods::exact_solver_SG(gfmTests Test){
 	//If there are 2 rarefraction waves, the exact solution no longer holds.
+	StiffenedGas SGl;
+	StiffenedGas SGr;
+
+	EOS* eosleft = &SGl;
+	EOS* eosright = &SGr;
 
 	//setting material EOS parameter
 	eosleft->y = Test.yL;
 	eosright->y = Test.yR;
 
-	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
-	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
-
-	SGl->Pref = Test.Pref1;
-	SGr->Pref = Test.Pref2;
-
-	if(SGl == NULL || SGr == NULL) { 
-		throw "StiffenedGas exact solver called on non SG EOS";
-	}
+	SGl.Pref = Test.Pref1;
+	SGr.Pref = Test.Pref2;
 
 	vector WL = Test.initialL;	
 	vector WR = Test.initialR;
 
-	SGl->y_constants(WL);
+	eosleft->y_constants(WL);
 	eosright->y_constants(WR);
 
-	double yL = SGl->C(10);
-	double yR = SGr->C(10);
+	double yL = eosleft->C(10);
+	double yR = eosright->C(10);
 
 	//-----------------------------------------------------------
 	//Let the exact solution have a resolution of 1000 grid points
@@ -2846,7 +2841,7 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 
 		//-----------------Sampling------------------
 		//Solution of wavestructure within the domain of interest
-		double pstar = compute_star_pressure_SG(eosleft, eosright);
+		double pstar = compute_star_pressure_SG(SGl, SGr);
 		double ustar = compute_star_velocity(pstar, eosleft, eosright);
 		double dshockL = compute_shock_density_SG(pstar, SGl);
 		double dshockR = compute_shock_density_SG(pstar, SGr);
@@ -2859,14 +2854,14 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 		double pL = WL(2); double pR = WR(2);
 
 		//Shock Speeds
-		double SL = uL - SGl->C(0)*sqrt((SGl->C(2)*((pstar + SGl->Pref)/(pL + SGl->Pref)) + SGl->C(1))); 
-		double SR = uR + SGr->C(0)*sqrt((SGr->C(2)*((pstar + SGr->Pref)/(pR + SGr->Pref)) + SGr->C(1)));
+		double SL = uL - SGl.C(0)*sqrt((SGl.C(2)*((pstar + SGl.Pref)/(pL + SGl.Pref)) + SGl.C(1))); 
+		double SR = uR + SGr.C(0)*sqrt((SGr.C(2)*((pstar + SGr.Pref)/(pR + SGr.Pref)) + SGr.C(1)));
 
 		//Rarefraction wave speeds
-		double cstarL = SGl->C(0)*pow((pstar + SGl->Pref)/(pL + SGl->Pref), SGl->C(1));
-		double cstarR = SGr->C(0)*pow((pstar + SGr->Pref)/(pR + SGr->Pref), SGr->C(1));
+		double cstarL = SGl.C(0)*pow((pstar + SGl.Pref)/(pL + SGl.Pref), SGl.C(1));
+		double cstarR = SGr.C(0)*pow((pstar + SGr.Pref)/(pR + SGr.Pref), SGr.C(1));
 
-		double SHL = uL - SGl->C(0); double SHR = uR + SGr->C(0); //Head of fan
+		double SHL = uL - SGl.C(0); double SHR = uR + SGr.C(0); //Head of fan
 		double STL = ustar - cstarL; double STR = ustar + cstarR; //tail of fan
 		
 		//std::cout << drareL << '\t' << drareR << std::endl;
@@ -2918,9 +2913,9 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 					//Within the rarefraction fan
 					else {
 						//std::cout << i << '\t' << "WLfan" << std::endl;
-						double dLfan = dL*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(4));
-						double uLfan = SGl->C(5)*(SGl->C(0) + SGl->C(7)*uL + S);
-						double pLfan = (pL + SGl->Pref)*pow(SGl->C(5) + (SGl->C(6)/SGl->C(0))*(uL - S), SGl->C(3)) - SGl->Pref;
+						double dLfan = dL*pow(SGl.C(5) + (SGl.C(6)/SGl.C(0))*(uL - S), SGl.C(4));
+						double uLfan = SGl.C(5)*(SGl.C(0) + SGl.C(7)*uL + S);
+						double pLfan = (pL + SGl.Pref)*pow(SGl.C(5) + (SGl.C(6)/SGl.C(0))*(uL - S), SGl.C(3)) - SGl.Pref;
 						vector WLfan(dLfan, uLfan, pLfan);
 						W.row(i) = WLfan;
 					}
@@ -2960,9 +2955,9 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 					//Within the rarefraction fan
 					else {
 						//std::cout << i << '\t' << "WRfan" << std::endl;
-						double dRfan = dR*pow(SGr->C(5) - (SGr->C(6)/SGr->C(0))*(uR - S), SGr->C(4));
-						double uRfan = SGr->C(5)*(-SGr->C(0) + SGr->C(7)*uR + S);
-						double pRfan = pR*pow(SGr->C(5) - (SGr->C(6)/SGr->C(0))*(uR - S), SGr->C(3));
+						double dRfan = dR*pow(SGr.C(5) - (SGr.C(6)/SGr.C(0))*(uR - S), SGr.C(4));
+						double uRfan = SGr.C(5)*(-SGr.C(0) + SGr.C(7)*uR + S);
+						double pRfan = pR*pow(SGr.C(5) - (SGr.C(6)/SGr.C(0))*(uR - S), SGr.C(3));
 						vector WRfan(dRfan, uRfan, pRfan);
 						W.row(i) = WRfan;
 					}
@@ -2983,11 +2978,11 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 			double S = (xPos - x0)/Test.tstop;
 			double e;
 			if (S <= ustar){
-				e = (W(i, 2) + SGl->y*SGl->Pref)/(W(i, 0)*(yL-1));
+				e = (W(i, 2) + SGl.y*SGl.Pref)/(W(i, 0)*(yL-1));
 			}
 
 			else {
-				e = (W(i, 2) + SGr->y*SGr->Pref)/(W(i, 0)*(yR-1));
+				e = (W(i, 2) + SGr.y*SGr.Pref)/(W(i, 0)*(yR-1));
 			}
 
 			outfile << xPos << '\t' << W(i, 0) << '\t' << W(i, 1)
@@ -2998,34 +2993,31 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test, EOS* eosleft, EOS* eosrig
 	}
 
 	else{
-		throw "Exact solver is only avaliable for a single material interface.";
+		throw "Exact solver for StiffenedGas is only avaliable for a single material interface.";
 	}
 
 }
 
 //testing
-double GhostFluidMethods::compute_shock_density_SG(double pstar, StiffenedGas* eos){
+double GhostFluidMethods::compute_shock_density_SG(double pstar, StiffenedGas eos){
 	//turn this into a stored variable so the iteration does not have to be called multiple times
 	//From the Hugoniot jump conditions, see TORO 3.1.3 (substituting the expressio n for internal energy)
-	double Pratio = (pstar + eos->Pref)/(eos->C(13) + eos->Pref);
-	double dshock = eos->C(11)*((eos->C(6) + Pratio)/(eos->C(6)*Pratio + 1));
+	double Pratio = (pstar + eos.Pref)/(eos.C(13) + eos.Pref);
+	double dshock = eos.C(11)*((eos.C(6) + Pratio)/(eos.C(6)*Pratio + 1));
 	return dshock;
 }
 
-double GhostFluidMethods::compute_rarefraction_density_SG(double pstar, StiffenedGas* eos){
-	double drare = eos->C(11)*pow((pstar + eos->Pref)/(eos->C(13) + eos->Pref), 1./eos->C(10));
+double GhostFluidMethods::compute_rarefraction_density_SG(double pstar, StiffenedGas eos){
+	double drare = eos.C(11)*pow((pstar + eos.Pref)/(eos.C(13) + eos.Pref), 1./eos.C(10));
 	return drare;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void GhostFluidMethods::ghost_boundary_RP_SG(MUSCL* Uleft, EOS* eosleft, MUSCL* Uright, EOS* eosright, int i){
+void GhostFluidMethods::ghost_boundary_RP_SG(MUSCL* Uleft, StiffenedGas SGl, MUSCL* Uright, StiffenedGas SGr, int i){
 //Exact riemannsolver for idealgas and stiffened gas. Ghost point values are the RP star states.
 //Consider an interface between i and i+1
 	//converting to primitive variables
-	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosleft);
-	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosright);
-	//CHANGE THIS
 
 	double dl = Uleft->U(i-1, 0);
 	double dr = Uright->U(i+2, 0);
@@ -3033,17 +3025,20 @@ void GhostFluidMethods::ghost_boundary_RP_SG(MUSCL* Uleft, EOS* eosleft, MUSCL* 
 	double ul = Uleft->U(i-1, 1)/Uleft->U(i-1, 0);
 	double ur = Uright->U(i+2, 1)/Uright->U(i+2, 0);
 
-	double Pl = eosleft->Pressure(Uleft->U, i-1);
-	double Pr = eosright->Pressure(Uright->U, i+2);
+	double Pl = SGl.Pressure(Uleft->U, i-1);
+	double Pr = SGr.Pressure(Uright->U, i+2);
 
 	vector WL(dl, ul, Pl);
 	vector WR(dr, ur, Pr);
 
-	eosleft->y_constants(WL);
-	eosright->y_constants(WR);
+	SGl.y_constants(WL);
+	SGr.y_constants(WR);
+
+	EOS* eosleft = &SGl;
+	EOS* eosright = &SGr;
 
 	//Solution of wavestructure within the domain of interest
-	double pstar = compute_star_pressure_SG(eosleft, eosright);
+	double pstar = compute_star_pressure_SG(SGl, SGr);
 	//std::cout << "pstar = " << pstar << std::endl;
 	double ustar = compute_star_velocity(pstar, eosleft, eosright);
 	double dshockL = compute_shock_density_SG(pstar, SGl);
@@ -3074,24 +3069,26 @@ void GhostFluidMethods::ghost_boundary_RP_SG(MUSCL* Uleft, EOS* eosleft, MUSCL* 
 	vector WRghost(Rghostdensity, ustar, pstar);
 
 	//Redefining the real fluids at the boundary
-	Uleft->U.row(i) = eosleft->conservedVar(WLghost);
-	Uright->U.row(i+1) = eosright->conservedVar(WRghost);
+	Uleft->U.row(i) = SGl.conservedVar(WLghost);
+	Uright->U.row(i+1) = SGr.conservedVar(WRghost);
 	for (int j=0; j<4; j++){
 		//Defining the states at ghost fluid cells
-		Uleft->U.row(i+j+1) = eosleft->conservedVar(WLghost);
-		Uright->U.row(i-j) = eosright->conservedVar(WRghost);
+		Uleft->U.row(i+j+1) = SGl.conservedVar(WLghost);
+		Uright->U.row(i-j) = SGr.conservedVar(WRghost);
 	}
 }
 
 
-void GhostFluidMethods::initial_conditions_RP_SG(EOS* eos1, EOS* eos2, gfmTests Test){
+void GhostFluidMethods::initial_conditions_RP_SG(StiffenedGas &SGl, StiffenedGas &SGr, gfmTests Test){
 
 	vector euler1;
 	vector euler2;
 
+	EOS* eos1 = &SGl; EOS* eos2 = &SGr;
+
 	//setting material EOS parameter
-	eos1->y = Test.yL;
-	eos2->y = Test.yR;
+	eos1->y = Test.yL; SGl.Pref = Test.Pref1;
+	eos2->y = Test.yR; SGr.Pref = Test.Pref2;
 
 	eos1->y_constants(Test.initialL);
 	eos2->y_constants(Test.initialR);
@@ -3119,7 +3116,7 @@ void GhostFluidMethods::initial_conditions_RP_SG(EOS* eos1, EOS* eos2, gfmTests 
 		//std::cout << phi(i) << '\t' << testsgn << std::endl;
 		if (testsgn > -2 && testsgn < 1 && i!=N){
 			//std::cout << "boundary is at i = " << i << std::endl;
-			ghost_boundary_RP_SG(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
+			ghost_boundary_RP_SG(var1, SGl, var2, SGr, i+1); //matrix 2 contains ghost points
 		}
 	}
 
@@ -3132,10 +3129,17 @@ void GhostFluidMethods::initial_conditions_RP_SG(EOS* eos1, EOS* eos2, gfmTests 
 	boundary_conditions(); //levelsetfunction
 }
 
-void GhostFluidMethods::solver_RP_SG(EOS* eos1, EOS* eos2, gfmTests Test){
+void GhostFluidMethods::solver_RP_SG(gfmTests Test){
 	slopeLimiter a;
-
 	a = var1->getLimiter();
+
+	StiffenedGas SGl;
+	StiffenedGas SGr;
+
+	EOS* eos1 = &SGl;
+	EOS* eos2 = &SGr;
+
+	initial_conditions_RP_SG(SGl, SGr, Test);
 
 	double t = 0.0;
 
@@ -3146,7 +3150,7 @@ void GhostFluidMethods::solver_RP_SG(EOS* eos1, EOS* eos2, gfmTests Test){
 			//std::cout << phi(i) << '\t' << testsgn << std::endl;
 			if (testsgn > -2 && testsgn < 1 && i!=N){
 				//std::cout << count << " boundary is at i = " << i << std::endl;
-				ghost_boundary_RP_SG(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
+				ghost_boundary_RP_SG(var1, SGl, var2, SGr, i+1); //matrix 2 contains ghost points
 			}
 
 			//if (count==0) std::cout << var1->U.row(i) << std::endl; 
@@ -3209,6 +3213,7 @@ void GhostFluidMethods::solver_RP_SG(EOS* eos1, EOS* eos2, gfmTests Test){
 
 	}while(t<Test.tstop);
 	std::cout << count << std::endl;
+	output(eos1, eos2);
 
 }
 ///////////////////////////////////////////////////////////////////
