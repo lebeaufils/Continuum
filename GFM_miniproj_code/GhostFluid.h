@@ -46,7 +46,7 @@ public:
 	//RP based GFM solver
 	void initial_conditions_RP(EOS*, EOS*, gfmTests);
 	void initial_conditions_RP(EOS*, EOS*, EOS*, gfmTests);
-	//void initial_conditions_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
+	void initial_conditions_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
 	void solver_RP(EOS*, EOS*, gfmTests);
 	void solver_RP(gfmTests);	
 	//void solver_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
@@ -73,8 +73,9 @@ public:
 	double compute_star_velocity(double, EOS*, EOS*);
 	double compute_shock_density(double, EOS*);
 	double compute_rarefraction_density(double, EOS*);
-	void exact_solver(gfmTests, EOS*, EOS*); 
-	void exact_solver(gfmTests, EOS*, EOS*, EOS*);
+	//void exact_solver(gfmTests, EOS*, EOS*); 
+	//void exact_solver(gfmTests, EOS*, EOS*, EOS*);
+	void exact_solver(gfmTests);
 
 	double compute_star_pressure_SG(EOS*, EOS*);
 	void exact_solver_SG(gfmTests, EOS*, EOS*); 
