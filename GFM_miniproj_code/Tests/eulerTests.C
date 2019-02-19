@@ -211,30 +211,6 @@ void gfmTests::testSG(){ //Water - Air shock tube
 }
 
 void gfmTests::testMach10(){
-	/*number_of_materials = 4;
-
-	//vector Left(5.92593, 6220.51, 4.665e7);
-	vector Left(3.92593, 1622.051, 9e6);
-	vector MiddleLeft(1.0, 0.0, 1e5);
-	vector MiddleRight(0.1379, 0, 1e5);
-	vector Right(1.0, 0.0, 1e5);
-
-	initialL = Left;
-	initialM1 = MiddleLeft;
-	initialM2 = MiddleRight;
-	initialR = Right;
-
-	L = 1.0;
-	x0 = 0.05; 
-	x1 = 0.4; 
-	x2 = 0.6;
-	//tstop = 0.0002;
-	tstop = 0.0002;
-
-	yL = 1.4;
-	yM1 = 1.4;
-	yM2 = 1.67;
-	yR = 1.4;*/
 
 	number_of_materials = 3;
 	vector Left(5.92593, 6220.51, 4.665e7);
@@ -254,6 +230,33 @@ void gfmTests::testMach10(){
 	yL = 1.4;
 	yR = 1.67;
 	yM1 = 1.4;
+}
+
+void gfmTests::testMach10_2(){
+	number_of_materials = 4;
+
+	vector Left(5.92593, 6220.51, 4.665e7);
+	//vector Left(3.92593, 1622.051, 9e6);
+	vector MiddleLeft(1.0, 0.0, 1e5);
+	vector MiddleRight(0.1379, 0, 1e5);
+	vector Right(1.0, 0.0, 1e5);
+
+	initialL = Left;
+	initialM1 = MiddleLeft;
+	initialM2 = MiddleRight;
+	initialR = Right;
+
+	L = 1.0;
+	x0 = 0.05; 
+	x1 = 0.4; 
+	x2 = 0.6;
+
+	tstop = 0.0002;
+
+	yL = 1.4;
+	yM1 = 1.4;
+	yM2 = 1.67;
+	yR = 1.4;
 }
 
 

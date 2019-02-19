@@ -270,8 +270,8 @@ void GhostFluidMethods::update_levelset(double dt){
 	}
 	phi = phi_1;
 	boundary_conditions(); //levelsetfunction
-	//reinitialisation();
-	//boundary_conditions();
+	reinitialisation(); boundary_conditions();
+
 }
 
 void GhostFluidMethods::solver(gfmTests Test){
@@ -446,6 +446,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 			//evolving the levelset equation
 			update_levelset(dt);
 			
+			
 			t += dt;
 			count += 1;
 
@@ -468,33 +469,33 @@ void GhostFluidMethods::solver(gfmTests Test){
 			for (int i=1; i<N+1; i++){
 				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 				//std::cout << phi(i) << '\t' << testsgn << std::endl;
-				if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+				if (testsgn > -2 && testsgn < 1 && i<N+1){ //-1 or 0, the boundary is crossed
 					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 						if (flag1 == false && flag2 == false && flag3 == false){
-							for (int j=0; j<4; j++){
+							for (int j=0; j<3; j++){
 								//std::cout << "flag1" <<std::endl;
 								//to the left of interface, the ghostfluid is in var2
 								ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
 								//to the right of the interface, the ghostfluid is in var1
-								ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
+								if ((i+1)+j+1 <= N) ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
 								//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 								//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
-								if (j >= 3) flag1 = true;
+								if (j >= 2) flag1 = true;
 							}
 						}
 						//populating the 3rd boundary, second discontinuity in var1
 						//the materials now obey eos3 in var1 and eos4 in var2
 						else if (flag1 == true && flag2 == true && flag3 == false){
-							for (int j=0; j<4; j++){
+							for (int j=0; j<3; j++){
 								//std::cout << "flag3" <<std::endl;
 								ghost_boundary(var1, eos3, var2, eos4, (i+1)-j); 
-								ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
-								if (j >= 3) flag3 = true;
+								if ((i+1)+j+1 <= N) ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
+								if (j >= 2) flag3 = true;
 							}
 						}
 					}
 					else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
-						for(int j=0; j<4; j++){
+						for(int j=0; j<3; j++){
 							//to the left of interface, the ghostfluid is in var1
 							//std::cout << var2->U.row(i+1-j) << std::endl;
 							if(flag1 == true && flag2 == false && flag3 == false){
@@ -502,10 +503,10 @@ void GhostFluidMethods::solver(gfmTests Test){
 								//note that we are now in the right material which has EOS: eos3
 								ghost_boundary(var2, eos2, var1, eos3, (i+1)-j);
 								//to the right of the interface, the ghostfluid is in var2
-								ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
+								if ((i+1)+j+1 <= N) ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
 								//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 								//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
-								if (j >= 3) flag2 = true;
+								if (j >= 2) flag2 = true;
 							}
 						}
 					}
@@ -574,6 +575,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 
 			//evolving the levelset equation
 			update_levelset(dt);
+			
 			
 			t += dt;
 			count += 1;
@@ -908,6 +910,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 
 			//evolving the levelset equation
 			update_levelset(dt);
+			
 
 			var1->boundary_conditions();
 			var2->boundary_conditions();

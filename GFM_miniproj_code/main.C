@@ -63,7 +63,7 @@ int main(void){
 	gfmTests Tests(1000, 1.0); //(N, L)
 	//Tests.testB_Wang();
 	//Tests.testB();
-	Tests.testMach10();
+	Tests.testMach10_2();
 
 	//Tests.set_EOS(eos1, eos2);
 
