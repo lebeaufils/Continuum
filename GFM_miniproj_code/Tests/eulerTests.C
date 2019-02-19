@@ -118,7 +118,6 @@ void gfmTests::testA(){
 	initialR = Right;
 
 	L = 1.0;
-	//N = 100;
 	x0 = 0.5;
 	tstop = 0.0007;
 	//tstop = 0;
@@ -211,20 +210,53 @@ void gfmTests::testSG(){ //Water - Air shock tube
 	Pref2 = 0.0; 
 }
 
-/*void gfmTests::set_EOS(EOS* eosL, EOS* eosR){
-	eosL->y = yL;
-	eosR->y = yR;
+void gfmTests::testMach10(){
+	/*number_of_materials = 4;
 
-	StiffenedGas* SGl = dynamic_cast<StiffenedGas*>(eosL);
-	StiffenedGas* SGr = dynamic_cast<StiffenedGas*>(eosR);
+	//vector Left(5.92593, 6220.51, 4.665e7);
+	vector Left(3.92593, 1622.051, 9e6);
+	vector MiddleLeft(1.0, 0.0, 1e5);
+	vector MiddleRight(0.1379, 0, 1e5);
+	vector Right(1.0, 0.0, 1e5);
 
-	if (SGl) {
-		SGl->Pref = Pref1;
-	}
-	if (SGr){
-		SGr->Pref = Pref2;
-	}
-}*/
+	initialL = Left;
+	initialM1 = MiddleLeft;
+	initialM2 = MiddleRight;
+	initialR = Right;
+
+	L = 1.0;
+	x0 = 0.05; 
+	x1 = 0.4; 
+	x2 = 0.6;
+	//tstop = 0.0002;
+	tstop = 0.0002;
+
+	yL = 1.4;
+	yM1 = 1.4;
+	yM2 = 1.67;
+	yR = 1.4;*/
+
+	number_of_materials = 3;
+	vector Left(5.92593, 6220.51, 4.665e7);
+	vector Middle(1.0, 0.0, 1e5);
+	vector Right(0.1379, 0.0, 1e5);
+
+	initialL = Left;
+	initialM1 = Middle;
+	initialR = Right;
+
+	L = 1.0;
+	//N = 100;
+	x0 = 0.05; //Right going shock between 5th ans 6th grid point (on a 100 grid)
+	x1 = 0.5; //Material discontinuity between 50 and 51st point
+	tstop = 0.0002;
+
+	yL = 1.4;
+	yR = 1.67;
+	yM1 = 1.4;
+}
+
+
 
 
 

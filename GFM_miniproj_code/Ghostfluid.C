@@ -268,9 +268,10 @@ void GhostFluidMethods::update_levelset(double dt){
 		}
 		phi_1(i) = HJ_FirstOrder(velocity, dt, i);
 	}
-
 	phi = phi_1;
 	boundary_conditions(); //levelsetfunction
+	//reinitialisation();
+	//boundary_conditions();
 }
 
 void GhostFluidMethods::solver(gfmTests Test){
@@ -345,14 +346,14 @@ void GhostFluidMethods::solver(gfmTests Test){
 
 			//evolving the levelset equation
 			update_levelset(dt);
-			reinitialisation();
-			
+	
+
 			t += dt;
 			count += 1;
 
 		}while(t<Test.tstop);
 		std::cout << count << std::endl;
-		reinitialisation();
+
 		output(eos1, eos2);
 	}
 
@@ -364,9 +365,9 @@ void GhostFluidMethods::solver(gfmTests Test){
 			for (int i=1; i<N+1; i++){
 				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 				//std::cout << phi(i) << '\t' << testsgn << std::endl;
-				if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+				if (testsgn > -2 && testsgn < 1 && i<N-2){ //-1 or 0, the boundary is crossed
 					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
-						for (int j=0; j<4; j++){
+						for (int j=0; j<3; j++){
 							//to the left of interface, the ghostfluid is in var2
 							ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
 							//to the right of the interface, the ghostfluid is in var1
@@ -376,7 +377,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 						}
 					}
 					else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
-						for(int j=0; j<4; j++){
+						for(int j=0; j<3; j++){
 							//std::cout << var2->U.row(i+1-j) << std::endl;
 							//to the left of interface, the ghostfluid is in var1
 								//note that we are now in the right material which has EOS: eos3
@@ -512,7 +513,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 			}
 
 			if(flag1==false || flag2==false || flag3==false){
-				throw "Failed to populate Ghost Fluid Cells";
+				//throw "Failed to populate Ghost Fluid Cells";
 			}
 
 			var1->boundary_conditions();
@@ -1039,7 +1040,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 			}
 
 			if(flag1==false || flag2==false || flag3==false){
-				throw "Failed to populate Ghost Fluid Cells";
+				//throw "Failed to populate Ghost Fluid Cells";
 			}
 
 			var1->boundary_conditions();
@@ -1079,10 +1080,6 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 				//if (count == 50 )std::cout << i << '\t' << phi(i) << '\t'  << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
 			}
 
-			if (count == 280 ){
-				//for (int i=1; i<N+2; i++)std::cout << i << '\t' << phi(i) << '\t'  << var2->F.row(i) << std::endl;
-			}
-
 			//set timestep following CFL conditions with max wavespeed between both materials
 			Smax = fmax(var1->Smax, var2->Smax);
 			dt = CFL*(dx/Smax); 
@@ -1105,7 +1102,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 
 			//evolving the levelset equation
 			update_levelset(dt);
-			
+
 			t += dt;
 			count += 1;
 
@@ -1118,86 +1115,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 
 	delete eosL; delete eosR;
 }
-/*
-void GhostFluidMethods::solver_RP(EOS* eos1, EOS* eos2, gfmTests Test){
-	slopeLimiter a;
 
-	a = var1->getLimiter();
-
-	double t = 0.0;
-
-	do{
-		//compute ghost fluid boundaries
-		for (int i=1; i<N+1; i++){
-			int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
-			//std::cout << phi(i) << '\t' << testsgn << std::endl;
-			if (testsgn > -2 && testsgn < 1 && i!=N){
-				//std::cout << count << " boundary is at i = " << i << std::endl;
-				ghost_boundary_RP(var1, eos1, var2, eos2, i+1); //matrix 2 contains ghost points
-			}
-
-			//if (count==0) std::cout << var1->U.row(i) << std::endl; 
-		}
-
-		var1->boundary_conditions();
-		var2->boundary_conditions();
-
-		for (int i=2; i<N+2; i++){
-			//std::cout << var1->U.row(i) << std::endl;
-		}
-
-		//reconstruct data to piecewise linear representation
-		var1->data_reconstruction(a);
-		var2->data_reconstruction(a);
-
-
-		for (int i=1; i<N+2; i++){
-			//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
-			if(phi(i-1) < 0){
-				var1->compute_fluxes(eos1, i);
-			}
-			if (phi(i-1) > 0){
-				var2->compute_fluxes(eos2, i);
-			}
-			//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
-			//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
-		}
-
-		for (int i=1; i<N+2; i++){
-			//if (count == 1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << '\t' << var2->F.row(i) << std::endl;
-		}
-
-
-		//set timestep following CFL conditions with max wavespeed between both materials
-		Smax = fmax(var1->Smax, var2->Smax);
-		dt = CFL*(dx/Smax); 
-		if (t + dt > Test.tstop) dt = Test.tstop - t;
-
-		//updating both materials, looping through real and ghost points
-		for (int i=2; i<N+2; i++){
-			if (phi(i-1) < 0){
-				var1->conservative_update_formula(dt, dx, i);
-			}
-			if (phi(i-1) >=0) {
-				var2->conservative_update_formula(dt, dx, i);
-			}
-			//if (count==0) std::cout << var1->U.row(i) << std::endl;
-		}
-
-		//evolving the levelset equation
-		update_levelset(dt);
-
-		var1->boundary_conditions();
-		var2->boundary_conditions();
-		
-		t += dt;
-		count += 1;
-
-	}while(t<Test.tstop);
-	std::cout << count << std::endl;
-
-}
-*/
 ///////////////////////////////////////////////////////////////////
 
 
@@ -1256,7 +1174,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2, EOS* eos3){
 		}
 
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << e << std::endl;
+		<< '\t' << P << '\t' << phi(i-1) << std::endl;
 	}
 }
 
@@ -1302,7 +1220,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4){
 		}
 
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << e << std::endl;
+		<< '\t' << P << '\t' << phi(i-1) << std::endl;
 	}
 }
 
@@ -1433,6 +1351,11 @@ double GhostFluidMethods::compute_rarefraction_density(double pstar, EOS* eos){
 }
 
 void GhostFluidMethods::exact_solver(gfmTests Test){
+
+	if (Test.number_of_materials > 3){
+		return;
+	}
+
 	EOS* eosleft = new IdealGas();
 	EOS* eosright = new IdealGas();
 	//setting material EOS parameter

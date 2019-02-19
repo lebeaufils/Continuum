@@ -43,6 +43,7 @@ public:
 
 	//reinitialisation
 	void reinitialisation();
+	//void reconstruction();
 };
 
 

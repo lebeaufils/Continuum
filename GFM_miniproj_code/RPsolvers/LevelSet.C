@@ -127,7 +127,8 @@ void LevelSetFunction::reinitialisation(){
 				double phi_x = fmin(phi(i+1), phi(i-1));
 				//updating value based on the eikonal equation
 				double phi_tmp = phi_x + dx; //taking the positive root
-				if (phi_tmp < phi(i)) phi(i) = phi_tmp;
+				//if (phi_tmp < phi(i)) phi(i) = phi_tmp;
+				phi(i) = phi_tmp;
 			}
 		}
 
@@ -137,12 +138,63 @@ void LevelSetFunction::reinitialisation(){
 				//Since phi is negative, the value closest to the boundary is the larger number
 				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
 				double phi_tmp = phi_x - dx;
-				if (phi_tmp > phi(i)) phi(i) = phi_tmp;
+				//if (phi_tmp > phi(i)) phi(i) = phi_tmp;
+				phi(i) = phi_tmp;
 			}
 		}
 	}
 	boundary_conditions();
 }
+
+/*void LevelSetFunction::reconstruction(){
+	double newx0; 
+	double newx1;
+
+	int count = 0;
+	for (int i=1; i<N+1; i++){
+		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+		if (count == 0){
+			if (testsgn == 0) {
+				double diff = dx*phi(i)/(phi(i+1) - phi(i));
+				newx0 = phi(i) + diff;
+				count = 1;
+				i += 1;
+			}
+			else if (phi(i) == 0) {
+				newx0 = phi(i);
+				count = 1;
+				i += 1;
+			}
+		}
+
+		else if (count == 1) {
+			if (testsgn == 0) {
+				double diff = dx*phi(i)/(phi(i+1) - phi(i));
+				newx1 = phi(i) + diff;
+				count = 2;
+			}
+
+			else if (phi(i) == 0) {
+				newx1 = phi(i);
+				count = 2;
+			}
+		}
+	}
+
+
+	//std::cout << "Interface: " << newx0 << '\t' << newx1 << std::endl;
+	// reconstructing the levelset function
+	for (int i=0; i<N; i++){
+		double dist = fmin(abs(X(i+1) - newx0), abs(X(i+1) - newx1));
+		if (X(i+1) < newx0 || X(i+1) > newx1) {
+			phi(i+1) = -dist;
+		}
+
+		else {
+			phi(i+1) = dist;
+		}
+	}
+}*/
 
 
 
