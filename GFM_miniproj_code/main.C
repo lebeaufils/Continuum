@@ -61,7 +61,7 @@ int main(void){
 
 
 	gfmTests Tests(400, 1.0); //(N, L)
-	Tests.testSG();
+	Tests.testA();
 	//Tests.test_example_1();
 
 	//Tests.set_EOS(eos1, eos2);
@@ -69,14 +69,14 @@ int main(void){
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 
 	try{
-		gfmProblem.exact_solver_SG(Tests);
+		gfmProblem.exact_solver(Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 
 	}
 	
 	try{
-		gfmProblem.solver_RP_SG(Tests);
+		gfmProblem.solver(Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 

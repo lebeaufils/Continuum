@@ -89,3 +89,62 @@ double LevelSetFunction::HJ_FirstOrder(double velocity, double dt, int i){ //vel
 	return phi_1;
 }
 
+void LevelSetFunction::reinitialisation(){
+//Sweeping in the positive x-direction
+	for (int i=1; i<N+1; i++){
+		//Consider the region phi > 0;
+		if(phi(i) > 0){
+			//Cell phi(i) is avaliable tp update if it is not adjacent to the interface
+			if (phi(i+1) > 0 && phi(i-1) > 0){
+				//Neither of its neighbours are <= 0
+				//Taking the value of phi_x closest to the boudnary
+				double phi_x = fmin(phi(i+1), phi(i-1));
+				//updating value based on the eikonal equation
+				double phi_tmp = phi_x + dx; //taking the positive root
+				if (phi_tmp < phi(i)) phi(i) = phi_tmp;
+			}
+		}
+
+		else if (phi(i) < 0){
+			//Consider the region phi < 0;
+			if (phi(i+1) < 0 && phi(i-1) < 0){
+				//Since phi is negative, the value closest to the boundary is the larger number
+				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
+				double phi_tmp = phi_x - dx;
+				if (phi_tmp > phi(i)) phi(i) = phi_tmp;
+			}
+		}
+	}
+	boundary_conditions();
+//Sweeping in the negative x-direction
+	for (int i=N; i>0; i--){
+		//Consider the region phi > 0;
+		if(phi(i) > 0){
+			//Cell phi(i) is avaliable tp update if it is not adjacent to the interface
+			if (phi(i+1) > 0 && phi(i-1) > 0){
+				//Neither of its neighbours are <= 0
+				//Taking the value of phi_x closest to the boudnary
+				double phi_x = fmin(phi(i+1), phi(i-1));
+				//updating value based on the eikonal equation
+				double phi_tmp = phi_x + dx; //taking the positive root
+				if (phi_tmp < phi(i)) phi(i) = phi_tmp;
+			}
+		}
+
+		else if (phi(i) < 0){
+			//Consider the region phi < 0;
+			if (phi(i+1) < 0 && phi(i-1) < 0){
+				//Since phi is negative, the value closest to the boundary is the larger number
+				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
+				double phi_tmp = phi_x - dx;
+				if (phi_tmp > phi(i)) phi(i) = phi_tmp;
+			}
+		}
+	}
+	boundary_conditions();
+}
+
+
+
+
+

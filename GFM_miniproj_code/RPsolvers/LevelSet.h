@@ -42,7 +42,7 @@ public:
 	//void HJ_WENO(VectorN2, double);
 
 	//reinitialisation
-	//void FastMarchingMethod();
+	void reinitialisation();
 };
 
 
