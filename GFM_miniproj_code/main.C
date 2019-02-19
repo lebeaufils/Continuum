@@ -60,10 +60,10 @@ int main(void){
 */	
 
 
-	gfmTests Tests(400, 1.0); //(N, L)
+	gfmTests Tests(100, 1.0); //(N, L)
 	//Tests.testB_Wang();
 	//Tests.testB();
-	Tests.testMach10_2();
+	Tests.testMach10();
 
 	//Tests.set_EOS(eos1, eos2);
 
