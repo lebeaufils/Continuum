@@ -30,6 +30,9 @@ public:
 		delete var1;
 		delete var2;
 	};
+
+	void ghost_test_rightghost(MUSCL*, EOS*, MUSCL*, EOS*, int);
+	void ghost_test_leftghost(MUSCL*, EOS*, MUSCL*, EOS*, int);
 	
 	void ghost_boundary(MUSCL*, EOS*, MUSCL*, EOS*, int); //original GFM
 	void ghost_boundary_RP(MUSCL*, EOS*, MUSCL*, EOS*, int); //RP based

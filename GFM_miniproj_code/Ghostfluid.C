@@ -27,7 +27,52 @@ void GhostFluidMethods::ghost_boundary(MUSCL* Ureal, EOS* eosReal, MUSCL* Ughost
 	//std::cout << dreal << '\t' << velocityreal << '\t' << Preal << std::endl;
 }
 
+void GhostFluidMethods::ghost_test_rightghost(MUSCL* Ureal, EOS* eosReal, MUSCL* Ughost, EOS* eosGhost, int i){
+//original GFM - constant entropy extrapolation
+//				continuous Pressure and Velocity
+	//consider an interface between i and i+1
+	//for the right ghost fluid, ghostvalues start from i+1 (real fluid is in cell i)
+	double dreal = Ureal->U(i, 0); //density
+	double velocityreal = Ureal->U(i, 1)/Ureal->U(i, 0);
+	double Preal = eosReal->Pressure(Ureal->U, i);
 
+	double Pghost = Preal; 
+	double velocityghost = velocityreal;
+	double dghost = pow(pow(dreal, eosReal->y)*(Pghost/Preal), 1./eosGhost->y);
+
+	//setting the conservative form of the ghost variables for the next 3 points
+	for (int j=0; j<3; j++){
+		if(i+j < N+1){
+			Ughost->U(i+j, 0) = dghost;
+			Ughost->U(i+j, 1) = velocityghost*dghost;
+			Ughost->U(i+j, 2) = Pghost/(eosGhost->y-1) + 0.5*dghost*pow(velocityghost, 2.0);
+		}
+		else { 
+			Ughost->U.row(i+j) = Ughost->U.row(i+j-1);
+		}
+	}
+}
+
+void GhostFluidMethods::ghost_test_leftghost(MUSCL* Ureal, EOS* eosReal, MUSCL* Ughost, EOS* eosGhost, int i){
+//original GFM - constant entropy extrapolation
+//				continuous Pressure and Velocity
+	//consider an interface between i and i+1
+	//for the right ghost fluid, ghostvalues start from i+1 (real fluid is in cell i)
+	double dreal = Ureal->U(i, 0); //density
+	double velocityreal = Ureal->U(i, 1)/Ureal->U(i, 0);
+	double Preal = eosReal->Pressure(Ureal->U, i);
+
+	double Pghost = Preal; 
+	double velocityghost = velocityreal;
+	double dghost = pow(pow(dreal, eosReal->y)*(Pghost/Preal), 1./eosGhost->y);
+
+	//setting the conservative form of the ghost variables for the next 3 points
+	for (int j=0; j<3; j++){
+		Ughost->U(i-j, 0) = dghost;
+		Ughost->U(i-j, 1) = velocityghost*dghost;
+		Ughost->U(i-j, 2) = Pghost/(eosGhost->y-1) + 0.5*dghost*pow(velocityghost, 2.0);
+	}
+}
 //--------------------------------------------------------
 //	MUSCL
 //--------------------------------------------------------
@@ -202,10 +247,10 @@ void GhostFluidMethods::initial_conditions(EOS* eos1, EOS* eos2, EOS* eos3, EOS*
 	for (int i=1; i<N+1; i++){
 		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 		//std::cout << phi(i) << '\t' << testsgn << std::endl;
-		if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+		if (testsgn > -2 && testsgn < 1 && i<N){ //-1 or 0, the boundary is crossed
 			if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 				if (flag1 == false && flag2 == false && flag3 == false){
-					for (int j=0; j<4; j++){
+					/*for (int j=0; j<4; j++){
 						//std::cout << "flag1" <<std::endl;
 						//to the left of interface, the ghostfluid is in var2
 						ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
@@ -214,21 +259,32 @@ void GhostFluidMethods::initial_conditions(EOS* eos1, EOS* eos2, EOS* eos3, EOS*
 						//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 						//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
 						if (j >= 3) flag1 = true;
-					}
+					}*/
+					ghost_test_leftghost(var1, eos1, var2, eos2, i+1);
+					ghost_test_rightghost(var2, eos2, var1, eos1, i+2);
+					flag1 = true;
 				}
 				//populating the 3rd boundary, second discontinuity in var1
 				//the materials now obey eos3 in var1 and eos4 in var2
 				else if (flag1 == true && flag2 == true && flag3 == false){
-					for (int j=0; j<4; j++){
+					ghost_test_leftghost(var1, eos3, var2, eos4, i+1);
+					ghost_test_rightghost(var2, eos4, var1, eos3, i+2);
+					flag3 = true;
+					/*for (int j=0; j<4; j++){
 						//std::cout << "flag3" <<std::endl;
 						ghost_boundary(var1, eos3, var2, eos4, (i+1)-j); 
 						ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
 						if (j >= 3) flag3 = true;
-					}
+					}*/
 				}
 			}
 			else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
-				for(int j=0; j<4; j++){
+				if(flag1 == true && flag2 == false && flag3 == false){
+					ghost_test_rightghost(var1, eos3, var2, eos2, i+2);
+					ghost_test_leftghost(var2, eos2, var1, eos3, i+1);
+					flag2 = true;
+				}
+				/*for(int j=0; j<4; j++){
 					//to the left of interface, the ghostfluid is in var1
 					//std::cout << var2->U.row(i+1-j) << std::endl;
 					if(flag1 == true && flag2 == false && flag3 == false){
@@ -241,13 +297,13 @@ void GhostFluidMethods::initial_conditions(EOS* eos1, EOS* eos2, EOS* eos3, EOS*
 						//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
 						if (j >= 3) flag2 = true;
 					}
-				}
+				}*/
 			}
 		}
 	}
 
 	//for (int i=1; i<N+1; i++){
-	//	std::cout << i << '\t' << get_sgn(phi(i)) << '\t' <<var1->U.row(i+1) << '\t' << var2->U.row(i+1) << std::endl;
+		//std::cout << i << '\t' << get_sgn(phi(i)) << '\t' <<var1->U.row(i+1) << '\t' << var2->U.row(i+1) << std::endl;
 	//}
 
 	var1->boundary_conditions();
@@ -269,6 +325,7 @@ void GhostFluidMethods::update_levelset(double dt){
 		phi_1(i) = HJ_FirstOrder(velocity, dt, i);
 	}
 	phi = phi_1;
+
 	boundary_conditions(); //levelsetfunction
 	reinitialisation(); boundary_conditions();
 
@@ -466,10 +523,9 @@ void GhostFluidMethods::solver(gfmTests Test){
 			bool flag2 = false;
 			bool flag3 = false;
 
-			for (int i=1; i<N+1; i++){
+			/*for (int i=1; i<N+1; i++){
 				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
-				//std::cout << phi(i) << '\t' << testsgn << std::endl;
-				if (testsgn > -2 && testsgn < 1 && i<N+1){ //-1 or 0, the boundary is crossed
+				if (testsgn > -2 && testsgn < 1){ //-1 or 0, the boundary is crossed
 					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 						if (flag1 == false && flag2 == false && flag3 == false){
 							for (int j=0; j<3; j++){
@@ -477,7 +533,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 								//to the left of interface, the ghostfluid is in var2
 								ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
 								//to the right of the interface, the ghostfluid is in var1
-								if ((i+1)+j+1 <= N) ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
+								if ((i+1)+j+1 < N+1) ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
 								//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 								//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
 								if (j >= 2) flag1 = true;
@@ -489,7 +545,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 							for (int j=0; j<3; j++){
 								//std::cout << "flag3" <<std::endl;
 								ghost_boundary(var1, eos3, var2, eos4, (i+1)-j); 
-								if ((i+1)+j+1 <= N) ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
+								if ((i+1)+j+1 < N+2) ghost_boundary(var2, eos4, var1, eos3, (i+1)+j+1);
 								if (j >= 2) flag3 = true;
 							}
 						}
@@ -503,7 +559,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 								//note that we are now in the right material which has EOS: eos3
 								ghost_boundary(var2, eos2, var1, eos3, (i+1)-j);
 								//to the right of the interface, the ghostfluid is in var2
-								if ((i+1)+j+1 <= N) ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
+								if ((i+1)+j+1 < N+1) ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
 								//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 								//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
 								if (j >= 2) flag2 = true;
@@ -511,52 +567,114 @@ void GhostFluidMethods::solver(gfmTests Test){
 						}
 					}
 				}
+			}*/
+
+			for (int i=1; i<N; i++){
+				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+				if (testsgn > -2 && testsgn < 1 && i<N){ //-1 or 0, the boundary is crossed
+					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
+						if (flag1 == false && flag2 == false && flag3 == false){
+							ghost_test_leftghost(var1, eos1, var2, eos2, i+1);
+							if (i<N) ghost_test_rightghost(var2, eos2, var1, eos1, i+2);
+							flag1 = true;
+						}
+						//populating the 3rd boundary, second discontinuity in var1
+						//the materials now obey eos3 in var1 and eos4 in var2
+						else if (flag1 == true && flag2 == true && flag3 == false){
+							ghost_test_leftghost(var1, eos3, var2, eos4, i+1);
+							if (i<N) ghost_test_rightghost(var2, eos4, var1, eos3, i+2);
+							flag3 = true;
+						}
+					}
+					else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
+						if(flag1 == true && flag2 == false && flag3 == false){
+							if (i<N) ghost_test_rightghost(var1, eos3, var2, eos2, i+2);
+							ghost_test_leftghost(var2, eos2, var1, eos3, i+1);
+							flag2 = true;
+						}
+					}
+				}
 			}
 
-			if(flag1==false || flag2==false || flag3==false){
-				//throw "Failed to populate Ghost Fluid Cells";
+			//if (flag1==false || flag2==false || flag3==false) {
+			/*if (flag1 == true && flag2 == true && flag3==false){
+				//std::cout << "Boundary is beyond the domain " << count << std::endl;
+				//var2 has exit the domain
+				std::cout << "right " << count << std::endl;
+				//for (int i=1; i<N+1; i++){
+					//int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+					//if (count == 1600) std::cout << i << '\t' << phi(i) << '\t' << testsgn << std::endl;
+				//}
 			}
+			if (flag1 == true && flag2==false){
+				//std::cout << "Boundary is beyond the domain " << count << std::endl;
+				//var2 has exit the domain
+				std::cout << "middle " << count << std::endl;
+			}
+			if (flag1==false){
+				//std::cout << "Boundary is beyond the domain " << count << std::endl;
+				//var2 has exit the domain
+				std::cout << "left " << count << std::endl;
+			}*/
+
+
+			//if(flag1==false || flag2==false || flag3==false){
+				//throw "Failed to populate Ghost Fluid Cells";
+			//}
 
 			var1->boundary_conditions();
 			var2->boundary_conditions();
+
+			for (int i=0; i<N; i++){
+				//if(count==1863) std::cout << i+1 << '\t' << phi(i+1) << '\t' << var1->U.row(i+2) << std::endl;
+			}
 
 			//reconstruct data to piecewise linear representation
 			var1->data_reconstruction(a);
 			var2->data_reconstruction(a);
 
+			//if(count==1863)std::cout << "flux fails" << std::endl;
+
 			//compute fluxes at current timestep		
 			//using the previous flags which should now be true,
+			//for (int i=1; i<N+2; i++){ //note the change here
+
+			bool flagA = true;
+			bool flagB = true;
+
 			for (int i=1; i<N+2; i++){
-				if (phi(i-1) < 0 && flag1==true && flag2==true){
+				if (phi(i-1) < 0 && flagA==true && flagB==true){
 					//std::cout <<"a " << i << std::endl;
 					var1->compute_fluxes(eos1, i);
 					//if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eos1, i+1);
 				}
-				if (phi(i-1) >= 0 && flag2==true){
+				if (phi(i-1) >= 0 && flagB==true){
 					//std::cout <<"b " << i << std::endl;
 					if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eos1, i-1);
 					var2->compute_fluxes(eos2, i);
 					//if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eos1, i+1);
-					flag1 = false;
+					flagA = false;
 				}
-				if (phi(i-1) < 0 && flag1 == false){
+				if (phi(i-1) < 0 && flagA == false){
 					//std::cout <<"c " << i << std::endl;
 					if (get_sgn(phi(i-2)) > 0) var1->compute_fluxes(eos3, i-1);
 					var1->compute_fluxes(eos3, i);
-					flag2 = false;
+					flagB = false;
 				}
-				if (phi(i-1) >= 0 && flag1==false && flag2==false){
+				if (phi(i-1) >= 0 && flagA==false && flagB==false){
 					if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eos1, i-1);
 					var2->compute_fluxes(eos2, i);
 				}
 				//if (count == 1 ) std::cout << var1->U.row(i) << std::endl; //'\t' << var2->U.row(i) << std::endl;
-				//if (count == 180 )std::cout << i << '\t' << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+				//if (count == 1460 )std::cout << i+1 << '\t' << phi(i) << '\t' << var1->U.row(i+1) << std::endl;//'\t' << var2->F.row(i) << std::endl;
 			}
 
 			//set timestep following CFL conditions with max wavespeed between both materials
 			Smax = fmax(var1->Smax, var2->Smax);
 			dt = CFL*(dx/Smax); 
 			if (t + dt > Test.tstop) dt = Test.tstop - t;
+
+			//if(count==1863)std::cout << "update fails" << std::endl;
 
 			//updating both materials, looping through real and ghost points
 			for (int i=2; i<N+2; i++){
@@ -566,17 +684,20 @@ void GhostFluidMethods::solver(gfmTests Test){
 				else {
 					var2->conservative_update_formula(dt, dx, i);
 				}
-				//if (phi(i)<0) var1->conservative_update_formula(dt, dx, i);
-				//else var2->conservative_update_formula(dt, dx, i);
+			}
+
+			for (int i=0; i<N; i++){
+				//if (count == 1560) std::cout << i+1 << '\t' << phi(i+1) << '\t' << var1->U.row(i+2) << '\t' << var2->U.row(i+2) << std::endl;
 			}
 
 			var1->boundary_conditions();
 			var2->boundary_conditions();
 
+			//if(count==1863)std::cout << "Levelset fails" << std::endl;
 			//evolving the levelset equation
 			update_levelset(dt);
-			
-			
+			//if(count==1863) t = Test.tstop;
+
 			t += dt;
 			count += 1;
 
@@ -591,7 +712,6 @@ void GhostFluidMethods::solver(gfmTests Test){
 ///////////////////////////////////////////////////////////////////
 // Riemann Problem based GFM
 ///////////////////////////////////////////////////////////////////
-//try left and right GB
 void GhostFluidMethods::ghost_boundary_RP(MUSCL* Uleft, EOS* eosleft, MUSCL* Uright, EOS* eosright, int i){
 //Exact riemannsolver for idealgas and stiffened gas. Ghost point values are the RP star states.
 //Consider an interface between i and i+1

@@ -99,9 +99,11 @@ void LevelSetFunction::reinitialisation(){
 				//Neither of its neighbours are <= 0
 				//Taking the value of phi_x closest to the boudnary
 				double phi_x = fmin(phi(i+1), phi(i-1));
+				//if (i==N) phi_x = phi(i-1);
 				//updating value based on the eikonal equation
 				double phi_tmp = phi_x + dx; //taking the positive root
-				if (phi_tmp < phi(i)) phi(i) = phi_tmp;
+				//if (phi_tmp < phi(i)) phi(i) = phi_tmp;
+				phi(i) = phi_tmp;
 			}
 		}
 
@@ -110,8 +112,10 @@ void LevelSetFunction::reinitialisation(){
 			if (phi(i+1) < 0 && phi(i-1) < 0){
 				//Since phi is negative, the value closest to the boundary is the larger number
 				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
+				//if (i==N) phi_x = phi(i-1);
 				double phi_tmp = phi_x - dx;
-				if (phi_tmp > phi(i)) phi(i) = phi_tmp;
+				//if (phi_tmp > phi(i)) phi(i) = phi_tmp;
+				phi(i) = phi_tmp;
 			}
 		}
 	}
@@ -125,6 +129,7 @@ void LevelSetFunction::reinitialisation(){
 				//Neither of its neighbours are <= 0
 				//Taking the value of phi_x closest to the boudnary
 				double phi_x = fmin(phi(i+1), phi(i-1));
+				//if (i==N) phi_x = phi(i-1);
 				//updating value based on the eikonal equation
 				double phi_tmp = phi_x + dx; //taking the positive root
 				//if (phi_tmp < phi(i)) phi(i) = phi_tmp;
@@ -137,6 +142,7 @@ void LevelSetFunction::reinitialisation(){
 			if (phi(i+1) < 0 && phi(i-1) < 0){
 				//Since phi is negative, the value closest to the boundary is the larger number
 				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
+				//if (i==N) phi_x = phi(i-1);
 				double phi_tmp = phi_x - dx;
 				//if (phi_tmp > phi(i)) phi(i) = phi_tmp;
 				phi(i) = phi_tmp;
