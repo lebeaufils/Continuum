@@ -236,7 +236,6 @@ void gfmTests::testMach10_2(){
 	number_of_materials = 4;
 
 	vector Left(5.92593, 6220.51, 4.665e7);
-	//vector Left(3.92593, 1622.051, 9e6);
 	vector MiddleLeft(1.0, 0.0, 1e5);
 	vector MiddleRight(0.1379, 0, 1e5);
 	vector Right(1.0, 0.0, 1e5);

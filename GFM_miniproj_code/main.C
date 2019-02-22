@@ -60,9 +60,10 @@ int main(void){
 */	
 
 
-	gfmTests Tests(100, 1.0); //(N, L)
+	gfmTests Tests(1000, 1.0); //(N, L)
 	//Tests.testB_Wang();
 	//Tests.testB();
+	//Tests.testMach10_2();
 	Tests.testMach10();
 
 	//Tests.set_EOS(eos1, eos2);
@@ -77,7 +78,7 @@ int main(void){
 	}
 	
 	try{
-		gfmProblem.solver(Tests);
+		gfmProblem.solver_RP(Tests);
 	}
 	catch (const char* c){
 		std::cout << c << std::endl; 

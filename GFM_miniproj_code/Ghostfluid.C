@@ -767,7 +767,7 @@ void GhostFluidMethods::ghost_boundary_RP(MUSCL* Uleft, EOS* eosleft, MUSCL* Uri
 	Uright->U.row(i+1) = eosright->conservedVar(WRghost);
 	for (int j=0; j<3; j++){
 		//Defining the states at ghost fluid cells
-		Uleft->U.row(i+j+1) = eosleft->conservedVar(WLghost);
+		if(i+j+1 < N+2) Uleft->U.row(i+j+1) = eosleft->conservedVar(WLghost); //check this condition
 		Uright->U.row(i-j) = eosright->conservedVar(WRghost);
 	}
 }
@@ -922,7 +922,7 @@ void GhostFluidMethods::initial_conditions_RP(EOS* eos1, EOS* eos2, EOS* eos3, E
 	for (int i=1; i<N+1; i++){
 		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 		//std::cout << phi(i) << '\t' << testsgn << std::endl;
-		if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+		if (testsgn > -2 && testsgn < 1 && i<N){ //-1 or 0, the boundary is crossed
 			if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 				if (flag1 == false && flag2 == false && flag3 == false){
 					ghost_boundary_RP(var1, eos1, var2, eos2, i+1);
@@ -973,7 +973,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 			for (int i=1; i<N+1; i++){
 				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 				//std::cout << phi(i) << '\t' << testsgn << std::endl;
-				if (testsgn > -2 && testsgn < 1 && i!=N){
+				if (testsgn > -2 && testsgn < 1 && i<N){
 					//std::cout << count << " boundary is at i = " << i << std::endl;
 					ghost_boundary_RP(var1, eosL, var2, eosR, i+1); //matrix 2 contains ghost points
 				}
@@ -1138,7 +1138,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 			for (int i=1; i<N+1; i++){
 				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
 				//std::cout << phi(i) << '\t' << testsgn << std::endl;
-				if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
+				if (testsgn > -2 && testsgn < 1 && i<N){ //-1 or 0, the boundary is crossed
 					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 						if (flag1 == false && flag2 == false && flag3 == false){
 							ghost_boundary_RP(var1, eosL, var2, eosM1, i+1);
@@ -1162,10 +1162,6 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 				}
 			}
 
-			if(flag1==false || flag2==false || flag3==false){
-				//throw "Failed to populate Ghost Fluid Cells";
-			}
-
 			var1->boundary_conditions();
 			var2->boundary_conditions();
 
@@ -1174,26 +1170,34 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 			var2->data_reconstruction(a);
 
 			//compute fluxes at current timestep		
-			//using the previous flags which should now be true,
-			for (int i=1; i<N+2; i++){
-				if (phi(i) < 0 && flag1==true && flag2==true){
+			bool flagA = true;
+			bool flagB = true;
+
+			//if (flag3 == false) std::cout << "test a" << std::endl;
+
+			/*for (int i=1; i<N+2; i++){
+				if (phi(i) < 0 && flagA==true && flagB==true){
+					//if (flag3 == false) std::cout << "test b" << std::endl;
 					var1->compute_fluxes(eosL, i);
-					if (get_sgn(phi(i+1)) >= 0) var1->compute_fluxes(eosL, i+1);
+					if (get_sgn(phi(i+1)) >= 0 && i<N+1) var1->compute_fluxes(eosL, i+1);
 				}
-				if (phi(i) >= 0 && flag2==true){
+				if (phi(i) >= 0 && flagB==true){
+					//if (flag3 == false) std::cout << "test c" << std::endl;
 					if (get_sgn(phi(i-1)) < 0) var2->compute_fluxes(eosM1, i-1);
-					if (get_sgn(phi(i+1)) < 0) var2->compute_fluxes(eosM1, i+1);
+					if (get_sgn(phi(i+1)) < 0  && i<N+1) var2->compute_fluxes(eosM1, i+1);
 					var2->compute_fluxes(eosM1, i);
-					flag1 = false;
+					flagA = false;
 				}
-				if (phi(i) < 0 && flag1 == false){
+				if (phi(i) < 0 && flagA == false){
+					//if (flag3 == false) std::cout << "test d" << std::endl;
 					//if (count == 50 )std::cout << "c " << i << '\t' << phi(i) << std::endl;
 					if (get_sgn(phi(i-1)) >= 0) var1->compute_fluxes(eosM2, i-1);
-					if (get_sgn(phi(i+1)) >= 0) var1->compute_fluxes(eosM2, i+1);
+					if (get_sgn(phi(i+1)) >= 0  && i<N+1) var1->compute_fluxes(eosM2, i+1);
 					var1->compute_fluxes(eosM2, i);
-					flag2 = false;
+					flagB = false;
 				}
-				if (phi(i) >= 0 && flag1==false && flag2==false){
+				if (phi(i) >= 0 && flagA==false && flagB==false){
+					//if (flag3 == false) std::cout << "test e" << std::endl;
 					//if (count == 50 )std::cout << "d " << i << '\t' << phi(i) << std::endl;
 					if (get_sgn(phi(i-1)) < 0) var2->compute_fluxes(eosR, i-1);
 					//if (get_sgn(phi(i+1)) > 0) var2->compute_fluxes(eosR, i+1);
@@ -1201,7 +1205,36 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 				}
 				//if (count == 50 ) std::cout << i << '\t' << phi(i) << '\t' << var1->U.row(i+1) << std::endl; //'\t' << var2->U.row(i) << std::endl;
 				//if (count == 50 )std::cout << i << '\t' << phi(i) << '\t'  << var1->F.row(i) << std::endl;//'\t' << var2->F.row(i) << std::endl;
+			}*/
+
+			for (int i=1; i<N+2; i++){
+				if (phi(i-1) < 0 && flagA==true && flagB==true){
+					//std::cout <<"a " << i << std::endl;
+					var1->compute_fluxes(eosL, i);
+					//if (get_sgn(phi(i+1)) > 0) var1->compute_fluxes(eosL, i+1);
+				}
+				if (phi(i-1) >= 0 && flagB==true){
+					//std::cout <<"b " << i << std::endl;
+					if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eosM1, i-1);
+					var2->compute_fluxes(eosM1, i);
+					//if (get_sgn(phi(i+1)) < 0) var1->compute_fluxes(eosL, i+1);
+					flagA = false;
+				}
+				if (phi(i-1) < 0 && flagA == false){
+					//std::cout <<"c " << i << std::endl;
+					if (get_sgn(phi(i-2)) > 0) var1->compute_fluxes(eosM2, i-1);
+					var1->compute_fluxes(eosM2, i);
+					flagB = false;
+				}
+				if (phi(i-1) >= 0 && flagA==false && flagB==false){
+					if (get_sgn(phi(i-2)) < 0) var2->compute_fluxes(eosR, i-1);
+					var2->compute_fluxes(eosR, i);
+				}
+				//if (count == 50 )std::cout << i << '\t' << phi(i) << '\t'  << var1->F.row(i) << std::endl;
 			}
+
+
+			//ASSERTION FAILED
 
 			//set timestep following CFL conditions with max wavespeed between both materials
 			Smax = fmax(var1->Smax, var2->Smax);
@@ -1225,6 +1258,8 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 
 			//evolving the levelset equation
 			update_levelset(dt);
+
+			//if(count==1402) t = Test.tstop;
 
 			t += dt;
 			count += 1;
@@ -1263,7 +1298,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2){
 			e = eos2->internalE(var2->U, i);
 		}
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << phi(i-1) << std::endl;
+		<< '\t' << P << '\t' << e << std::endl;
 	}
 	std::cout << "done: GFM-MUSCL" << std::endl;
 }
@@ -1297,7 +1332,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2, EOS* eos3){
 		}
 
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << phi(i-1) << std::endl;
+		<< '\t' << P << '\t' << e << std::endl;
 	}
 }
 
@@ -1343,7 +1378,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4){
 		}
 
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << phi(i-1) << std::endl;
+		<< '\t' << P << '\t' << e << std::endl;
 	}
 }
 
