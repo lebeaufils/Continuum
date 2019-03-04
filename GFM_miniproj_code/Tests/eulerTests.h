@@ -23,6 +23,8 @@ struct standardTests
 	vector initialR;
 
 	standardTests(double N, double L) : N(N), L(L), x0(0.5), tstop(0), initialL(0, 0, 0), initialR(0, 0, 0) {}
+
+	int get_switch();
 };
 
 struct eulerTests : public virtual standardTests
@@ -66,8 +68,15 @@ struct gfmTests : public virtual standardTests
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0) {}
 
 	void set_number_of_cells(int); //changing the resolution. 
-
+	//single material tests
+	void test1();
+	void test2();
+	void test3();
+	void test4();
+	void test5();
 	void test_example_1();
+
+	//Multimaterial tests
 	void testA();
 	void testB();
 	void testC();
@@ -76,6 +85,10 @@ struct gfmTests : public virtual standardTests
 	void testSG();
 	void testMach10();
 	void testMach10_2();
+
+	//user input test choices
+	void switch_resolution();
+	void switch_test();
 
 	//custom tests
 	//void testN(); //user input

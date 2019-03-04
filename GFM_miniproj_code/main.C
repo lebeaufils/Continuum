@@ -64,10 +64,11 @@ int main(void){
 	//Tests.testB_Wang();
 	//Tests.testB();
 	//Tests.testMach10_2();
-	Tests.testMach10();
+	//Tests.testMach10_2();
+	Tests.switch_test();
+	Tests.switch_resolution();
 
 	//Tests.set_EOS(eos1, eos2);
-
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
 
 	try{
