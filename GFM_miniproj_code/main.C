@@ -17,6 +17,7 @@ int main(void){
 
 	//Tests.set_EOS(eos1, eos2);
 	GhostFluidMethods gfmProblem(0.5, Tests); //See MUSCL.pdf paper forr stability condition suggesting 0.5
+	gfmProblem.switch_gfm();
 
 	if (Tests.stiffgas == true){
 		try{
@@ -34,7 +35,7 @@ int main(void){
 		}
 	}
 
-	else {
+	else if (gfmProblem.realgfm == true){
 		try{
 			gfmProblem.exact_solver(Tests);
 		}
@@ -44,6 +45,22 @@ int main(void){
 		
 		try{
 			gfmProblem.solver_RP(Tests);
+		}
+		catch (const char* c){
+			std::cout << c << std::endl; 
+		}
+	}
+
+	else {
+		try{
+			gfmProblem.exact_solver(Tests);
+		}
+		catch (const char* c){
+			std::cout << c << std::endl; 
+		}
+		
+		try{
+			gfmProblem.solver(Tests);
 		}
 		catch (const char* c){
 			std::cout << c << std::endl; 

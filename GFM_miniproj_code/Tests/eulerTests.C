@@ -304,6 +304,7 @@ void gfmTests::testSG(){ //Water - Air shock tube
 }
 
 void gfmTests::testMach10(){
+	//Wang test B with a mach 10 shock propagating right
 	number_of_materials = 4;
 
 	vector Left(5.92593, 6220.51, 4.665e7);
@@ -418,7 +419,7 @@ void gfmTests::switch_test(){
 			testB_Wang();
 			break;
 		case 6:
-			testMach10_2();
+			testMach10();
 			break;
 		case 7:
 			testSG();

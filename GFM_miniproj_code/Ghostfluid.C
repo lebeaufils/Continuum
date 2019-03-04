@@ -2496,5 +2496,44 @@ void GhostFluidMethods::solver_RP_SG(gfmTests Test){
 }
 ///////////////////////////////////////////////////////////////////
 
+int GhostFluidMethods::get_switch(){
+	int switch_value;
+	do{
+		std::cin >> switch_value;
+
+		bool find;
+		if (switch_value > 0 && switch_value < 3) find = 1;
+		else find = 0;
+
+		if (find == 1){
+			return switch_value;
+			break;
+		}
+		else{ //error if find fails
+			std::cout << "Invalid input." << std::endl;
+		}
+
+	}while(true);
+}
+
+void GhostFluidMethods::switch_gfm(){
+	std::cout << "Choice of Ghost Fluid Method" << std::endl
+		<< "1. Original GFM" << std::endl
+		<< "2. Real GFM" << std::endl;
+
+	int a = get_switch();
+	switch(a){
+		case 0:
+		case 1:
+			realgfm = false;
+			break;
+		case 2:
+			realgfm = true;
+			break;
+		case 3:
+			exit(0);
+	}
+}
+
 
 

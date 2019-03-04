@@ -22,7 +22,10 @@ class GhostFluidMethods : public LevelSetFunction
 
 	//constants storage
 	matrix C;
+
 public:
+	bool realgfm = false;
+	
 	//GhostFluidMethods(double, eulerTests, HLLC);
 	//GhostFluidMethods(double, eulerTests, MUSCL);
 	GhostFluidMethods(double c, gfmTests);
@@ -45,9 +48,6 @@ public:
 	void initial_conditions(EOS*, EOS*, EOS*, EOS*, gfmTests);
 	//Solver
 	void solver(gfmTests);
-		//void solver(EOS*, EOS*, gfmTests);
-		//void solver(EOS*, EOS*, EOS*, gfmTests);	
-		//void solver(EOS*, EOS*, EOS*, EOS*, gfmTests);
 
 	//output
 	void output(EOS*, EOS*);
@@ -61,8 +61,6 @@ public:
 	void initial_conditions_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
 	//solver
 	void solver_RP(gfmTests);	
-	//void solver_RP(EOS*, EOS*, gfmTests);
-	//void solver_RP(EOS*, EOS*, EOS*, EOS*, gfmTests);
 
 	//void update_levelset_ENO();
 	//void update_levelset_WENO();
@@ -92,7 +90,8 @@ public:
 	void initial_conditions_RP_SG(StiffenedGas&, StiffenedGas&, gfmTests);
 	void solver_RP_SG(gfmTests);
 
-	//void ghost_boundary_RP_SG(MUSCL*, StiffenedGas*, MUSCL*, StiffenedGas*, int); //RP based
+	int get_switch();
+	void switch_gfm();
 
 };
 
