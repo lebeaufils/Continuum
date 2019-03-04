@@ -707,6 +707,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 		delete eos3; delete eos4;
 	}
 	delete eos1; delete eos2;
+	std::cout << "done: original GFM" << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -1272,6 +1273,7 @@ void GhostFluidMethods::solver_RP(gfmTests Test){
 	}
 
 	delete eosL; delete eosR;
+	std::cout << "done: real GFM" << std::endl;
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -1300,7 +1302,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2){
 		outfile << X(i-1) << '\t' << d << '\t' << u
 		<< '\t' << P << '\t' << e << std::endl;
 	}
-	std::cout << "done: GFM-MUSCL" << std::endl;
+	//std::cout << "done: GFM-MUSCL" << std::endl;
 }
 
 void GhostFluidMethods::output(EOS* eos1, EOS* eos2, EOS* eos3){
@@ -1663,7 +1665,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 			}			
 		}
 
-		std::cout << "Pstar = " << pstar << '\t' << "ustar = " << ustar << std::endl;
+		//std::cout << "Pstar = " << pstar << '\t' << "ustar = " << ustar << std::endl;
 
 		//-------------------------------
 		//	output
@@ -1687,7 +1689,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 					<< '\t' << W(i, 2) << '\t' << e << std::endl;
 		}
 		outfile.close();
-		std::cout << "done: exact" << std::endl;
+		//std::cout << "done: exact" << std::endl;
 	}
 
 	else if (Test.number_of_materials == 3){
@@ -1987,7 +1989,7 @@ void GhostFluidMethods::exact_solver(gfmTests Test){
 					<< '\t' << W(i, 2) << '\t' << e << std::endl;
 		}
 		outfile.close();
-		std::cout << "done: exact (2 discontinuities)" << std::endl;
+		//std::cout << "done: exact (2 discontinuities)" << std::endl;
 		delete eosmiddle;
 	}
 	delete eosleft; delete eosright;
@@ -2241,7 +2243,7 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test){
 			}			
 		}
 
-		std::cout << "Pstar = " << pstar << '\t' << "ustar = " << ustar << std::endl;
+		//std::cout << "Pstar = " << pstar << '\t' << "ustar = " << ustar << std::endl;
 
 		//-------------------------------
 		//	output
@@ -2265,7 +2267,7 @@ void GhostFluidMethods::exact_solver_SG(gfmTests Test){
 					<< '\t' << W(i, 2) << '\t' << e << std::endl;
 		}
 		outfile.close();
-		std::cout << "done: exact" << std::endl;
+		//std::cout << "done: exact" << std::endl;
 	}
 
 	else{
@@ -2490,7 +2492,7 @@ void GhostFluidMethods::solver_RP_SG(gfmTests Test){
 	}while(t<Test.tstop);
 	std::cout << count << std::endl;
 	output(eos1, eos2);
-
+	std::cout << "done: real GFM (stiffened gas)" << std::endl;
 }
 ///////////////////////////////////////////////////////////////////
 

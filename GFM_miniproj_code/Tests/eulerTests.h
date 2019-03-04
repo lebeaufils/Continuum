@@ -50,6 +50,8 @@ struct eulerTests : public virtual standardTests
 struct gfmTests : public virtual standardTests
 {
 	int number_of_materials;
+	bool stiffgas = false;
+
 	double yL;
 	double yR;
 	double yM1;

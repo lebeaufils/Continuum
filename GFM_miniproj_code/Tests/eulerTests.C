@@ -286,6 +286,7 @@ void gfmTests::testB_Wang(){
 }
 
 void gfmTests::testSG(){ //Water - Air shock tube
+	stiffgas = true;
 	vector Left(1000, 0.0, 1e9); //Water
 	vector Right(50, 0.0, 1e5); //Air
 
@@ -356,7 +357,7 @@ void gfmTests::switch_resolution(){
 		<< "1. Low (100 Cells)" << std::endl
 		<< "2. Mediumn (200 Cells)" << std::endl
 		<< "3. High (400 Cells)" << std::endl
-		<< "3. Very High (1000 Cells)" << std::endl
+		<< "4. Very High (1000 Cells)" << std::endl
 		<< "5. Exit" << std::endl;
 
 	int a = get_switch();
@@ -389,12 +390,13 @@ void gfmTests::switch_test(){
 		<< "Single Material Shock-Tube Tests" << std::endl
 		<< "1. Test 1" << std::endl
 		<< "2. Test 2" << std::endl
-		<< "3. Test 3" << std::endl << std::endl
+		<< "3. Test 3" << std::endl
 		<< "Multimaterial Tests" << std::endl
 		<< "4. Test B (Fedkiw 2002)" << std::endl
 		<< "5. Test B (Wang 2004)" << std::endl
 		<< "6. Mach 10 Test" << std::endl
-		<< "7. Exit" << std::endl;
+		<< "7. Water-Air Test" << std::endl
+		<< "8. Exit" << std::endl;
 
 	int a = get_switch();
 
@@ -414,9 +416,13 @@ void gfmTests::switch_test(){
 			break;
 		case 5:
 			testB_Wang();
+			break;
 		case 6:
 			testMach10_2();
+			break;
 		case 7:
+			testSG();
+			break;
 		case 8:
 		case 9:
 			exit(0);
