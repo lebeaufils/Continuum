@@ -57,7 +57,7 @@ void GhostFluidMethods::ghost_test_leftghost(MUSCL* Ureal, EOS* eosReal, MUSCL* 
 //original GFM - constant entropy extrapolation
 //				continuous Pressure and Velocity
 	//consider an interface between i and i+1
-	//for the right ghost fluid, ghostvalues start from i+1 (real fluid is in cell i)
+	//for the left ghost fluid, ghostvalues start from i (real fluid is in cell i+1)
 	double dreal = Ureal->U(i, 0); //density
 	double velocityreal = Ureal->U(i, 1)/Ureal->U(i, 0);
 	double Preal = eosReal->Pressure(Ureal->U, i);
@@ -353,6 +353,8 @@ void GhostFluidMethods::solver(gfmTests Test){
 					ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); //matrix 2 contains ghost points
 					ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1); //matrix 1 contains ghost points
 					}
+					//ghost_test_leftghost(var1, eos1, var2, eos2, i+1);
+					//ghost_test_rightghost(var2, eos2, var1, eos1, i+2);
 				}
 			}
 
@@ -366,7 +368,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 			//compute fluxes at current timestep		
 			for (int i=1; i<N+2; i++){
 				//if (count==0)std::cout << i << '\t' << phi(i-1) << std::endl;
-				if(phi(i-1) < 0){
+				/*if(phi(i-1) < 0){
 					//std::cout << "phi < 0" << std::endl;
 					var1->compute_fluxes(eos1, i);
 				}
@@ -378,9 +380,15 @@ void GhostFluidMethods::solver(gfmTests Test){
 						var2->compute_fluxes(eos2, i-1);
 					}
 					var2->compute_fluxes(eos2, i);
+				}*/
+				if(phi(i-1) < 0){
+					var1->compute_fluxes(eos1, i);
 				}
-				//if (count==0)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
-				//if (count==0)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
+				if (phi(i) >= 0){
+					var2->compute_fluxes(eos2, i);
+				}
+				//if (count==3)std::cout << i << '\t' << var1->U.row(i+1) << '\t' << '\t' << var2->U.row(i+1) << std::endl;
+				//if (count==1)std::cout << i << '\t' << var1->F.row(i) << '\t' << '\t' << var2->F.row(i) << std::endl;
 			}
 
 			//set timestep following CFL conditions with max wavespeed between both materials
@@ -2502,7 +2510,7 @@ int GhostFluidMethods::get_switch(){
 		std::cin >> switch_value;
 
 		bool find;
-		if (switch_value > 0 && switch_value < 3) find = 1;
+		if (switch_value > 0 && switch_value < 4) find = 1;
 		else find = 0;
 
 		if (find == 1){
@@ -2519,7 +2527,8 @@ int GhostFluidMethods::get_switch(){
 void GhostFluidMethods::switch_gfm(){
 	std::cout << "Choice of Ghost Fluid Method" << std::endl
 		<< "1. Original GFM" << std::endl
-		<< "2. Real GFM" << std::endl;
+		<< "2. Real GFM" << std::endl
+		<< "3. Exit" << std::endl;
 
 	int a = get_switch();
 	switch(a){
