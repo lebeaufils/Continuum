@@ -1,0 +1,5 @@
+#!/bin/bash
+
+gnuplot plotresolution
+ps2pdf Test3.ps Test3.pdf 
+open Test3.pdf

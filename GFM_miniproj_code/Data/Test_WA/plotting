@@ -1,0 +1,5 @@
+#!/bin/bash
+
+gnuplot plotresolution
+ps2pdf TestWA.ps TestWA.pdf 
+open TestWA.pdf

@@ -579,6 +579,7 @@ void GhostFluidMethods::solver(gfmTests Test){
 
 			for (int i=1; i<N; i++){
 				int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
+				//if (count == 1300) std::cout << X(i) << '\t' << phi(i) << '\t' << testsgn << std::endl;
 				if (testsgn > -2 && testsgn < 1 && i<N){ //-1 or 0, the boundary is crossed
 					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
 						if (flag1 == false && flag2 == false && flag3 == false){
@@ -1388,7 +1389,7 @@ void GhostFluidMethods::output(EOS* eos1, EOS* eos2, EOS* eos3, EOS* eos4){
 		}
 
 		outfile << X(i-1) << '\t' << d << '\t' << u
-		<< '\t' << P << '\t' << e << std::endl;
+		<< '\t' << P << '\t' << e << '\t' << phi(i-1) << std::endl;
 	}
 }
 

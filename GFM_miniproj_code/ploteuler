@@ -37,5 +37,5 @@ plot "dataeuler.txt" using 1:3 w p ls 8
 set title "Pressure";
 plot "dataeuler.txt" using 1:4 w p ls 8
 set title "Energy"; 
-plot "dataeuler.txt" using 1:5 w p ls 8
+plot "dataeuler.txt" using 1:6 w p ls 8
 unset multiplot
