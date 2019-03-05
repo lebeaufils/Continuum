@@ -75,7 +75,7 @@ vector MUSCL::superBee(int i){
 	vector di = 0.5*diMinus + 0.5*diPlus;
 
 	//calculating limiter
-	vector epsiloni(1, 1, 1);
+	vector epsiloni(0, 0, 0);
 	vector epsilonR(0, 0, 0);
 	vector ri(0, 0, 0);
 
@@ -121,7 +121,7 @@ vector MUSCL::vanLeer(int i){
 	 * Slope limiter -- Van Leer
 	 ----------------------------------------------*/
 
-	vector epsiloni(1, 1, 1);
+	vector epsiloni(0, 0, 0);
 	vector epsilonR(0, 0, 0);
 	vector ri(0, 0, 0);
 
@@ -160,7 +160,7 @@ vector MUSCL::minBee(int i){
 	 * Slope limiter -- MinBee
 	 ----------------------------------------------*/
 
-	vector epsiloni(1, 1, 1);
+	vector epsiloni(0, 0, 0);
 	vector epsilonR(0, 0, 0);
 	vector ri(0, 0, 0);
 
@@ -336,7 +336,7 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 		/*---------------------------------------
 		 * pressure based wave speed estimate
 		 ---------------------------------------*/
-	/*	
+		
 		double Ppvrs, p0;
 		double Pstar;
 		double ql, qr;
@@ -388,14 +388,14 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 			qr = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pr) - 1));
 		}
 
-		double SRpressure = ur + ar*qr;
-		double SLpressure = ul - al*ql;
-	*/	
+		SR = ur + ar*qr;
+		SL = ul - al*ql;
 		
-
+		
 		/*---------------------------------------
 		 * Direct Wave Speed estimates
 		 ---------------------------------------*/
+/*
 		//Roe Riemann Solver
 		double ubar = (sqrt(dl)*ul + sqrt(dr)*ur)/(sqrt(dl) + sqrt(dr));
 		//double Hl = (hllcUL(2) + Pl)/dl; //enthalpy
@@ -414,19 +414,15 @@ void MUSCL::compute_fluxes(EOS* IG, int i){
 		double SLhlle = ubar - sqrt(d2); 	double SRhlle = ubar + sqrt(d2);
 		//double SLroe = ubar - abar; 		double SRroe = ubar + abar;
 		SL = SLhlle; SR = SRhlle;
-		
+*/
+
 		if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
 		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
 		//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
 		//initialize FL and FR for each timestep
 		vector FL(mvl, mvl*ul + Pl, ul*(El + Pl));
-		vector FR(mvr, mvr*ur + Pr, ur*(Er + Pr));
-		
-
-		/*---------------------------------------
-		 * davies wave speed estimate
-		 ---------------------------------------*/
+		vector FR(mvr, mvr*ur + Pr, ur*(Er + Pr));		
 
 		if (0 <= SL){
 			F.row(i) = FL;

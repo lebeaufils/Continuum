@@ -6,7 +6,7 @@ int main(void){
 	//do the same for choice of solver.
 	//switch can be activated through user input or mapping through filename
 
-/*
+
 	gfmTests Tests(1000, 1.0); //(N, L)
 	//Tests.testB_Wang();
 	//Tests.testB();
@@ -66,16 +66,6 @@ int main(void){
 			std::cout << c << std::endl; 
 		}
 	}
-
-*/
-	EOS* IG = new IdealGas();
-	eulerTests Test(100, 1.0);
-	Test.test2();
-	MUSCL var(0.5, Test);
-	var.initial_conditions(IG, Test);
-	var.solver(IG, Test);
-	var.output(IG);
-	delete IG;
 
 }
 

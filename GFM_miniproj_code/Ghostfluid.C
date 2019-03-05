@@ -2519,6 +2519,9 @@ int GhostFluidMethods::get_switch(){
 		}
 		else{ //error if find fails
 			std::cout << "Invalid input." << std::endl;
+			std::cin.clear();
+			std::cin.ignore();
+			return get_switch();
 		}
 
 	}while(true);
