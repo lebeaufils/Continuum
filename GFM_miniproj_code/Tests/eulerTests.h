@@ -88,6 +88,8 @@ struct gfmTests : public virtual standardTests
 	void testMach10();
 	void testMach10_2();
 
+	void testproblem2();
+
 	//user input test choices
 	void switch_resolution();
 	void switch_test();

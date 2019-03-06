@@ -355,6 +355,22 @@ void gfmTests::testMach10_2(){ //testing it in Fedkiw's case
 	yM1 = 1.4;
 }
 
+void gfmTests::testproblem2(){
+	number_of_materials = 2;
+	vector Left(0.82369077, 0.0, 100.0);
+	vector Right(1.0, 0.0, 1.0);
+
+	initialL = Left;
+	initialR = Right;
+
+	L = 1.0;
+	x0 = 0.2;
+	tstop = 0.06;
+
+	yL = 1.667;
+	yR = 1.2;
+}
+
 //selecting the tests
 void gfmTests::switch_resolution(){
 	std::cout << "Resolution options" << std::endl
@@ -400,7 +416,8 @@ void gfmTests::switch_test(){
 		<< "5. Test B (Wang 2004)" << std::endl
 		<< "6. Mach 10 Test" << std::endl
 		<< "7. Water-Air Test" << std::endl
-		<< "8. Exit" << std::endl;
+		<< "8. Test Problem 2" << std::endl
+		<< "9. Exit" << std::endl;
 
 	int a = get_switch();
 
@@ -428,6 +445,8 @@ void gfmTests::switch_test(){
 			testSG();
 			break;
 		case 8:
+			testproblem2();
+			break;
 		case 9:
 			exit(0);
 	}

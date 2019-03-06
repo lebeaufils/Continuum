@@ -6,7 +6,7 @@ GhostFluidMethods::GhostFluidMethods(double c, gfmTests Test)
 		var2 = new MUSCL(Test);
 }
 
-void GhostFluidMethods::ghost_boundary(MUSCL* Ureal, EOS* eosReal, MUSCL* Ughost, EOS* eosGhost, int i){
+/*void GhostFluidMethods::ghost_boundary(MUSCL* Ureal, EOS* eosReal, MUSCL* Ughost, EOS* eosGhost, int i){
 
 	//original GFM - constant entropy extrapolation
 	//			   continuous Pressure and Velocity
@@ -17,12 +17,49 @@ void GhostFluidMethods::ghost_boundary(MUSCL* Ureal, EOS* eosReal, MUSCL* Ughost
 
 	double Pghost = Preal; 
 	double velocityghost = velocityreal;
-	double dghost = pow(pow(dreal, eosReal->y)*(Pghost/Preal), 1./eosGhost->y);
+	double dghost = pow(pow(dreal, eosReal->y)*(Pghost/Preal), 1./eosReal->y);
 
 	//setting the conservative form of the ghost variables
 	Ughost->U(i, 0) = dghost;
 	Ughost->U(i, 1) = velocityghost*dghost;
 	Ughost->U(i, 2) = Pghost/(eosGhost->y-1) + 0.5*dghost*pow(velocityghost, 2.0);
+
+	//std::cout << dreal << '\t' << velocityreal << '\t' << Preal << std::endl;
+}*/
+
+void GhostFluidMethods::ghost_boundary(MUSCL* Uleft, EOS* eosL, MUSCL* Uright, EOS* eosR, int i){
+	//isobaric fix
+	//original GFM - constant entropy extrapolation
+	//			   continuous Pressure and Velocity
+	//boundary between i and i+1
+	double drealleft = Uleft->U(i-1, 0); //density
+	//double velocityrealleft = Uleft->U(i-1, 1)/Uleft->U(i-1, 0);
+	double Prealleft = eosL->Pressure(Uleft->U, i-1);
+
+	double drealright = Uright->U(i+2, 0); //density
+	//double velocityrealright = Uright->U(i+2, 1)/Uright->U(i+2, 0);
+	double Prealright = eosR->Pressure(Uright->U, i+2);
+
+	double PL = eosL->Pressure(Uleft->U, i);
+	double PR = eosR->Pressure(Uright->U, i+1);
+	double velocityL = Uleft->U(i, 1)/Uleft->U(i, 0);
+	double velocityR = Uright->U(i+1, 1)/Uright->U(i+1, 0);
+
+	double dghostL = pow(pow(drealleft, eosL->y)*(PL/Prealleft), 1./eosL->y);
+	double dghostR = pow(pow(drealright, eosR->y)*(PR/Prealright), 1./eosR->y);
+	//setting the conservative form of the ghost variables
+
+	vector WLghost(dghostL, velocityR, PR);
+	vector WRghost(dghostR, velocityL, PL);
+
+	//Redefining the real fluids at the boundary (isobaric fix, changing only density)
+	Uleft->U(i, 0) = dghostL;
+	Uright->U(i+1, 0) = dghostR;
+	for (int j=0; j<3; j++){
+		//Defining the states at ghost fluid cells
+		if(i+j+1 < N+2) Uleft->U.row(i+j+1) = eosL->conservedVar(WLghost); //check this condition
+		Uright->U.row(i-j) = eosR->conservedVar(WRghost);
+	}
 
 	//std::cout << dreal << '\t' << velocityreal << '\t' << Preal << std::endl;
 }
@@ -165,17 +202,18 @@ void GhostFluidMethods::initial_conditions(EOS* eos1, EOS* eos2, EOS* eos3, gfmT
 		//std::cout << phi(i) << '\t' << testsgn << std::endl;
 		if (testsgn > -2 && testsgn < 1 && i!=N){ //-1 or 0, the boundary is crossed
 			if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
-				for (int j=0; j<4; j++){
+				/*for (int j=0; j<4; j++){
 					//to the left of interface, the ghostfluid is in var2
 					ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
 					//to the right of the interface, the ghostfluid is in var1
 					ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
 					//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 					//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
-				}
+				}*/
+				ghost_boundary(var1, eos1, var2, eos2, i+1);
 			}
 			else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
-				for(int j=0; j<4; j++){
+				/*for(int j=0; j<4; j++){
 					//std::cout << var2->U.row(i+1-j) << std::endl;
 					//to the left of interface, the ghostfluid is in var1
 						//note that we are now in the right material which has EOS: eos3
@@ -184,13 +222,14 @@ void GhostFluidMethods::initial_conditions(EOS* eos1, EOS* eos2, EOS* eos3, gfmT
 					ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
 					//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 					//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
-				}
+				}*/
+				ghost_boundary(var2, eos2, var1, eos3, i+1);
 			}
 		} 
 	}
 
 	for (int i=1; i<N+1; i++){
-		//std::cout << i << '\t' << get_sgn(phi(i)) << '\t' <<var1->U.row(i+1) << '\t' << var2->U.row(i+1) << std::endl;
+		std::cout << i << '\t' << get_sgn(phi(i)) << '\t' <<var1->U.row(i+1) << '\t' << var2->U.row(i+1) << std::endl;
 	}
 
 	var1->boundary_conditions();
@@ -432,17 +471,18 @@ void GhostFluidMethods::solver(gfmTests Test){
 				//std::cout << phi(i) << '\t' << testsgn << std::endl;
 				if (testsgn > -2 && testsgn < 1 && i<N-2){ //-1 or 0, the boundary is crossed
 					if (get_sgn(phi(i)) < 0){//the interface is to the right of cell i
-						for (int j=0; j<3; j++){
+						/*for (int j=0; j<3; j++){
 							//to the left of interface, the ghostfluid is in var2
 							ghost_boundary(var1, eos1, var2, eos2, (i+1)-j); 
 							//to the right of the interface, the ghostfluid is in var1
 							ghost_boundary(var2, eos2, var1, eos1, (i+1)+j+1);
 							//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 							//i, i-1 and i-2, while thst of var1 is i+1, i+2 and i+3.
-						}
+						}*/
+						ghost_boundary(var1, eos1, var2, eos2, i+1);
 					}
 					else {//the interface is to the left of cell i+1 (i+1 is negative while i is positive)
-						for(int j=0; j<3; j++){
+						/*for(int j=0; j<3; j++){
 							//std::cout << var2->U.row(i+1-j) << std::endl;
 							//to the left of interface, the ghostfluid is in var1
 								//note that we are now in the right material which has EOS: eos3
@@ -451,7 +491,8 @@ void GhostFluidMethods::solver(gfmTests Test){
 							ghost_boundary(var1, eos3, var2, eos2, (i+1)+1+j);
 							//since cell i lies in the real fluid of var 1, ghost fluid of var2 goes from
 							//i, i+1 and i+2, while thst of var1 is i-1, i-2 and i-3.
-						}
+						}*/
+						ghost_boundary(var2, eos2, var1, eos3, i+1);
 					}
 				} 
 			}
