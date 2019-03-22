@@ -1,42 +1,239 @@
+
+#ifndef SOLVERS_H_
+#define SOLVERS_H_
+
+//Equation of states and tests
+//#include "../EOS/JWL.h"
+#include "../EOS/EOS.h"
+#include "../Tests/eulerTests.h"
+
+#include <iostream>
+#include <vector>
+#include <sstream>
+#include <cmath>
+#include <fstream>
+#include <iomanip>
+#include <Eigen/Dense>
+#include <map>
+
+typedef Eigen::Vector3d vector;
+typedef Eigen::MatrixXd matrix;
+
+/*--------------------------------------------------------------------------------
+ * MUSCL
+ --------------------------------------------------------------------------------*/
+enum slopeLimiter {MinBee, VanLeer, SuperBee, Quit};
+
+class MUSCL
+{
+	const double CFL; //Courant number
+
+	//domain parameters
+	int N;
+	int count;
+	double dt;
+	double dx;
+
+	//Variable Matrix
+	matrix X; //Domain
+public:
+	//EOS* eos;
+
+	matrix U; //Conserved quantities d, du, E
+	matrix F; //Flux
+	double Smax; //Maximum soundspeed
+
+	//Slope Limiter variables
+	matrix ULi; 
+	matrix URi;
+
+public:
+	MUSCL(gfmTests);
+	MUSCL(double, eulerTests);
+	~MUSCL() {};
+
+	void boundary_conditions();
+	void initial_conditions(EOS*, eulerTests);
+
+	//-----Slope limiters-----
+	vector superBee(int);
+	vector vanLeer(int);
+	vector minBee(int);
+	//------------------------
+	//-----Data Reconstruction-----
+	slopeLimiter getLimiter();
+	void data_reconstruction(slopeLimiter);
+	//-----------------------------
+
+	void compute_fluxes(EOS*, int);
+	void conservative_update_formula(int);
+	void conservative_update_formula(double, double, int);
+
+	void solver(EOS*, eulerTests);
+	void output(EOS*);
+};
+
+class EXACT 
+{
+//------------------------------------------------
+//	Input Parameters
+//------------------------------------------------
+	int N;
+	double dx;
+	double x0;
+
+	//VDomain and initial conditions
+	//matrix X; //Domain
+	matrix W;
+	vector WL;
+	vector WR;
+
+//------------------------------------------------
+//	Exact solver 
+//------------------------------------------------
+	//Tolerance level (Mixed error testing)
+	double TOL;
+	//constants
+	double y;
+	double cL, cR; //soundspeed of left and right states
+	double CONST1; // y-1 / 2y
+	double CONST2; // y+1 / 2y
+	double CONST3; // 2*y / y-1
+	double CONST4; // 2 / y-1
+	double CONST5; // 2 / y+1
+	double CONST6; // y-1 / y+1
+	double CONST7; // y-1 / 2
+	double CONST8; // y-1
+
+public:
+	EXACT(eulerTests Test, EOS* IG) : N(1000), dx(Test.L/N), x0(Test.x0), W(N, 3), TOL(1e-6), 
+		y(IG->y), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {
+			WL = Test.initialL;
+			WR = Test.initialR;
+		}
+	
+	EXACT(int, double, double, double, vector, vector); //unfinished
+	//EXACT(double, eulerTests);
+	//virtual ~EXACT() {};
+
+	//compute constants
+	void initial_conditions();
+
+	//Riemann Problem: Equations for Pressure and Particle Velocity
+
+	//Pressure positivity condition Toro pg 127
+		//Direct evaluation of f(p) gives the pressure positivity condition
+	void check_pressure_pos_condition();
+
+	//void fL(double);
+	double fk(double, vector);
+	double f(double);
+	double fkprime(double, vector);
+	double fprime(double);
+	double newton_raphson(double);
+	double relative_pressure_change(double, double);
+
+	double compute_star_pressure(); //Newton-Raphson Method
+	double compute_star_velocity(double);
+	double compute_shock_density(vector, double);
+	double compute_rarefraction_density(vector, double);
+	void sampling(double);
+	void output();
+
+	//double compute_star_velocity(vector, vector, EOS*, double);
+	//double compute_star_shockdensity_k(vector, EOS*, double);
+	//double compute_mass_flux_k(vector, EOS*, double);
+	//double compute_left_shock_speed(vector, EOS*, double);
+	//double compute_right_shock_speed(vector, EOS*, double);
+	//double compute_rarefraction_speed();
+
+	//if P* > PL --> shock wave
+	//compute shock speed,
+	//W = W*shock if x/t > SL and x/t< Ustar
+	//if P* < PL --> rarefractionwave
+	//compute speed head and speed tail
+	//W = WL, WLfan, WLfan*....
+
+	//c^2 = y*(P+P0)/d
+
+
+};
+
+#endif /* SOLVERS_H_ */
+
+
+
 #include "Solvers.h"
 
 /*--------------------------------------------------------------------------------
  * MUSCL
  --------------------------------------------------------------------------------*/
-
-void MUSCL::boundary_conditions(Euler1D &var){
-	var.U.row(1) = var.U.row(2); //muscl requires extra ghost cells on either boundary.
-	var.U.row(0) = var.U.row(1);
-	var.U.row(var.N+2) = var.U.row(var.N+1);
-	var.U.row(var.N+3) = var.U.row(var.N+2);
+MUSCL::MUSCL(gfmTests Test)
+	:CFL(0), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(Test.N+2, 1), U(Test.N+4, 3), F(Test.N+2, 3), Smax(0), ULi(Test.N+4, 3), URi(Test.N+4, 3){
 }
 
-void MUSCL::initial_conditions_1D(eulerTests &Test){
-	Test.var.X.resize(Test.N+2, 1);
-	Test.var.U.resize(Test.N+4, 3);
-	Test.var.F.resize(Test.N+2, 3);
+MUSCL::MUSCL(double c, eulerTests Test)
+	:CFL(c), N(Test.N), count(0), dt(0), dx(Test.L/Test.N), X(Test.N+2, 1), U(Test.N+4, 3), F(Test.N+2, 3), Smax(0), ULi(Test.N+4, 3), URi(Test.N+4, 3){
+}
 
+void MUSCL::boundary_conditions(){
+	U.row(1) = U.row(2); //muscl requires extra ghost cells on either boundary.
+	U.row(0) = U.row(1);
+	U.row(N+2) = U.row(N+1);
+	U.row(N+3) = U.row(N+2);
+}
+
+void MUSCL::initial_conditions(EOS *IG, eulerTests Test){
 	vector eulerL;
 	vector eulerR;
 
-	eulerL = Test.var.state_function->conservedVar(Test.initialL);
-	eulerR = Test.var.state_function->conservedVar(Test.initialR);
+	eulerL = IG->conservedVar(Test.initialL);
+	eulerR = IG->conservedVar(Test.initialR);
 
-	for (int i=0; i<Test.N; i++){
-		Test.var.X(i+1) = (i+0.5)*Test.var.dx;
-		if (Test.var.X(i+1)  < Test.x0){
-			Test.var.U.row(i+2) = eulerL;
+/*
+	//rho
+	eulerL(0) = Test.initialL(0);
+	eulerR(0) = Test.initialR(0);
+
+	//rhou
+	eulerL(1) = Test.initialL(0)*Test.initialL(1);
+	eulerR(1) = Test.initialR(0)*Test.initialR(1);
+
+	//E
+	eulerL(2) = Test.initialL(2)/(IG->y-1) + 0.5*Test.initialL(0)*Test.initialL(1)*Test.initialL(1);
+	eulerR(2) = Test.initialR(2)/(IG->y-1) + 0.5*Test.initialR(0)*Test.initialR(1)*Test.initialR(1);
+*/
+
+	for (int i=0; i<N; i++){
+		X(i+1) = (i+0.5)*dx;
+		if (X(i+1)  < Test.x0){
+			U.row(i+2) = eulerL;
 		}
-		else Test.var.U.row(i+2) = eulerR;
+		else U.row(i+2) = eulerR;
 	}
 
-	boundary_conditions(Test.var);
+	boundary_conditions();
+
 }
 
-//----------------------------------------------------------------------------
-//	Slope Limiters
-//----------------------------------------------------------------------------
-vector MUSCL::superBee(matrix U, int i){
+/*
+vector MUSCL::f(vector U, EOS IG){
+	vector flux;
+	flux(0) = U(1);
+	flux(1) = U(1)*(U(1)/U(0)) + (IG->y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
+	flux(2) = (U(1)/U(0))*(U(2) + (IG->y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0)));
+	return flux;
+}
+
+vector MUSCL::f(vector U, JWL MG){
+	vector flux;
+	flux(0) = U(1);
+	flux(1) = U(1)*(U(1)/U(0)) + MG.PressureScalar(U);
+	flux(2) = (U(1)/U(0))*(U(2) + MG.PressureScalar(U));
+	return flux;
+}
+*/
+vector MUSCL::superBee(int i){
 	//Calculating slope
 	vector diMinus = U.row(i) - U.row(i-1);
 	vector diPlus = U.row(i+1) - U.row(i);
@@ -79,7 +276,7 @@ vector MUSCL::superBee(matrix U, int i){
 	return diBar;
 }
 
-vector MUSCL::vanLeer(matrix U, int i){
+vector MUSCL::vanLeer(int i){
 
 	vector diMinus = U.row(i) - U.row(i-1);
 	vector diPlus = U.row(i+1) - U.row(i);
@@ -117,7 +314,7 @@ vector MUSCL::vanLeer(matrix U, int i){
 	//make r = 0 to test first order
 }
 
-vector MUSCL::minBee(matrix U, int i){
+vector MUSCL::minBee(int i){
 
 
 	vector diMinus = U.row(i) - U.row(i-1);
@@ -201,31 +398,33 @@ slopeLimiter MUSCL::getLimiter(){
 	return theMap[str];
 }
 
-void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &URi, int N){
+//-----------------------------------------------------------------------------------
+
+void MUSCL::data_reconstruction(slopeLimiter a){
 	vector Utmp;
 
 	//slopeLimiter a = getLimiter();
 
 	for (int i=1; i<N+3; i++){ //U goes from 0 to N+3
 
-		//-----------------------------------------------
-		// Data Reconstruction
-		//----------------------------------------------
+		/*-----------------------------------------------
+		 * Data Reconstruction
+		 ----------------------------------------------*/
 		switch(a){
 		case MinBee:
 			Utmp = U.row(i);
-			ULi.row(i) = Utmp - 0.5*minBee(U, i);
-			URi.row(i) = Utmp + 0.5*minBee(U, i);
+			ULi.row(i) = Utmp - 0.5*minBee(i);
+			URi.row(i) = Utmp + 0.5*minBee(i);
 			break;
 		case VanLeer:
 			Utmp = U.row(i);
-			ULi.row(i) = Utmp - 0.5*vanLeer(U, i);
-			URi.row(i) = Utmp + 0.5*vanLeer(U, i);
+			ULi.row(i) = Utmp - 0.5*vanLeer(i);
+			URi.row(i) = Utmp + 0.5*vanLeer(i);
 			break;
 		case SuperBee:
 			Utmp = U.row(i);
-			ULi.row(i) = Utmp - 0.5*superBee(U, i);
-			URi.row(i) = Utmp + 0.5*superBee(U, i);
+			ULi.row(i) = Utmp - 0.5*superBee(i);
+			URi.row(i) = Utmp + 0.5*superBee(i);
 			break;
 		case Quit:
 			exit(0);
@@ -234,11 +433,7 @@ void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &U
 	}
 }
 
-//-----------------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------------
-
-void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &Smax){
+void MUSCL::compute_fluxes(EOS* IG, int i){
 
 	double al, ar;
 
@@ -264,8 +459,8 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 	vector URtmp1 = URi.row(i+1);
 
 	//Post 1/2 time-step evolution left and right states
-	vector ULbar = ULtmp1 + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
-	vector URbar = URtmp + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
+	vector ULbar = ULtmp1 + 0.5*(dt/dx)*(IG->f(ULtmp1) - IG->f(URtmp1)); //UL(i+1)
+	vector URbar = URtmp + 0.5*(dt/dx)*(IG->f(ULtmp) - IG->f(URtmp));
 
 
 	/*-------------------------------------------------------
@@ -291,19 +486,101 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 		Er = hllcUR(2);
 
 		//Pressure
-		Pl = var.state_function->Pressure(hllcUL);
-		Pr = var.state_function->Pressure(hllcUR);
+		Pl = IG->PressureScalar(hllcUL);
+		Pr = IG->PressureScalar(hllcUR);
 
 		//velocity
 		ul = hllcUL(1)/hllcUL(0);
 		ur = hllcUR(1)/hllcUR(0);
 
 		//soundspeed
-		al = var.state_function->soundspeed(hllcUL);
-		ar = var.state_function->soundspeed(hllcUR);
+		al = IG->soundspeedScalar(hllcUL);
+		ar = IG->soundspeedScalar(hllcUR);
 
 
-		//Davies Wave Speed Estimates
+		/*---------------------------------------
+		 * pressure based wave speed estimate
+		 ---------------------------------------*/
+		/*
+		double Ppvrs, p0;
+		double Pstar;
+		double ql, qr;
+		//------------------------------------------------------
+		double rhoavg = 0.5*(dl + dr);
+		double aavg = 0.5*(al + ar);
+		Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg; //initial pressure estimate
+		//------------------------------------------------------
+		double Pmax = fmax(Pl, Pr);
+		double Pmin = fmin(Pl, Pr);
+		double Quser = 2.0; //Toro sect 9.5.1
+		double z = (IG->y - 1)/(2*IG->y);
+
+		//if the pressure difference is small and the guess is within the initial pressure range
+		if (Pmax/Pmin < Quser && Ppvrs > Pmin && Ppvrs < Pmax){
+			//Select the linearised pressure guess
+			p0 = Ppvrs;
+		}
+		//If the guess is less than the initial pressure, two rarefraction wves have been formed
+		else if (Ppvrs < Pmin){
+			double pTR = pow((al + ar - 0.5*(IG->y - 1)*(ur - ul))/((al/pow(Pl, z)) + (ar/pow(Pr, z))), 1./z);
+			p0 = pTR;
+		}
+		//If the pressure difference is large or if the guess is larger than Pmax
+		else {
+			//Select the two shock initial guess using pPV as estimate
+			double AL = (2./(IG->y + 1))/dl;	double AR = (2./(IG->y + 1))/dr;
+			double BL = Pl*((IG->y - 1)/(IG->y + 1));	double BR = Pr*((IG->y - 1)/(IG->y + 1));
+			double QL = sqrt(AL/(Ppvrs + BL));
+			double QR = sqrt(AR/(Ppvrs + BR));
+			double pTS = (QL*Pl + QR*Pr - (ur - ul))/(QL + QR);
+			p0 = pTS;
+		}
+
+		Pstar = fmax(0.0, p0);
+		if (Pstar <= Pl){
+			ql = 1.0;
+		}
+
+		else {
+			ql = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pl) - 1));
+		}
+
+		if (Pstar <= Pr){
+			qr = 1.0;
+		}
+
+		else {
+			qr = sqrt(1 + ((IG->y+1)/(2*IG->y))*((Pstar/Pr) - 1));
+		}
+
+		SR = ur + ar*qr;
+		SL = ul - al*ql;
+		*/
+		
+		/*---------------------------------------
+		 * Direct Wave Speed estimates
+		 ---------------------------------------*/
+/*
+		//Roe Riemann Solver
+		double ubar = (sqrt(dl)*ul + sqrt(dr)*ur)/(sqrt(dl) + sqrt(dr));
+		//double Hl = (hllcUL(2) + Pl)/dl; //enthalpy
+		//double Hr = (hllcUR(2) + Pr)/dr;
+		//double Hbar = (sqrt(dl)*Hl + sqrt(dr)*Hr)/(sqrt(dl) + sqrt(dr));
+		//double abar = pow((IG->y - 1)*(Hbar - 0.5*pow(ubar, 2)), 0.5);
+
+		//HLLE
+		double n2 = 0.5*sqrt(dl)*sqrt(dr)/pow((sqrt(dl) + sqrt(dr)), 2);
+		double d2 = (sqrt(dl)*pow(al, 2) + sqrt(dr)*pow(ar, 2))/(sqrt(dl) + sqrt(dr)) + n2*pow((ur - ul), 2);
+
+		//Davies
+		double Splus = fmax(abs(ul) + al, abs(ur) + ar);
+
+		//double SLdavies = -Splus; 			double SRdavies = -Splus;
+		double SLhlle = ubar - sqrt(d2); 	double SRhlle = ubar + sqrt(d2);
+		//double SLroe = ubar - abar; 		double SRroe = ubar + abar;
+		SL = SLhlle; SR = SRhlle;
+*/
+		//Davies
 		double Splus = fmax(abs(ul) + al, abs(ur) + ar);
 		SL = -Splus; SR = Splus;
 
@@ -316,78 +593,79 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 		vector FR(mvr, mvr*ur + Pr, ur*(Er + Pr));		
 
 		if (0 <= SL){
-			var.F.row(i) = FL;
+			F.row(i) = FL;
 		}
 
 		//non trivial, subsonic case, region between the 2 acoustic waves. Fhll.
 		else if (SL<=0 && Sstar>=0){
 			double tmpUstar = dl*((SL - ul)/(SL - Sstar));
 			vector UstarL(tmpUstar, tmpUstar*Sstar, tmpUstar*((El/dl) + (Sstar - ul)*(Sstar + (Pl/(dl*(SL - ul))))));
-			tmp = var.U.row(i);
-			var.F.row(i) = FL + SL*(UstarL - tmp);
+			tmp = U.row(i);
+			F.row(i) = FL + SL*(UstarL - tmp);
 		}
 
 		else if (Sstar<=0 && SR>=0){
 			double tmpUstar = dr*((SR - ur)/(SR - Sstar));
 			vector UstarR(tmpUstar, tmpUstar*Sstar, tmpUstar*((Er/dr) + (Sstar - ur)*(Sstar + (Pr/(dr*(SR - ur))))));
-			tmp = var.U.row(i+1);
-			var.F.row(i) = FR + SR*(UstarR - tmp);
+			tmp = U.row(i+1);
+			F.row(i) = FR + SR*(UstarR - tmp);
 		}
 
 		else if (0 >= SR){
-			var.F.row(i) = FR;
+			F.row(i) = FR;
 		}
+		//std::cout << FL << '\t' << FR << std::endl;
 }
 
-void MUSCL::conservative_update_formula(Euler1D &var, int i){
-	var.U.row(i) = var.U.row(i) - (var.dt/var.dx)*(var.F.row(i) - var.F.row(i-1));
+void MUSCL::conservative_update_formula(int i){
+	U.row(i) = U.row(i) - (dt/dx)*(F.row(i) - F.row(i-1));
 }
 
-void MUSCL::solver(Euler1D &var, double CFL){
+void MUSCL::conservative_update_formula(double newdt, double newdx, int i){
+	U.row(i) = U.row(i) - (newdt/newdx)*(F.row(i) - F.row(i-1));
+}
+
+void MUSCL::solver(EOS* IG, eulerTests Test){
 	
-	matrix ULi(var.N+4, 3);
-	matrix URi(var.N+4, 3);
-	double Smax=0;
-
 	slopeLimiter a = getLimiter();
 
 	double t = 0.0;
-	int count = 0;
 	do{
-
-		data_reconstruction(var.U, a, ULi, URi, var.N);
-		for (int i=1; i<var.N+2; i++){
-			compute_fluxes(var, i, ULi, URi, Smax);
+		data_reconstruction(a);
+		for (int i=1; i<N+2; i++){
+			compute_fluxes(IG, i);
 		}
 
 		//set timestep
-		var.dt = CFL*(var.dx/Smax); //updates every timestep
-		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
-		t += var.dt;
+		std::cout << Smax << std::endl;
+		dt = CFL*(dx/Smax); //updates every timestep
+		if (t + dt > Test.tstop) dt = Test.tstop - t;
+		t += dt;
 		count += 1;
 
+		if (count == 0) std::cout << dt << std::endl;
 		//updating U
-		for (int i=2; i<var.N+2; i++){
-			conservative_update_formula(var, i);
+		for (int i=2; i<N+2; i++){
+			conservative_update_formula(i);
 		}
-		boundary_conditions(var);
+		boundary_conditions();
 
-	}while (t < var.tstop);
+	}while (t < Test.tstop);
 	std::cout << count << std::endl;
 }
 
-void MUSCL::output(Euler1D &var){
+void MUSCL::output(EOS* IG){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
 
-	for (int i=2; i<var.N+2; i++){
+	for (int i=2; i<N+2; i++){
 
-		double u = var.U(i, 1)/var.U(i, 0);
-		double P = var.state_function->Pressure(var.U, i);
-		double e = var.state_function->internalE(var.U, i);
+		double u = U(i, 1)/U(i, 0);
+		double P = IG->Pressure(U, i);
+		double e = IG->internalE(U, i);
 
-		outfile << var.X(i-1) << '\t' << var.U(i, 0) << '\t' << u
+		outfile << X(i-1) << '\t' << U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
 	outfile.close();
@@ -395,14 +673,14 @@ void MUSCL::output(Euler1D &var){
 }
 
 
-//--------------------------------------------------------------------------------
-//	Exact Solver
-//--------------------------------------------------------------------------------
+/*--------------------------------------------------------------------------------
+ * Exact Solver
+ --------------------------------------------------------------------------------*/
 //Note, W contains primitive variables (density, velocity, pressure)
 
-/*EXACT::EXACT(int N, double dx, double x0, double y, vector WL, vector WR)
+EXACT::EXACT(int N, double dx, double x0, double y, vector WL, vector WR)
 	: dx(dx), x0(x0), W(N, 3), WL(WL), WR(WR), TOL(1e-6), y(y), cL(0), cR(0), 
-	CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {}*/
+	CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {}
 
 void EXACT::initial_conditions(){
 	cL = sqrt(y*WL(2)/WL(0));
@@ -416,9 +694,6 @@ void EXACT::initial_conditions(){
 	CONST6 = (y-1)/(y+1);
 	CONST7 = (y-1)/2.;
 	CONST8 = y-1;
-
-	std::cout << "y = " << y << std::endl;
-	std::cout << cL << '\t' << cR << std::endl;
 }
 
 void EXACT::check_pressure_pos_condition(){
@@ -707,16 +982,6 @@ void EXACT::output(){
 	outfile.close();
 	std::cout << "done: exact" << std::endl;
 }
-
-void EXACT::solver(eulerTests &Test){
-	initial_conditions();
-	sampling(Test.tstop);
-	output();
-}
-
-
-
-
 
 /*
 double EXACT::fk(double P, vector Wk, EOS* IG){
