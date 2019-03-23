@@ -1,7 +1,3 @@
-/*
-Ideal Gas EOS
- */
-
 #ifndef EOS_IG_H_
 #define EOS_IG_H_
 
@@ -15,6 +11,7 @@ Ideal Gas EOS
 #include <Eigen/Dense>
 
 typedef Eigen::Vector3d vector;
+typedef Eigen::Vector4d vector4;
 typedef Eigen::MatrixXd matrix;
 typedef Eigen::Matrix<double, 14, 1> Cmatrix;
 //typedef std::shared_ptr<StateFunctions> StateFunctionPtr;
@@ -32,11 +29,17 @@ struct StateFunctions
 
 	virtual double Pressure(Eigen::MatrixXd, int) = 0;
 	virtual double Pressure(vector) = 0; //used for muscl
+	virtual double Pressure(vector4) = 0;
 	virtual double soundspeed(Eigen::MatrixXd, int);
 	virtual double soundspeed(vector);
+	virtual double soundspeed(vector4);
 	virtual vector conservedVar(vector) = 0;
+	virtual vector4 conservedVar2Dx(vector4) = 0;
+	virtual vector4 conservedVar2Dy(vector4) = 0;
 	double internalE(Eigen::MatrixXd, int);
 	vector fluxes(vector); //flux
+	//2D
+	vector4 fluxes(vector4); //flux in the x or y direction
 
 	//Functions for exact solver
 	virtual void y_constants(vector) = 0;
@@ -55,9 +58,15 @@ struct IdealGas : public virtual StateFunctions
 
 	double Pressure(matrix, int);
 	double Pressure(vector); //used for muscl
-	double soundspeed(matrix, int);
-	double soundspeed(vector);
+	double Pressure(vector4);
+	//double soundspeed(matrix, int);
+	//double soundspeed(vector);
 	vector conservedVar(vector);
+	//2D
+	vector4 conservedVar2Dx(vector4); 
+	vector4 conservedVar2Dy(vector4);
+	//the conserved variables have been reordered to read
+		//Density, momentum in the sweep-direction, energy, momentum in the other direction
 
 	//exact
 	void y_constants(vector);
@@ -77,9 +86,13 @@ struct StiffenedGas : public virtual StateFunctions
 
 	double Pressure(matrix, int);
 	double Pressure(vector); //used for muscl
-	double soundspeed(matrix, int);
-	double soundspeed(vector);
+	double Pressure(vector4);
+	//double soundspeed(matrix, int);
+	//double soundspeed(vector);
 	vector conservedVar(vector);
+	//2D
+	vector4 conservedVar2Dx(vector4);
+	vector4 conservedVar2Dy(vector4);
 
 	//exact
 	void y_constants(vector);

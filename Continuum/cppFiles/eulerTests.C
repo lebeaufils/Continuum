@@ -1,4 +1,4 @@
-#include "eulerTests.h"
+#include "../headerFiles/eulerTests.h"
 
 int standardTests::Get_Switch(){
 	int switch_value;
@@ -203,9 +203,128 @@ void eulerTests::switch_test(){
 	}
 }
 
-/*--------------------------------------------------------------------------------------------
-	Ghost Fluid Tests
---------------------------------------------------------------------------------------------*/
+//--------------------------------------------------------------------------------------------
+//	2-D problems
+//--------------------------------------------------------------------------------------------
+void eulerTests2D::test1(){ //sod's tube test, x-aligned
+	vector4 Left(1.0, 0.0, 0.0, 1.0); //density, velocity, pressure
+	vector4 Right(0.125, 0.0, 0.0, 0.1);
+
+	initialL = Left;
+	initialR = Right;
+
+	//x0 = 0.5;
+	tstop = 0.25;
+
+	var.Nx = N;
+	var.Ny = Ny;
+	var.dx = L/(N-1);
+	var.dy = Ly/(Ny-1);
+	var.x0 = x0;
+	var.tstop = tstop;
+	var.state_function = StateFunctions::create(EOS_IG);
+	var.state_function->y = 1.4;
+
+	//setting the list of interfacial points
+	double x = 0;
+	double y = 0;
+
+	for (int i=0; i<N; i++){
+		x = i*var.dx;
+		for (int j=0; j<Ny; j++){
+			y = j*var.dy;
+			if (x <= 0.5){
+				interface(i, j) = false;
+			}
+			else {
+				interface(i, j) = true;
+			}
+		}
+	}
+	//std::cout << interface << std::endl;
+}
+
+void eulerTests2D::test2(){ //sod's tube test, x-aligned
+	vector4 Left(1.0, 0.0, 0.0, 1.0); //density, velocity, pressure
+	vector4 Right(0.125, 0.0, 0.0, 0.1);
+
+	initialL = Left;
+	initialR = Right;
+
+	//x0 = 0.5;
+	tstop = 0.25;
+
+	var.Nx = N;
+	var.Ny = Ny;
+	var.dx = L/(N-1);
+	var.dy = Ly/(Ny-1);
+	var.x0 = x0;
+	var.tstop = tstop;
+	var.state_function = StateFunctions::create(EOS_IG);
+	var.state_function->y = 1.4;
+
+	//setting the list of interfacial points
+	double x = 0;
+	double y = 0;
+	for (int i=0; i<N; i++){
+		x = i*var.dx;
+		for (int j=0; j<Ny; j++){
+			y = j*var.dy;
+			if (y < 0.5){
+				interface(i, j) = false;
+			}
+			else {
+				interface(i, j) = true;
+			}
+		}
+	}
+	//std::cout << interface << std::endl;
+}
+
+void eulerTests2D::test3(){ //sod's tube test, x-aligned
+	vector4 Left(1.0, 0.0, 0.0, 1.0); //density, velocity, pressure
+	vector4 Right(0.125, 0.0, 0.0, 0.1);
+
+	initialL = Left;
+	initialR = Right;
+
+	//x0 = 0.5;
+	tstop = 0.25;
+
+	L = Ly = sqrt(0.5);
+
+	var.Nx = N;
+	var.Ny = Ny;
+	var.dx = L/(N-1);
+	var.dy = Ly/(Ny-1);
+	var.x0 = x0;
+	var.tstop = tstop;
+	var.state_function = StateFunctions::create(EOS_IG);
+	var.state_function->y = 1.4;
+
+	//setting the list of interfacial points
+	double x = 0;
+	double y = 0;
+	for (int i=0; i<N; i++){
+		x = i*var.dx;
+		for (int j=0; j<Ny; j++){
+			y = j*var.dy;
+			if ((x + y) <= sqrt(0.5)){
+				interface(i, j) = false;
+			}
+			else {
+				interface(i, j) = true;
+			}
+			//note the (i, j) confusion here
+			//x sweep = constant row, changing columns
+		}
+	}
+	//std::cout << interface << std::endl;
+}
+
+//--------------------------------------------------------------------------------------------
+//	Ghost Fluid Tests
+//--------------------------------------------------------------------------------------------
 /*
 void gfmTests::set_number_of_cells(int Ncells){
 	N = Ncells;

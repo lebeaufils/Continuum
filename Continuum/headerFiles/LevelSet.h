@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <Eigen/Dense>
 
-#include "../Tests/eulerTests.h"
+#include "eulerTests.h"
 
 typedef Eigen::Vector3d vector;
 typedef Eigen::MatrixXd matrix;

@@ -1,4 +1,4 @@
-#include "EOS.h"
+#include "../headerFiles/EOS.h"
 
 std::shared_ptr<StateFunctions> StateFunctions::create(EOStype type){
 
@@ -47,11 +47,26 @@ double StateFunctions::soundspeed(vector U){
 	return a;
 }
 
+double StateFunctions::soundspeed(vector4 U){
+	double a = sqrt(y*(Pressure(U)/U(0)));
+	return a;
+}
+
 vector StateFunctions::fluxes(vector U){
 	vector flux;
 	flux(0) = U(1);
 	flux(1) = U(1)*(U(1)/U(0)) + Pressure(U);
 	flux(2) = (U(1)/U(0))*(U(2) + Pressure(U));
+	return flux;
+}
+
+vector4 StateFunctions::fluxes(vector4 U){ 
+	//Here, U is either Ux or Uy
+	vector4 flux;
+	flux(0) = U(1); //momentum in sweep direction
+	flux(1) = U(1)*(U(1)/U(0)) + Pressure(U);
+	flux(2) = (U(1)/U(0))*(U(2) + Pressure(U));
+	flux(3) = U(3)*U(1)/U(0);
 	return flux;
 }
 
@@ -68,7 +83,12 @@ double IdealGas::Pressure(vector U){
 	return Pressure;
 }
 
-double IdealGas::soundspeed(matrix U, int i){
+double IdealGas::Pressure(vector4 U){
+	double Pressure = (y-1)*(U(2) - 0.5*U(0)*(pow(U(1)/U(0),2.0) + pow(U(3)/U(0), 2)));
+	return Pressure;
+}
+
+/*double IdealGas::soundspeed(matrix U, int i){
 	double a = sqrt(y*(Pressure(U, i)/U(i, 0)));
 	return a;
 }
@@ -76,13 +96,32 @@ double IdealGas::soundspeed(matrix U, int i){
 double IdealGas::soundspeed(vector U){
 	double a = sqrt(y*(Pressure(U)/U(0)));
 	return a;
-}
+}*/
 
 vector IdealGas::conservedVar(vector W){
 	vector consV;
 	consV(0) = W(0); //Density
 	consV(1) = W(0)*W(1); //Density * Velocity
 	consV(2) = W(2)/(y-1) + 0.5*W(0)*W(1)*W(1); //Total Energy
+	return consV;
+}
+
+//if error, might be an incorrect arrangement of variables.
+vector4 IdealGas::conservedVar2Dx(vector4 W){
+	vector4 consV;
+	consV(0) = W(0); //Density
+	consV(1) = W(0)*W(1); //Density * Velocity
+	consV(2) = W(3)/(y-1) + 0.5*W(0)*(pow(W(1), 2) + pow(W(2), 2)); //Total Energy
+	consV(3) = W(0)*W(2); //Density * Velocity_y
+	return consV;
+}
+
+vector4 IdealGas::conservedVar2Dy(vector4 W){
+	vector4 consV;
+	consV(0) = W(0); //Density
+	consV(1) = W(0)*W(2); //Density * Velocity
+	consV(2) = W(3)/(y-1) + 0.5*W(0)*(pow(W(1), 2) + pow(W(2), 2)); //Total Energy
+	consV(3) = W(0)*W(1); //Density * Velocity_y
 	return consV;
 }
 
@@ -100,7 +139,12 @@ double StiffenedGas::Pressure(vector U){
 	return Pressure;
 }
 
-double StiffenedGas::soundspeed(Eigen::MatrixXd U, int i){
+double StiffenedGas::Pressure(vector4 U){
+	double Pressure = (y-1)*(U(2) - 0.5*U(0)*(pow(U(1)/U(0),2.0) + pow(U(3)/U(0), 2))) - y*Pref;
+	return Pressure;
+}
+
+/*double StiffenedGas::soundspeed(Eigen::MatrixXd U, int i){
 	double a = sqrt(y*((Pressure(U, i) + Pref)/U(i, 0)));
 	return a;
 }
@@ -108,13 +152,32 @@ double StiffenedGas::soundspeed(Eigen::MatrixXd U, int i){
 double StiffenedGas::soundspeed(vector U){
 	double a = sqrt(y*((Pressure(U) + Pref)/U(0)));
 	return a;
-}
+}*/
 
 vector StiffenedGas::conservedVar(vector W){
 	vector consV;
 	consV(0) = W(0); //Density
 	consV(1) = W(0)*W(1); //Density * Velocity
 	consV(2) = ((W(2)+y*Pref)/(y-1)) + 0.5*W(0)*W(1)*W(1); //Total Energy
+	return consV;
+}
+
+//if error, might be an incorrect arrangement of variables.
+vector4 StiffenedGas::conservedVar2Dx(vector4 W){
+	vector4 consV;
+	consV(0) = W(0); //Density
+	consV(1) = W(0)*W(1); //Density * Velocity
+	consV(2) = (W(3) + y*Pref)/(y-1) + 0.5*W(0)*(pow(W(1), 2) + pow(W(2), 2)); //Total Energy
+	consV(3) = W(0)*W(2); //Density * Velocity_y
+	return consV;
+}
+
+vector4 StiffenedGas::conservedVar2Dy(vector4 W){
+	vector4 consV;
+	consV(0) = W(0); //Density
+	consV(1) = W(0)*W(2); //Density * Velocity
+	consV(2) = (W(3) + y*Pref)/(y-1) + 0.5*W(0)*(pow(W(1), 2) + pow(W(2), 2)); //Total Energy
+	consV(3) = W(0)*W(1); //Density * Velocity_y
 	return consV;
 }
 

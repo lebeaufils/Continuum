@@ -9,36 +9,14 @@
 #define TESTS_EULERTESTS_H_
 
 #include <Eigen/Dense>
-#include "../EOS/EOS.h"
-//#include "../RPsolvers/Variables.h"
+#include "EOS.h"
+#include "Variables.h"
 
 typedef Eigen::Vector3d vector;
+typedef Eigen::Vector4d vector4;
 typedef Eigen::MatrixXd matrix;
 
-//-----------------------------------------------------------------------------------------------
-//	Data storage
-//-----------------------------------------------------------------------------------------------
 
-struct Euler1D
-{
-	//domain parameters
-	int N;
-	double dt;
-	double dx;
-	double x0;
-	double tstop;
-
-	//Variable Matrix
-	matrix X; //Domain
-	matrix U; //conserved variables
-	matrix F; //flux
-
-	std::shared_ptr<StateFunctions> state_function;
-
-	Euler1D() : N(0), dt(0), dx(0), x0(0), tstop(0), X(0, 0), U(0, 0), F(0, 0), state_function(NULL) {}
-	~Euler1D() {}
-
-};
 
 //-----------------------------------------------------------------------------------------------
 //	Tests
@@ -51,10 +29,10 @@ struct standardTests
 	double x0;
 	double tstop;
 
-	vector initialL;
-	vector initialR;
+	matrix initialL;
+	matrix initialR;
 
-	standardTests(double N) : N(N), L(1.0), x0(0.5), tstop(0), initialL(0, 0, 0), initialR(0, 0, 0) {}
+	standardTests(int N) : N(N), L(1.0), x0(0.5), tstop(0), initialL(3, 1), initialR(3, 1) {}
 	virtual ~standardTests() {}
 
 	int Get_Switch();
@@ -65,7 +43,7 @@ struct eulerTests : public virtual standardTests
 {
 	Euler1D var;
 
-	eulerTests(double N) : standardTests(N), var() {}
+	eulerTests(int N) : standardTests(N), var() {}
 	virtual ~eulerTests() {}
 
 	void test1();
@@ -80,6 +58,34 @@ struct eulerTests : public virtual standardTests
 	//void testS(); //settings file
 
 	void switch_test();
+};
+
+struct eulerTests2D : public virtual standardTests
+{
+	Euler2D var;
+
+	//Additional domain parameters
+		//If x and y have different lengths/ number of cells
+		int Ny;
+		double Ly;
+		//Interface location as a function of x and y (a list of interfacial cells)
+		Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
+
+	eulerTests2D(int N) : standardTests(N), var(), Ny(N), Ly(L), interface(N, Ny) {
+		initialL.resize(4, 1);
+		initialR.resize(4, 1);
+	}
+	eulerTests2D(int Nx, int Ny) : standardTests(Nx), var(), Ny(Ny), Ly(L), interface(Nx, Ny) {
+		initialL.resize(4, 1);
+		initialR.resize(4, 1);
+	}
+	virtual ~eulerTests2D() {}
+
+	void test1();
+	void test2();
+	void test3();
+
+	//void switch_test();	
 };
 
 /*

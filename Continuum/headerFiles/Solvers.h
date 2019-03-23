@@ -4,9 +4,9 @@
 
 //Equation of states and tests
 //#include "../EOS/JWL.h"
-#include "../EOS/EOS.h"
-#include "../Tests/eulerTests.h"
-//#include "Variables.h"
+#include "EOS.h"
+#include "eulerTests.h"
+#include "Variables.h"
 
 #include <iostream>
 #include <vector>
@@ -27,8 +27,6 @@ enum slopeLimiter {MinBee, VanLeer, SuperBee, Quit};
 
 struct MUSCL
 {
-	static void boundary_conditions(Euler1D&);
-	static void initial_conditions_1D(eulerTests&);
 
 	//-----Slope limiters-----
 	static vector superBee(matrix, int);
@@ -40,14 +38,33 @@ struct MUSCL
 	static void data_reconstruction(matrix, slopeLimiter, matrix&, matrix&, int);
 	//-----------------------------
 
+	//-----------------------------
+	//1-Dimensional
+	//-----------------------------
+	static void boundary_conditions(Euler1D&);
+	static void initial_conditions(eulerTests&);
+
 	static void compute_fluxes(Euler1D&, int, matrix, matrix, double&);
 	static void conservative_update_formula(Euler1D&, int);
 
 	static void solver(Euler1D&, double);
 	static void output(Euler1D&);
+	
+	//-----------------------------
+	//2-Dimensional
+	//-----------------------------
+	static void boundary_conditions(Euler2D&);
+	static void initial_conditions(eulerTests2D&);
+
+	static void compute_fluxes(Euler2D&, matrix, vector4, int, matrix, matrix, double&);
+	static void conservative_update_formula(Euler2D&, int);
+
+	static void solver(Euler2D&, double);
+	static void dimensional_splitting(Euler2D&); //to be altered
+	static void output(Euler2D&);
 };
 
-struct EXACT 
+class EXACT 
 {
 //------------------------------------------------
 //	Input Parameters
@@ -80,18 +97,15 @@ struct EXACT
 	double CONST8; // y-1
 
 public:
-	EXACT(eulerTests Test) : N(1000), dx(Test.L/N), x0(Test.x0), W(N, 3), TOL(1e-6), 
-		y(Test.var.state_function->y), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {
-			WL = Test.initialL;
-			WR = Test.initialR;
-		}
+	EXACT(eulerTests Test) : N(1000), dx(Test.L/N), x0(Test.x0), W(N, 3),WL(0,0,0), WR(0,0,0), TOL(1e-6), 
+		y(Test.var.state_function->y), cL(0), cR(0), CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {}
 	
 	//EXACT(int, double, double, double, vector, vector); //unfinished
 	//EXACT(double, eulerTests);
 	//virtual ~EXACT() {};
 
 	//compute constants
-	void initial_conditions();
+	void initial_conditions(eulerTests&);
 
 	//Riemann Problem: Equations for Pressure and Particle Velocity
 

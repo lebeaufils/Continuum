@@ -1,4 +1,4 @@
-#include "Solvers.h"
+#include "../headerFiles/Solvers.h"
 
 /*--------------------------------------------------------------------------------
  * MUSCL
@@ -11,7 +11,7 @@ void MUSCL::boundary_conditions(Euler1D &var){
 	var.U.row(var.N+3) = var.U.row(var.N+2);
 }
 
-void MUSCL::initial_conditions_1D(eulerTests &Test){
+void MUSCL::initial_conditions(eulerTests &Test){
 	Test.var.X.resize(Test.N+2, 1);
 	Test.var.U.resize(Test.N+4, 3);
 	Test.var.F.resize(Test.N+2, 3);
@@ -253,7 +253,6 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 
 	vector tmp;
 
-
 	/*-----------------------------------------------
 	 * Evolution by 1/2 time-step
 	 ----------------------------------------------*/
@@ -306,6 +305,46 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 		//Davies Wave Speed Estimates
 		double Splus = fmax(abs(ul) + al, abs(ur) + ar);
 		SL = -Splus; SR = Splus;
+		
+
+				/*
+				//---------------------------------------
+				// pressure based wave speed estimate
+				//---------------------------------------
+
+				//Pressure-based wave speed estimate
+				double Ppvrs;
+				double Pstar;
+				double rhoavg;
+				double aavg;
+				double ql, qr;
+
+				rhoavg = 0.5*(dl + dr);
+				aavg = 0.5*(al + ar);
+
+				Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg;
+
+				Pstar = fmax(0.0, Ppvrs);
+				if (Pstar <= Pl){
+					ql = 1.0;
+				}
+
+				else {
+					ql = sqrt(1 + ((var.state_function->y+1)/(2*var.state_function->y))*((Pstar/Pl) - 1));
+				}
+
+				if (Pstar <= Pr){
+					qr = 1.0;
+				}
+
+				else {
+					qr = sqrt(1 + ((var.state_function->y+1)/(2*var.state_function->y))*((Pstar/Pr) - 1));
+				}
+
+				SR = ur + ar*qr;
+				SL = ul - al*ql;
+				*/
+
 
 		if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
@@ -394,6 +433,225 @@ void MUSCL::output(Euler1D &var){
 	std::cout << "done: MUSCL" << std::endl;
 }
 
+//--------------------------------------------------------------------------------
+//	2D MUSCL
+//--------------------------------------------------------------------------------
+//
+//
+//--------------------------------------------------------------------------------
+//	
+//--------------------------------------------------------------------------------
+
+
+void MUSCL::boundary_conditions(Euler2D &var){
+
+	if (var.U.cols() == 0 || var.U.rows() == 0){
+		throw "Array is empty.";
+	}
+
+	//assigning ghost values in the x-direction 
+	for (int j=0; j<var.Ny; j++){
+		var.U(1, j+2) = var.U(2, j+2);
+		var.U(0, j+2) = var.U(1, j+2);
+		var.U(var.Nx+2, j+2) = var.U(var.Nx+1, j+2);
+		var.U(var.Nx+3, j+2) = var.U(var.Nx+2, j+2);
+	} 
+	//assigning ghost values in the y-direction
+	for (int i=0; i<var.Nx; i++){
+		var.U(i+2, 1) = var.U(i+2, 2);
+		var.U(i+2, 0) = var.U(i+2, 1);
+		var.U(i+2, var.Ny+2) = var.U(i+2, var.Ny+1);
+		var.U(i+2, var.Ny+3) = var.U(i+2, var.Nx+2);
+	} 
+}
+
+void MUSCL::initial_conditions(eulerTests2D &Test){
+	Test.var.X.resize(Test.N+2, Test.Ny+2);
+	Test.var.U.resize(Test.N+4, Test.Ny+4);
+	Test.var.Fx.resize(Test.N+2, Test.N+2);
+	Test.var.Fy.resize(Test.N+2, Test.N+2);
+
+	vector4 eulerL;
+	vector4 eulerR;
+
+	eulerL = Test.var.state_function->conservedVar2Dx(Test.initialL);
+	eulerR = Test.var.state_function->conservedVar2Dx(Test.initialR);
+
+	for (int i=0; i<Test.N; i++){
+		for (int j=0; j<Test.Ny; j++){
+			if (Test.interface(i, j) == false){
+				Test.var.U(i+2, j+2) = eulerL;			
+			}
+			else {
+				Test.var.U(i+2, j+2) = eulerR;				
+			}
+		}
+	}
+	boundary_conditions(Test.var);
+	//Test.var.display<vecarray>(Test.var.U);
+}
+
+void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double &Smax){
+	//soundspeed
+	double al, ar;
+	//velocity components
+	double ul, ur; //direction currently being swept
+	double vl, vr; //other direction
+
+	double dl, dr;
+	double Pl, Pr;
+
+	double mvl, mvr;
+	double El, Er;
+
+	double SL, SR, Sstar;
+
+	vector4 tmp;
+
+	/*-----------------------------------------------
+	 * Evolution by 1/2 time-step
+	 ----------------------------------------------*/
+
+	vector4 ULtmp = ULi.row(i);
+	vector4 URtmp = URi.row(i);
+	vector4 ULtmp1 = ULi.row(i+1);
+	vector4 URtmp1 = URi.row(i+1);
+
+	//Post 1/2 time-step evolution left and right states
+	vector4 ULbar = ULtmp1 + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
+	vector4 URbar = URtmp + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
+
+
+	/*-------------------------------------------------------
+	 * Solution of the piecewise constant Riemann problem pg 180
+	 -------------------------------------------------------*/
+	/*-------------------------------------------------------
+	 * HLLC solver
+	 -------------------------------------------------------*/
+	vector4 hllcUL = URbar;
+	vector4 hllcUR = ULbar;
+
+	//if (count == 1) std::cout << U.row(i) << std::endl;
+
+	//conservative variables
+		//density
+		dl = hllcUL(0);
+		dr = hllcUR(0);
+		//momentum
+		mvl = hllcUL(1);
+		mvr = hllcUR(1);
+		//energy
+		El = hllcUL(2);
+		Er = hllcUR(2);
+
+		//Pressure
+		Pl = var.state_function->Pressure(hllcUL);
+		Pr = var.state_function->Pressure(hllcUR);
+
+		//velocity
+		ul = hllcUL(1)/hllcUL(0);
+		ur = hllcUR(1)/hllcUR(0);
+
+		vl = hllcUL(3)/hllcUL(0);
+		vr = hllcUR(3)/hllcUR(0);
+
+		//soundspeed
+		al = var.state_function->soundspeed(hllcUL);
+		ar = var.state_function->soundspeed(hllcUR);
+
+
+		//Davies Wave Speed Estimates
+		double Splus = fmax(abs(ul) + al, abs(ur) + ar);
+		SL = -Splus; SR = Splus;
+
+		if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
+
+		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
+		//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
+		//initialize FL and FR for each timestep
+		vector4 FL(mvl, mvl*ul + Pl, ul*(El + Pl), mvl*vl);
+		vector4 FR(mvr, mvr*ur + Pr, ur*(Er + Pr), mvr*vr);		
+
+		if (0 <= SL){
+			F = FL;
+		}
+
+		//non trivial, subsonic case, region between the 2 acoustic waves. Fhll.
+		else if (SL<=0 && Sstar>=0){
+			double tmpUstar = dl*((SL - ul)/(SL - Sstar));
+			vector4 UstarL(tmpUstar, tmpUstar*Sstar, tmpUstar*((El/dl) + (Sstar - ul)*(Sstar + (Pl/(dl*(SL - ul))))),
+				tmpUstar*vl);
+			tmp = U.row(i);
+			F = FL + SL*(UstarL - tmp);
+		}
+
+		else if (Sstar<=0 && SR>=0){
+			double tmpUstar = dr*((SR - ur)/(SR - Sstar));
+			vector4 UstarR(tmpUstar, tmpUstar*Sstar, tmpUstar*((Er/dr) + (Sstar - ur)*(Sstar + (Pr/(dr*(SR - ur))))),
+				tmpUstar*vr);
+			tmp = U.row(i+1);
+			F = FR + SR*(UstarR - tmp);
+		}
+
+		else if (0 >= SR){
+			F = FR;
+		}
+}
+
+void MUSCL::solver(Euler2D &var, double CFL){
+	
+	matrix ULix(var.Nx+4, 4);
+	matrix URix(var.Nx+4, 4);
+
+	matrix ULix(var.Ny+4, 4);
+	matrix URix(var.Ny+4, 4);
+
+	//Temporary storage for x and y conserved variables 
+	matrix Uxn(var.Nx+4, 4);
+	matrix Uyn(var.Ny+4, 4);
+
+	double Smax_x=0;
+	double Smax_y=0;
+
+	slopeLimiter a = getLimiter();
+
+	double t = 0.0;
+	int count = 0;
+	do{
+		//sweeping in the x-direction for y rows
+		for (int j=0; i<Ny; j++){
+			for(int i=0; i<Nx; i++){
+				Uxn.row(i) = var.U(i, j);
+			} 
+
+			data_reconstruction(Uxn, a, ULi, URi, var.Nx);
+
+			for (int i=1; i<var.Nx+2; i++){
+				compute_fluxes(var, i, ULi, URi, Smax); //compute flux needs to change
+			}
+
+		}
+				data_reconstruction(var.U, a, ULi, URi, var.N);
+				for (int i=1; i<var.N+2; i++){
+					compute_fluxes(var, i, ULi, URi, Smax);
+				}
+
+				//set timestep
+				var.dt = CFL*(var.dx/Smax); //updates every timestep
+				if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+				t += var.dt;
+				count += 1;
+
+				//updating U
+				for (int i=2; i<var.N+2; i++){
+					conservative_update_formula(var, i);
+				}
+				boundary_conditions(var);
+
+	}while (t < var.tstop);
+	std::cout << count << std::endl;
+}
+
 
 //--------------------------------------------------------------------------------
 //	Exact Solver
@@ -404,7 +662,10 @@ void MUSCL::output(Euler1D &var){
 	: dx(dx), x0(x0), W(N, 3), WL(WL), WR(WR), TOL(1e-6), y(y), cL(0), cR(0), 
 	CONST1(0),CONST2(0), CONST3(0), CONST4(0), CONST5(0), CONST6(0), CONST7(0), CONST8(0) {}*/
 
-void EXACT::initial_conditions(){
+void EXACT::initial_conditions(eulerTests& Test){
+	WL = Test.initialL;
+	WR = Test.initialR;
+
 	cL = sqrt(y*WL(2)/WL(0));
 	cR = sqrt(y*WR(2)/WR(0));
 
@@ -416,9 +677,6 @@ void EXACT::initial_conditions(){
 	CONST6 = (y-1)/(y+1);
 	CONST7 = (y-1)/2.;
 	CONST8 = y-1;
-
-	std::cout << "y = " << y << std::endl;
-	std::cout << cL << '\t' << cR << std::endl;
 }
 
 void EXACT::check_pressure_pos_condition(){
@@ -537,7 +795,6 @@ double EXACT::compute_star_pressure(){
 	double mixTOL;
 
 	int count = 0;
-	std::cout << p0 << std::endl;
 	do{
 		Pk_1 = newton_raphson(Pk);
 		CHA = relative_pressure_change(Pk_1, Pk);
@@ -549,8 +806,6 @@ double EXACT::compute_star_pressure(){
 		if (CHA < mixTOL) break;
 		if (count == 20) std::cout << "Warning, maximum iterations reached for Newton's method" << std::endl;
 	}while(count < 20);
-
-	std::cout << count <<std::endl;
 	return Pk;
 }
 
@@ -597,10 +852,6 @@ void EXACT::sampling(double t){
 
 	double SHL = uL - cL; double SHR = uR + cR; //Head of fan
 	double STL = ustar - cstarL; double STR = ustar + cstarR; //tail of fan
-
-	std::cout << drareL << '\t' << drareR << std::endl;
-	std::cout << SHL << '\t' << SHR << std::endl;
-	std::cout << STL << '\t' << STR<< std::endl;
 
 	//Sampling is based on the position of wave with respect to time in x-t space,
 	// characterised by its "speed" S = x/t.
@@ -709,138 +960,12 @@ void EXACT::output(){
 }
 
 void EXACT::solver(eulerTests &Test){
-	initial_conditions();
+	initial_conditions(Test);
 	sampling(Test.tstop);
 	output();
 }
 
 
-
-
-
-/*
-double EXACT::fk(double P, vector Wk, EOS* IG){
-	//Data-dependent constants
-	double Ak = 2./((IG->y + 1)*Wk(0));
-	double Bk = Wk(2)*((IG->y - 1)/(IG->y + 1));
-	double ck = pow(IG->y*Wk(2)/Wk(0), 0.5); //soundspeed
-	double flux;
-
-	if (P > Wk(2)){ //Shock
-		flux = (P - Wk(2))*pow(Ak/(P + Bk), 0.5);
-	}
-
-	else { //Rarefraction
-		flux = ((2.*ck)/(IG->y - 1))*(pow(P/Wk(2), (IG->y - 1)/(2.*IG->y)) - 1);
-	}
-
-	return flux;
-}
-
-double EXACT::f(double P, vector WL, vector WR, EOS* IG){
-	double du = (WR(1) - WL(1));
-	return fk(P, WL, IG) + fk(P, WR, IG) + du;                                                                                                             
-}
-
-double EXACT::fkprime(double P, vector Wk, EOS* IG){ //first derivative of f
-	//Data-dependent constants
-	double Ak = 2./((IG->y + 1)*Wk(0));
-	double Bk = Wk(2)*((IG->y - 1)/(IG->y + 1));
-	double ck = pow(IG->y*Wk(2)/Wk(0), 0.5); //soundspeed
-	double fluxprime;
-
-	if (P > Wk(2)){ //Shock
-		fluxprime = pow(Ak/(P + Bk), 0.5) * (1 - (P - Wk(2))/(2.*(P + Bk))); 
-	}
-
-	else { //Rarefraction
-		fluxprime = (1./(Wk(0)*ck))*pow(P/Wk(2), -(IG->y + 1)/(2*IG->y));
-	}
-
-	return fluxprime;
-}
-
-double EXACT::fprime(double P, vector WL, vector WR, EOS* IG){
-	return fkprime(P, WR, IG) + fkprime(P, WL, IG);
-}
-
-double EXACT::newton_raphson(double Pk, vector WL, vector WR, EOS* IG){
-	double Pk_1 = Pk - f(Pk, WL, WR, IG)/fprime(Pk, WL, WR, IG);
-	//double du = (WR(1) - WL(1));
-	//double Pk_1 = Pk - (fk(Pk, WR, IG) + fk(Pk, WL, IG) + du)/(fkprime(Pk, WR, IG) + fkprime(Pk, WL, IG));
-	return Pk_1;
-}
-
-double EXACT::relative_pressure_change(double Pk_1, double Pk){ //where Pk_1 is the k+1th iterate
-	double CHA = abs(Pk_1 - Pk)/(0.5*(Pk_1 + Pk));
-	return CHA;
-}
-
-double EXACT::compute_star_pressure(vector WL, vector WR, EOS* IG){
-	//An approximation for p, p0 is required for the initial guess.
-	//A poor choice of p0 results in the need for large number of iterations to achieve convergence
-	
-	double cL = pow(IG->y*WL(2)/WL(0), 0.5); //soundspeed in left state
-	double cR = pow(IG->y*WR(2)/WR(0), 0.5); //soundspeed in right state
-
-	double exponent = (IG->y - 1)/(2*IG->y);
-	double _exponent = (2*IG->y)/(IG->y - 1);
-	
-	//Two-Rarefraction approximation
-	double pTR = pow((cL + cR - 0.5*(IG->y-1)*(WR(1) - WL(1)))/((cL/pow(WL(2), exponent)) + (cR/pow(WR(2), exponent))), _exponent);
-		//Pressure under the assumption that the two non-linear waves are rarefraction waves
-
-	//double p0 = 0.5*(WL(2) + WR(2));
-	//to make logic gates to select the 4 different P guesses...
-
-	double Pk; Pk = pTR; //First guess
-	double Pk_1;
-	double CHA = 0;
-
-	int count = 0;
-	do{
-		Pk_1 = newton_raphson(Pk, WL, WR, IG);
-		CHA = relative_pressure_change(Pk_1, Pk);
-		Pk = Pk_1; //Set the iterate as the new guess
-		count += 1;
-	}while(CHA > TOL);
-
-	std::cout << count <<std::endl;
-	return Pk;
-}
-
-double EXACT::compute_star_velocity(vector WL, vector WR, EOS* IG, double pstar){
-	ustar = 0.5*(WL(1) + WR(1)) + 0.5*(fk(pstar, WR, IG) - fk(pstar, WL, IG));
-	return ustar;
-}
-
-double EXACT::compute_star_density_k(vector Wk, EOS* IG, double pstar){
-	//turn this into a stored variable so the iteration does not have to be called multiple times
-	
-	//From the Hugoniot jump conditions, see TORO 3.1.3 (substituting the expressio n for internal energy)
-	Yratio = (IG.y-1)/(IG.y+1);
-	Pratio = pstar/Wk(2);
-	dstar_k = Wk(0)*((Yratio + Pratio)/(Yratio*Pratio + 1));
-	return dstar_k;
-}
-
-double EXACT::compute_mass_flux_k(vector Wk, EOS* IG, double pstar){
-	double Ak = 2./((IG->y + 1)*Wk(0));
-	double Bk = Wk(2)*((IG->y - 1)/(IG->y + 1));
-	Qk = pow((pstar + Bk)/Ak, 0.5);
-	return Qk;
-}
-
-double EXACT::compute_left_shock_speed(vector WL, EOS* IG, double pstar){
-	QL = compute_mass_flux_k(WL, IG, Pstar);
-	return WL(1) - QL/WL(0);
-}
-
-double EXACT::compute_right_shock_speed(vector WR, EOS* IG, double pstar){
-	QR = compute_mass_flux_k(WR, IG, Pstar);
-	return WR(1) + QR/WR(0);
-}
-*/
 
 
 

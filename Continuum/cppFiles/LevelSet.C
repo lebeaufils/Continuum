@@ -1,4 +1,4 @@
-#include "LevelSet.h"
+#include "../headerFiles/LevelSet.h"
 
 LevelSetFunction::LevelSetFunction(gfmTests Test)
 	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), x1(Test.x1), x2(Test.x2), phi(N+2, 1), sgn(0) {}
