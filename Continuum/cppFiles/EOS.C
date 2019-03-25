@@ -37,6 +37,13 @@ double StateFunctions::internalE(matrix U, int i){
 	return e;
 }
 
+double StateFunctions::internalE(vector4 U){
+	//E = ρ ( 0.5*V2 + e)
+	//note: this internalE is actually ρe 
+	double e = U(2)/U(0) - 0.5*(pow(U(1)/U(0), 2.0) + pow(U(3)/U(0), 2));
+	return e;
+}
+
 double StateFunctions::soundspeed(matrix U, int i){
 	double a = sqrt(y*(Pressure(U, i)/U(i, 0)));
 	return a;

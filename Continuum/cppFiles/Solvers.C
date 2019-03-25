@@ -79,15 +79,15 @@ vector MUSCL::superBee(matrix U, int i){
 	return diBar;
 }
 
-vector MUSCL::vanLeer(matrix U, int i){
+/*vector MUSCL::vanLeer(matrix U, int i){
 
 	vector diMinus = U.row(i) - U.row(i-1);
 	vector diPlus = U.row(i+1) - U.row(i);
 	vector di = 0.5*diMinus + 0.5*diPlus;
 
-	/*-----------------------------------------------
-	 * Slope limiter -- Van Leer
-	 ----------------------------------------------*/
+	//-----------------------------------------------
+	//	Slope limiter -- Van Leer
+	//----------------------------------------------
 
 	vector epsiloni(0, 0, 0);
 	vector epsilonR(0, 0, 0);
@@ -115,6 +115,83 @@ vector MUSCL::vanLeer(matrix U, int i){
 
 	return diBar;
 	//make r = 0 to test first order
+}*/
+
+matrix MUSCL::vanLeer(matrix U, int i){
+
+	/*-----------------------------------------------
+	 * Slope limiter -- Van Leer
+	 ----------------------------------------------*/
+
+	if (U.cols() == 3){
+
+		vector diMinus = U.row(i) - U.row(i-1);
+		vector diPlus = U.row(i+1) - U.row(i);
+		vector di = 0.5*diMinus + 0.5*diPlus;
+
+		vector epsiloni(0, 0, 0);
+		vector epsilonR(0, 0, 0);
+		vector ri(0, 0, 0);
+
+		for (int j=0; j<3; j++){
+			ri(j) = diMinus(j)/diPlus(j);
+		}
+
+		for (int j=0; j<3; j++){
+			if (ri(j) <= 0){
+				epsiloni(j) = 0;
+			}
+			//note: A more refined approach would be to adopt characteristic limiting p510
+			else if (ri(j) > 0){
+				epsilonR(j) = 2/(1+ri(j));
+				epsiloni(j) = fmin(2*ri(j)/(1+ri(j)), epsilonR(j));
+			}
+		}
+
+		matrix diBar(3, 1);
+		for (int j=0; j<3; j++){
+			 diBar(j) = epsiloni(j)*di(j);
+		}
+
+		return diBar;
+		//make r = 0 to test first order
+	}
+
+	else if (U.cols() == 4){
+		vector4 diMinus = U.row(i) - U.row(i-1);
+		vector4 diPlus = U.row(i+1) - U.row(i);
+		vector4 di = 0.5*diMinus + 0.5*diPlus;
+
+		vector4 epsiloni(0, 0, 0, 0);
+		vector4 epsilonR(0, 0, 0, 0);
+		vector4 ri(0, 0, 0, 0);
+
+		for (int j=0; j<4; j++){
+			ri(j) = diMinus(j)/diPlus(j);
+		}
+
+		for (int j=0; j<4; j++){
+			if (ri(j) <= 0){
+				epsiloni(j) = 0;
+			}
+			//note: A more refined approach would be to adopt characteristic limiting p510
+			else if (ri(j) > 0){
+				epsilonR(j) = 2/(1+ri(j));
+				epsiloni(j) = fmin(2*ri(j)/(1+ri(j)), epsilonR(j));
+			}
+		}
+
+		matrix diBar(4, 1);
+		for (int j=0; j<4; j++){
+			 diBar(j) = epsiloni(j)*di(j);
+		}
+
+		return diBar;		
+	}
+
+	else {
+		throw "Number of conserved variables exceeds 2D";
+	}
 }
 
 vector MUSCL::minBee(matrix U, int i){
@@ -202,8 +279,15 @@ slopeLimiter MUSCL::getLimiter(){
 }
 
 void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &URi, int N){
-	vector Utmp;
+	matrix Utmp(0, 0);
 
+	if (ULi.cols() == 3) {
+		 Utmp.resize(3, 1);
+	}
+
+	if (ULi.cols() == 4) {
+		 Utmp.resize(4, 1);
+	}
 	//slopeLimiter a = getLimiter();
 
 	for (int i=1; i<N+3; i++){ //U goes from 0 to N+3
@@ -219,8 +303,8 @@ void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &U
 			break;
 		case VanLeer:
 			Utmp = U.row(i);
-			ULi.row(i) = Utmp - 0.5*vanLeer(U, i);
-			URi.row(i) = Utmp + 0.5*vanLeer(U, i);
+			ULi.row(i) = Utmp - (0.5*vanLeer(U, i)).transpose();
+			URi.row(i) = Utmp + (0.5*vanLeer(U, i)).transpose();
 			break;
 		case SuperBee:
 			Utmp = U.row(i);
@@ -382,6 +466,10 @@ void MUSCL::conservative_update_formula(Euler1D &var, int i){
 	var.U.row(i) = var.U.row(i) - (var.dt/var.dx)*(var.F.row(i) - var.F.row(i-1));
 }
 
+void MUSCL::conservative_update_formula_2D(vector4& U, vector4 F, vector4 F_1, double dt, double dx){
+	U = U - (dt/dx)*(F - F_1);
+}
+
 void MUSCL::solver(Euler1D &var, double CFL){
 	
 	matrix ULi(var.N+4, 3);
@@ -397,6 +485,7 @@ void MUSCL::solver(Euler1D &var, double CFL){
 		data_reconstruction(var.U, a, ULi, URi, var.N);
 		for (int i=1; i<var.N+2; i++){
 			compute_fluxes(var, i, ULi, URi, Smax);
+			std::cout << var.F.row(i) << std::endl;
 		}
 
 		//set timestep
@@ -468,8 +557,8 @@ void MUSCL::boundary_conditions(Euler2D &var){
 void MUSCL::initial_conditions(eulerTests2D &Test){
 	Test.var.X.resize(Test.N+2, Test.Ny+2);
 	Test.var.U.resize(Test.N+4, Test.Ny+4);
-	Test.var.Fx.resize(Test.N+2, Test.N+2);
-	Test.var.Fy.resize(Test.N+2, Test.N+2);
+	Test.var.F.resize(Test.N+2, Test.N+2);
+	Test.var.G.resize(Test.N+2, Test.N+2);
 
 	vector4 eulerL;
 	vector4 eulerR;
@@ -488,10 +577,10 @@ void MUSCL::initial_conditions(eulerTests2D &Test){
 		}
 	}
 	boundary_conditions(Test.var);
-	//Test.var.display<vecarray>(Test.var.U);
+	//Test.var.display(Test.var.U);
 }
 
-void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double &Smax){
+void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double dx, double &Smax){
 	//soundspeed
 	double al, ar;
 	//velocity components
@@ -518,8 +607,8 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 	vector4 URtmp1 = URi.row(i+1);
 
 	//Post 1/2 time-step evolution left and right states
-	vector4 ULbar = ULtmp1 + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
-	vector4 URbar = URtmp + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
+	vector4 ULbar = ULtmp1 + 0.5*(var.dt/dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
+	vector4 URbar = URtmp + 0.5*(var.dt/dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
 
 
 	/*-------------------------------------------------------
@@ -598,13 +687,14 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 		}
 }
 
+
 void MUSCL::solver(Euler2D &var, double CFL){
 	
 	matrix ULix(var.Nx+4, 4);
 	matrix URix(var.Nx+4, 4);
 
-	matrix ULix(var.Ny+4, 4);
-	matrix URix(var.Ny+4, 4);
+	matrix ULiy(var.Ny+4, 4);
+	matrix URiy(var.Ny+4, 4);
 
 	//Temporary storage for x and y conserved variables 
 	matrix Uxn(var.Nx+4, 4);
@@ -613,24 +703,60 @@ void MUSCL::solver(Euler2D &var, double CFL){
 	double Smax_x=0;
 	double Smax_y=0;
 
-	slopeLimiter a = getLimiter();
+	slopeLimiter a = VanLeer;//getLimiter();
 
 	double t = 0.0;
 	int count = 0;
 	do{
-		//sweeping in the x-direction for y rows
-		for (int j=0; i<Ny; j++){
-			for(int i=0; i<Nx; i++){
-				Uxn.row(i) = var.U(i, j);
+		//sweeping in the x-direction for each y row
+		for (int j=0; j<var.Ny; j++){
+			//Within each row, store the values for each grid point in x with a single row list
+			for(int i=0; i<var.Nx+4; i++){
+				Uxn.row(i) = var.U(i, j+2);
+				//the sweep in x is only performed within the real y grid
 			} 
-
-			data_reconstruction(Uxn, a, ULi, URi, var.Nx);
+			//calculate and update to new interpolated values U_i
+			data_reconstruction(Uxn, a, ULix, URix, var.Nx);
 
 			for (int i=1; i<var.Nx+2; i++){
-				compute_fluxes(var, i, ULi, URi, Smax); //compute flux needs to change
+				vector4 Fx(0, 0, 0, 0);
+				compute_fluxes(var, Uxn, Fx, i, ULix, URix, var.dx, Smax_x); //compute flux needs to change
+				var.F(i, j+1) = Fx; //storing the computed flux.
 			}
-
 		}
+		//sweeping in the y-direction for each x row
+		for (int i=0; i<var.Nx; i++){
+			for (int j=0; j<var.Ny+4; j++){
+				Uyn.row(j) = var.swap_xy(var.U(i+2, j));
+			}
+			data_reconstruction(Uyn, a, ULiy, URiy, var.Ny);
+
+			for (int j=1; j<var.Ny+2; j++){
+				vector4 Fy(0, 0, 0, 0);
+				compute_fluxes(var, Uyn, Fy, j, ULiy, URiy, var.dy, Smax_y); //compute flux needs to change
+				var.G(i+1, j) = Fy; //storing the computed flux.
+			}
+		}
+		//set timestep, taking maximum wavespeed in x or y directions
+		var.dt = CFL*fmin((var.dx/Smax_x), (var.dy/Smax_y));
+		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+		t += var.dt;
+		count += 1;
+
+		//updating U
+		for (int j=0; j<var.Ny; j++){
+			for (int i=2; i<var.Nx+2; i++){
+				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), var.dt, var.dx);
+			}
+		}
+		for (int i=0; i<var.Nx; i++){
+			for (int j=2; j<var.Ny+2; j++){
+				conservative_update_formula_2D(var.U(i+2, j), var.swap_xy(var.G(i+1, j)), var.swap_xy(var.G(i+1, j-1)), var.dt, var.dy);
+			}
+		}
+		boundary_conditions(var);		
+
+		/*
 				data_reconstruction(var.U, a, ULi, URi, var.N);
 				for (int i=1; i<var.N+2; i++){
 					compute_fluxes(var, i, ULi, URi, Smax);
@@ -647,9 +773,38 @@ void MUSCL::solver(Euler2D &var, double CFL){
 					conservative_update_formula(var, i);
 				}
 				boundary_conditions(var);
-
+		*/
+		//t = var.tstop;
 	}while (t < var.tstop);
 	std::cout << count << std::endl;
+}
+
+void MUSCL::output(Euler2D &var){
+
+	std::ofstream outfile;
+	outfile.open("dataeuler.txt");
+	/*for (int i=2; i<var.Nx+2; i++){
+		for (int j=2; j<var.Ny+2; j++){
+
+			double u = var.U(i, 1)/var.U(i, 0);
+			double P = var.state_function->Pressure(var.U, i);
+			double e = var.state_function->internalE(var.U, i);
+
+			outfile << var.X(i-1) << '\t' << var.U(i, 0) << '\t' << u
+					<< '\t' << P << '\t' << e << std::endl;
+		}
+	}*/
+	for (int i=2; i<var.Nx+2; i++){
+		vector4 Ux = var.U(i, 2);
+		double u = Ux(1)/Ux(0);
+		double P = var.state_function->Pressure(Ux);
+		double e = var.state_function->internalE(Ux);
+
+		outfile << var.dx*(i-2) << '\t' << Ux(0) << '\t' << u
+				<< '\t' << P << '\t' << e << std::endl;
+	}	
+	outfile.close();
+	std::cout << "done: MUSCL" << std::endl;
 }
 
 

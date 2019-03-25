@@ -39,3 +39,14 @@ void Euler2D::display(T A){
 	}
 }
 
+template <typename T>
+T Euler2D::swap_xy(T A){
+	T B;
+	B(0) = A(0);
+	B(1) = A(3);
+	B(2) = A(2);
+	B(3) = A(1);
+	return B;
+}
+
+

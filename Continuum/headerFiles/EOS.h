@@ -37,6 +37,7 @@ struct StateFunctions
 	virtual vector4 conservedVar2Dx(vector4) = 0;
 	virtual vector4 conservedVar2Dy(vector4) = 0;
 	double internalE(Eigen::MatrixXd, int);
+	double internalE(vector4);
 	vector fluxes(vector); //flux
 	//2D
 	vector4 fluxes(vector4); //flux in the x or y direction

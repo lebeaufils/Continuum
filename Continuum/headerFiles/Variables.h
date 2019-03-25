@@ -64,6 +64,8 @@ struct Euler2D
 	T get_column(T, int);
 	template<typename T>
 	void display(T);
+	template<typename T>
+	T swap_xy(T); //swaps the order of velocity in x-y directions
 };
 
 #include "Variables.tcc"
