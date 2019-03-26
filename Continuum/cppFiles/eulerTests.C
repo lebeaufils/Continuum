@@ -267,11 +267,12 @@ void eulerTests2D::test2(){ //sod's tube test, x-aligned
 	//setting the list of interfacial points
 	double x = 0;
 	double y = 0;
+
 	for (int i=0; i<N; i++){
 		x = i*var.dx;
 		for (int j=0; j<Ny; j++){
 			y = j*var.dy;
-			if (y < 0.5){
+			if (y <= 0.5){
 				interface(i, j) = false;
 			}
 			else {

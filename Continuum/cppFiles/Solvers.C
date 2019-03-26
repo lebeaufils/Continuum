@@ -783,26 +783,29 @@ void MUSCL::output(Euler2D &var){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
-	/*for (int i=2; i<var.Nx+2; i++){
+
+	for (int i=2; i<var.Nx+2; i++){
 		for (int j=2; j<var.Ny+2; j++){
+			vector4 Ux = var.U(i, j);
+			double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
+			double P = var.state_function->Pressure(Ux);
+			double e = var.state_function->internalE(Ux);
 
-			double u = var.U(i, 1)/var.U(i, 0);
-			double P = var.state_function->Pressure(var.U, i);
-			double e = var.state_function->internalE(var.U, i);
-
-			outfile << var.X(i-1) << '\t' << var.U(i, 0) << '\t' << u
+			outfile << var.dx*(i-2) << '\t' << var.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 					<< '\t' << P << '\t' << e << std::endl;
 		}
-	}*/
-	for (int i=2; i<var.Nx+2; i++){
-		vector4 Ux = var.U(i, 2);
-		double u = Ux(1)/Ux(0);
+	}
+	//plotting a slice
+	/*for (int j=2; j<var.Ny+2; j++){
+		vector4 Ux = var.U(2, j);
+		double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
 		double P = var.state_function->Pressure(Ux);
 		double e = var.state_function->internalE(Ux);
 
-		outfile << var.dx*(i-2) << '\t' << Ux(0) << '\t' << u
+		outfile << var.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
-	}	
+	}*/
+
 	outfile.close();
 	std::cout << "done: MUSCL" << std::endl;
 }

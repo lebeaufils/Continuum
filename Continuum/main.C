@@ -5,7 +5,7 @@
 int main(void){
 
 	eulerTests2D Tests(101);
-	Tests.test1();
+	Tests.test3();
 
 
 	eulerTests Test1d(101);
