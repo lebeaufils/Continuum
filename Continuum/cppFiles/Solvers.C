@@ -482,17 +482,15 @@ void MUSCL::solver(Euler1D &var, double CFL){
 	int count = 0;
 	do{
 
-		//set timestep
-		if (count > 0){
-			if (count > 5) var.dt = CFL*(var.dx/Smax); //updates every timestep
-			else var.dt = 0.2*(var.dx/Smax);
-			if (t + var.dt > var.tstop) var.dt = var.tstop - t;
-		}
-
 		data_reconstruction(var.U, a, ULi, URi, var.N);
 		for (int i=1; i<var.N+2; i++){
 			compute_fluxes(var, i, ULi, URi, Smax);
 		}
+
+		//set timestep
+		if (count > 5) var.dt = CFL*(var.dx/Smax); //updates every timestep
+		else var.dt = 0.2*(var.dx/Smax);
+		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
 
 		t += var.dt;
 		count += 1;
@@ -501,6 +499,7 @@ void MUSCL::solver(Euler1D &var, double CFL){
 		for (int i=2; i<var.N+2; i++){
 			conservative_update_formula(var, i);
 		}
+
 		boundary_conditions(var);
 
 	}while (t < var.tstop);
@@ -653,8 +652,46 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 
 
 		//Davies Wave Speed Estimates
-		double Splus = fmax(abs(ul) + al, abs(ur) + ar);
-		SL = -Splus; SR = Splus;
+		//double Splus = fmax(abs(ul) + al, abs(ur) + ar);
+		//SL = -Splus; SR = Splus;
+
+				
+				//---------------------------------------
+				// pressure based wave speed estimate
+				//---------------------------------------
+				
+				//Pressure-based wave speed estimate
+				double Ppvrs;
+				double Pstar;
+				double rhoavg;
+				double aavg;
+				double ql, qr;
+
+				rhoavg = 0.5*(dl + dr);
+				aavg = 0.5*(al + ar);
+
+				Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg;
+
+				Pstar = fmax(0.0, Ppvrs);
+				if (Pstar <= Pl){
+					ql = 1.0;
+				}
+
+				else {
+					ql = sqrt(1 + ((var.state_function->y+1)/(2*var.state_function->y))*((Pstar/Pl) - 1));
+				}
+
+				if (Pstar <= Pr){
+					qr = 1.0;
+				}
+
+				else {
+					qr = sqrt(1 + ((var.state_function->y+1)/(2*var.state_function->y))*((Pstar/Pr) - 1));
+				}
+
+				SR = ur + ar*qr;
+				SL = ul - al*ql;
+				
 
 		if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
@@ -705,6 +742,8 @@ void MUSCL::solver(Euler2D &var, double CFL){
 
 	double Smax_x=0;
 	double Smax_y=0;
+	double Smax_xtest=0;
+	double Smax_ytest=0;
 
 	slopeLimiter a = VanLeer;//getLimiter();
 
@@ -722,19 +761,27 @@ void MUSCL::solver(Euler2D &var, double CFL){
 			data_reconstruction(Uxn, a, ULix, URix, var.Nx);
 
 		//set timestep, taking maximum wavespeed in x or y directions
-		if (count > 0 && count <= 5){
-			//using a CFL number of 0,.2 for the first 5 timesteps
-			var.dt = 0.2*fmin((var.dx/Smax_x), (var.dy/Smax_y));
-		}
-		else if (count > 0){
-			var.dt = CFL*fmin((var.dx/Smax_x), (var.dy/Smax_y));
+		if (count > 0){
+			if (count <= 5){
+				//using a CFL number of 0,.2 for the first 5 timesteps
+				var.dt = 0.2*fmin((var.dx/Smax_xtest), (var.dy/Smax_ytest));
+			}
+			else {
+				var.dt = CFL*fmin((var.dx/Smax_xtest), (var.dy/Smax_ytest));
+			}
 		}
 		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
 
-			for (int i=1; i<var.Nx+2; i++){
+		Smax_y = 0; Smax_x = 0;
+		Smax_ytest = 0; Smax_xtest = 0;
+		for (int i=1; i<var.Nx+2; i++){
 				vector4 Fx(0, 0, 0, 0);
 				compute_fluxes(var, Uxn, Fx, i, ULix, URix, var.dx, Smax_x); //compute flux needs to change
 				var.F(i, j+1) = Fx; //storing the computed flux.
+				vector4 Utmp = Uxn.row(i);
+				double a_ij = var.state_function->soundspeed(Utmp);
+				double d_ij = Utmp(1)/Utmp(0);
+				if ((abs(d_ij) + a_ij) > Smax_xtest) Smax_xtest = (abs(d_ij) + a_ij);
 			}
 		}
 		//sweeping in the y-direction for each x row
@@ -748,18 +795,27 @@ void MUSCL::solver(Euler2D &var, double CFL){
 				vector4 Fy(0, 0, 0, 0);
 				compute_fluxes(var, Uyn, Fy, j, ULiy, URiy, var.dy, Smax_y); //compute flux needs to change
 				var.G(i+1, j) = Fy; //storing the computed flux.
+				vector4 Utmp = Uyn.row(j);
+				double a_ij = var.state_function->soundspeed(Utmp);
+				double d_ij = Utmp(1)/Utmp(0);
+				if ((abs(d_ij) + a_ij) > Smax_ytest) Smax_ytest = (abs(d_ij) + a_ij);			
 			}
 		}
 
 		//updating U
 		for (int j=0; j<var.Ny; j++){
 			for (int i=2; i<var.Nx+2; i++){
-				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), var.dt, var.dx);
+				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), var.dt/2, var.dx);
 			}
 		}
 		for (int i=0; i<var.Nx; i++){
 			for (int j=2; j<var.Ny+2; j++){
 				conservative_update_formula_2D(var.U(i+2, j), var.swap_xy(var.G(i+1, j)), var.swap_xy(var.G(i+1, j-1)), var.dt, var.dy);
+			}
+		}		
+		for (int j=0; j<var.Ny; j++){
+			for (int i=2; i<var.Nx+2; i++){
+				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), var.dt/2, var.dx);
 			}
 		}
 		boundary_conditions(var);
@@ -767,8 +823,10 @@ void MUSCL::solver(Euler2D &var, double CFL){
 		t += var.dt;
 		count += 1;		
 
-		if (count%100==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
-		//t = var.tstop;
+		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
+		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
+		//std::cout << Smax_x << '\t' << Smax_y << std::endl;
+		//if (count == 20) t = var.tstop;
 	}while (t < var.tstop);
 	std::cout << count << std::endl;
 }
@@ -797,8 +855,8 @@ void MUSCL::output(Euler2D &var){
 		outfile << std::endl;
 	}
 	//plotting a slice
-	/*for (int j=2; j<var.Ny+2; j++){
-		vector4 Ux = var.U(2, j);
+	/*for (int j=(var.Ny/2 +2); j<var.Ny+2; j++){
+		vector4 Ux = var.U(var.Nx/2, j);
 		double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
 		double P = var.state_function->Pressure(Ux);
 		double e = var.state_function->internalE(Ux);

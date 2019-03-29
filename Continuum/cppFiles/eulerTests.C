@@ -324,6 +324,47 @@ void eulerTests2D::test3(){ //sod's tube test, x-aligned
 	//std::cout << interface << std::endl;
 }
 
+void eulerTests2D::test4(){ //sod's tube test, x-aligned
+	vector4 in(1.0, 0.0, 0.0, 1.0); //density, velocity, pressure
+	vector4 out(0.125, 0.0, 0.0, 0.1);
+
+	initialL = out;
+	initialR = in;
+
+	//x0 = 0.5;
+	tstop = 0.25;
+
+	L = Ly = 2.0;
+
+	var.Nx = N;
+	var.Ny = Ny;
+	var.dx = L/(N-1);
+	var.dy = Ly/(Ny-1);
+	var.x0 = x0;
+	var.tstop = tstop;
+	var.state_function = StateFunctions::create(EOS_IG);
+	var.state_function->y = 1.4;
+
+	//setting the list of interfacial points
+	double x = 0;
+	double y = 0;
+	for (int i=0; i<N; i++){
+		x = i*var.dx;
+		for (int j=0; j<Ny; j++){
+			y = j*var.dy;
+			if ((pow((x-1),2) + pow((y-1),2)) >= pow(0.4, 2)){
+				interface(i, j) = false; //outside
+			}
+			else {
+				interface(i, j) = true;
+			}
+			//note the (i, j) confusion here
+			//x sweep = constant row, changing columns
+		}
+	}
+	//std::cout << interface << std::endl;
+}
+
 //--------------------------------------------------------------------------------------------
 //	Ghost Fluid Tests
 //--------------------------------------------------------------------------------------------

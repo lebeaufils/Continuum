@@ -84,6 +84,7 @@ struct eulerTests2D : public virtual standardTests
 	void test1();
 	void test2();
 	void test3();
+	void test4(); //cylindrical shock test
 
 	//void switch_test();	
 };
