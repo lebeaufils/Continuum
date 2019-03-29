@@ -482,15 +482,18 @@ void MUSCL::solver(Euler1D &var, double CFL){
 	int count = 0;
 	do{
 
+		//set timestep
+		if (count > 0){
+			if (count > 5) var.dt = CFL*(var.dx/Smax); //updates every timestep
+			else var.dt = 0.2*(var.dx/Smax);
+			if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+		}
+
 		data_reconstruction(var.U, a, ULi, URi, var.N);
 		for (int i=1; i<var.N+2; i++){
 			compute_fluxes(var, i, ULi, URi, Smax);
-			std::cout << var.F.row(i) << std::endl;
 		}
 
-		//set timestep
-		var.dt = CFL*(var.dx/Smax); //updates every timestep
-		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
 		t += var.dt;
 		count += 1;
 
@@ -718,6 +721,16 @@ void MUSCL::solver(Euler2D &var, double CFL){
 			//calculate and update to new interpolated values U_i
 			data_reconstruction(Uxn, a, ULix, URix, var.Nx);
 
+		//set timestep, taking maximum wavespeed in x or y directions
+		if (count > 0 && count <= 5){
+			//using a CFL number of 0,.2 for the first 5 timesteps
+			var.dt = 0.2*fmin((var.dx/Smax_x), (var.dy/Smax_y));
+		}
+		else if (count > 0){
+			var.dt = CFL*fmin((var.dx/Smax_x), (var.dy/Smax_y));
+		}
+		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+
 			for (int i=1; i<var.Nx+2; i++){
 				vector4 Fx(0, 0, 0, 0);
 				compute_fluxes(var, Uxn, Fx, i, ULix, URix, var.dx, Smax_x); //compute flux needs to change
@@ -737,11 +750,6 @@ void MUSCL::solver(Euler2D &var, double CFL){
 				var.G(i+1, j) = Fy; //storing the computed flux.
 			}
 		}
-		//set timestep, taking maximum wavespeed in x or y directions
-		var.dt = CFL*fmin((var.dx/Smax_x), (var.dy/Smax_y));
-		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
-		t += var.dt;
-		count += 1;
 
 		//updating U
 		for (int j=0; j<var.Ny; j++){
@@ -754,7 +762,10 @@ void MUSCL::solver(Euler2D &var, double CFL){
 				conservative_update_formula_2D(var.U(i+2, j), var.swap_xy(var.G(i+1, j)), var.swap_xy(var.G(i+1, j-1)), var.dt, var.dy);
 			}
 		}
-		boundary_conditions(var);		
+		boundary_conditions(var);
+
+		t += var.dt;
+		count += 1;		
 
 		if (count%100==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
 		//t = var.tstop;
