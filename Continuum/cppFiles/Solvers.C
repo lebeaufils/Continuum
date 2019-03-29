@@ -756,24 +756,7 @@ void MUSCL::solver(Euler2D &var, double CFL){
 		}
 		boundary_conditions(var);		
 
-		/*
-				data_reconstruction(var.U, a, ULi, URi, var.N);
-				for (int i=1; i<var.N+2; i++){
-					compute_fluxes(var, i, ULi, URi, Smax);
-				}
-
-				//set timestep
-				var.dt = CFL*(var.dx/Smax); //updates every timestep
-				if (t + var.dt > var.tstop) var.dt = var.tstop - t;
-				t += var.dt;
-				count += 1;
-
-				//updating U
-				for (int i=2; i<var.N+2; i++){
-					conservative_update_formula(var, i);
-				}
-				boundary_conditions(var);
-		*/
+		if (count%100==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
 		//t = var.tstop;
 	}while (t < var.tstop);
 	std::cout << count << std::endl;
@@ -791,9 +774,16 @@ void MUSCL::output(Euler2D &var){
 			double P = var.state_function->Pressure(Ux);
 			double e = var.state_function->internalE(Ux);
 
+			//central difference to calculate partial derivatives in x, y for density
+			double grad_density_x = (var.U(i+1, j)(0) - var.U(i-1, j)(0))/(2*var.dx);
+			double grad_density_y = (var.U(i, j+1)(0) - var.U(i, j-1)(0))/(2*var.dy);
+			//calculating the numerical schlieren
+			double schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
+
 			outfile << var.dx*(i-2) << '\t' << var.dy*(j-2) << '\t' << Ux(0) << '\t' << u
-					<< '\t' << P << '\t' << e << std::endl;
+			<< '\t' << P << '\t' << e << '\t' << schlieren << std::endl;
 		}
+		outfile << std::endl;
 	}
 	//plotting a slice
 	/*for (int j=2; j<var.Ny+2; j++){
@@ -805,7 +795,6 @@ void MUSCL::output(Euler2D &var){
 		outfile << var.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}*/
-
 	outfile.close();
 	std::cout << "done: MUSCL" << std::endl;
 }
