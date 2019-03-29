@@ -582,7 +582,7 @@ void MUSCL::initial_conditions(eulerTests2D &Test){
 	//Test.var.display(Test.var.U);
 }
 
-void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double dx, double &Smax){
+void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double dx){
 	//soundspeed
 	double al, ar;
 	//velocity components
@@ -654,12 +654,17 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 		//Davies Wave Speed Estimates
 		//double Splus = fmax(abs(ul) + al, abs(ur) + ar);
 		//SL = -Splus; SR = Splus;
+		
+		double uspecial = (ul + ur)/2. + (al - ar)/(var.state_function->y - 1);
+		double aspecial = (al + ar)/2. + (ul - ur)*(var.state_function->y - 1)/4.;
+		SL = fmin(0, fmin(ul - al, uspecial - aspecial));
+		SR = fmax(0, fmax(ur + ar, uspecial + aspecial));
 
 				
 				//---------------------------------------
 				// pressure based wave speed estimate
 				//---------------------------------------
-				
+				/*
 				//Pressure-based wave speed estimate
 				double Ppvrs;
 				double Pstar;
@@ -691,9 +696,9 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 
 				SR = ur + ar*qr;
 				SL = ul - al*ql;
-				
+				*/
 
-		if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
+		//if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
 		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
 		//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
@@ -740,16 +745,38 @@ void MUSCL::solver(Euler2D &var, double CFL){
 	matrix Uxn(var.Nx+4, 4);
 	matrix Uyn(var.Ny+4, 4);
 
-	double Smax_x=0;
-	double Smax_y=0;
-	double Smax_xtest=0;
-	double Smax_ytest=0;
 
 	slopeLimiter a = VanLeer;//getLimiter();
 
 	double t = 0.0;
 	int count = 0;
 	do{
+		//set timestep, taking maximum wavespeed in x or y directions
+		double Smax=0;
+		//double Smax_y=0;
+		for (int i=2; i<var.Nx+2; i++){
+			for (int j=2; j<var.Ny+2; j++){
+				vector4 Utmp = var.U(i, j);
+				double a_ij = var.state_function->soundspeed(Utmp);
+				double d_ij_x = Utmp(1)/Utmp(0); //velocity in x direction
+				double d_ij_y = Utmp(3)/Utmp(0); //velocity in y direction
+				double vn = sqrt(pow(d_ij_x, 2) + pow(d_ij_y, 2));
+				double lambda = fmax(fmax(abs(d_ij_x) + a_ij, abs(d_ij_y) + a_ij), vn + a_ij);
+				if (lambda > Smax) Smax = lambda;
+			}
+		}
+		if (count <= 5){
+				//using a CFL number of 0,.2 for the first 5 timesteps
+				var.dt = 0.2*fmin((var.dx/Smax), (var.dy/Smax));
+			}
+		else {
+				var.dt = CFL*fmin((var.dx/Smax), (var.dy/Smax));
+		}
+		//var.dt = CFL*fmin((var.dx/Smax_xtest), (var.dy/Smax_ytest));
+		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+
+		t += var.dt;
+		count += 1;
 		//sweeping in the x-direction for each y row
 		for (int j=0; j<var.Ny; j++){
 			//Within each row, store the values for each grid point in x with a single row list
@@ -760,28 +787,11 @@ void MUSCL::solver(Euler2D &var, double CFL){
 			//calculate and update to new interpolated values U_i
 			data_reconstruction(Uxn, a, ULix, URix, var.Nx);
 
-		//set timestep, taking maximum wavespeed in x or y directions
-		if (count > 0){
-			if (count <= 5){
-				//using a CFL number of 0,.2 for the first 5 timesteps
-				var.dt = 0.2*fmin((var.dx/Smax_xtest), (var.dy/Smax_ytest));
-			}
-			else {
-				var.dt = CFL*fmin((var.dx/Smax_xtest), (var.dy/Smax_ytest));
-			}
-		}
-		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
-
-		Smax_y = 0; Smax_x = 0;
-		Smax_ytest = 0; Smax_xtest = 0;
-		for (int i=1; i<var.Nx+2; i++){
+			//sweeping in the x-direction for each y row
+			for (int i=1; i<var.Nx+2; i++){
 				vector4 Fx(0, 0, 0, 0);
-				compute_fluxes(var, Uxn, Fx, i, ULix, URix, var.dx, Smax_x); //compute flux needs to change
+				compute_fluxes(var, Uxn, Fx, i, ULix, URix, var.dx); //compute flux needs to change
 				var.F(i, j+1) = Fx; //storing the computed flux.
-				vector4 Utmp = Uxn.row(i);
-				double a_ij = var.state_function->soundspeed(Utmp);
-				double d_ij = Utmp(1)/Utmp(0);
-				if ((abs(d_ij) + a_ij) > Smax_xtest) Smax_xtest = (abs(d_ij) + a_ij);
 			}
 		}
 		//sweeping in the y-direction for each x row
@@ -793,12 +803,8 @@ void MUSCL::solver(Euler2D &var, double CFL){
 
 			for (int j=1; j<var.Ny+2; j++){
 				vector4 Fy(0, 0, 0, 0);
-				compute_fluxes(var, Uyn, Fy, j, ULiy, URiy, var.dy, Smax_y); //compute flux needs to change
-				var.G(i+1, j) = Fy; //storing the computed flux.
-				vector4 Utmp = Uyn.row(j);
-				double a_ij = var.state_function->soundspeed(Utmp);
-				double d_ij = Utmp(1)/Utmp(0);
-				if ((abs(d_ij) + a_ij) > Smax_ytest) Smax_ytest = (abs(d_ij) + a_ij);			
+				compute_fluxes(var, Uyn, Fy, j, ULiy, URiy, var.dy); //compute flux needs to change
+				var.G(i+1, j) = Fy; //storing the computed flux.		
 			}
 		}
 
@@ -820,13 +826,10 @@ void MUSCL::solver(Euler2D &var, double CFL){
 		}
 		boundary_conditions(var);
 
-		t += var.dt;
-		count += 1;		
-
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
 		//std::cout << Smax_x << '\t' << Smax_y << std::endl;
-		//if (count == 20) t = var.tstop;
+		//if (count == 2) t = var.tstop;
 	}while (t < var.tstop);
 	std::cout << count << std::endl;
 }

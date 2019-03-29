@@ -56,7 +56,7 @@ struct MUSCL
 	static void boundary_conditions(Euler2D&);
 	static void initial_conditions(eulerTests2D&);
 
-	static void compute_fluxes(Euler2D&, matrix&, vector4&, int, matrix, matrix, double, double&);
+	static void compute_fluxes(Euler2D&, matrix&, vector4&, int, matrix, matrix, double);
 	static void conservative_update_formula_2D(vector4&, vector4, vector4, double, double);
 
 	static void solver(Euler2D&, double);
