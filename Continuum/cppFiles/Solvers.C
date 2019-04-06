@@ -556,6 +556,38 @@ void MUSCL::boundary_conditions(Euler2D &var){
 	} 
 }
 
+void MUSCL::boundary_conditions_reflective(Euler2D &var){
+
+	if (var.U.cols() == 0 || var.U.rows() == 0){
+		throw "Array is empty.";
+	}
+
+	//assigning ghost values in the x-direction 
+	for (int j=0; j<var.Ny; j++){
+		var.U(1, j+2) = var.U(2, j+2);
+		var.U(0, j+2) = var.U(1, j+2);
+		var.U(var.Nx+2, j+2) = var.U(var.Nx+1, j+2);
+		var.U(var.Nx+3, j+2) = var.U(var.Nx+2, j+2);
+		//reflecting the normal velocity
+		var.U(1, j+2)(1) = -var.U(2, j+2)(1);
+		var.U(0, j+2)(1) = -var.U(1, j+2)(1);
+		var.U(var.Nx+2, j+2)(1) = -var.U(var.Nx+1, j+2)(1);
+		var.U(var.Nx+3, j+2)(1) = -var.U(var.Nx+2, j+2)(1);
+	} 
+	//assigning ghost values in the y-direction
+	for (int i=0; i<var.Nx; i++){
+		var.U(i+2, 1) = var.U(i+2, 2);
+		var.U(i+2, 0) = var.U(i+2, 1);
+		var.U(i+2, var.Ny+2) = var.U(i+2, var.Ny+1);
+		var.U(i+2, var.Ny+3) = var.U(i+2, var.Nx+2);
+		//reflecting the normal velocity
+		var.U(i+2, 1)(3) = -var.U(i+2, 2)(3);
+		var.U(i+2, 0)(3) = -var.U(i+2, 1)(3);
+		var.U(i+2, var.Ny+2)(3) = -var.U(i+2, var.Ny+1)(3);
+		var.U(i+2, var.Ny+3)(3) = -var.U(i+2, var.Nx+2)(3);
+	} 
+}
+
 void MUSCL::initial_conditions(eulerTests2D &Test){
 	Test.var.X.resize(Test.N+2, Test.Ny+2);
 	Test.var.U.resize(Test.N+4, Test.Ny+4);

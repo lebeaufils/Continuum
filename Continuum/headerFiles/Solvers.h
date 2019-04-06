@@ -54,6 +54,7 @@ struct MUSCL
 	//2-Dimensional
 	//-----------------------------
 	static void boundary_conditions(Euler2D&);
+	static void boundary_conditions_reflective(Euler2D&);
 	static void initial_conditions(eulerTests2D&);
 
 	static void compute_fluxes(Euler2D&, matrix&, vector4&, int, matrix, matrix, double);

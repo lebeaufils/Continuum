@@ -13,19 +13,19 @@
 typedef Eigen::Vector3d vector;
 typedef Eigen::MatrixXd matrix;
 
-class LevelSetFunction
+class LevelSetFunction1D
 {
 protected:
 	//domain parameters
-	int N;
+	/*int N;
 	matrix X;
 	double dx;
 	double x0;
 	double x1;
-	double x2;
+	double x2;*/
 
 	matrix phi;
-	int sgn; //sign of the levelset
+	//int sgn; //sign of the levelset
 
 public:
 	LevelSetFunction(gfmTests);
@@ -43,6 +43,29 @@ public:
 
 	//reinitialisation
 	void reinitialisation();
+	//void reconstruction();
+};
+
+class LevelSetFunction2D
+{
+protected:
+	//domain parameterz
+	matrix phi; //List of level set values
+
+public:
+	LevelSetFunction2D(gfmTests);
+
+	int get_sgn(double);
+	void boundary_conditions();
+	void signed_distance_function_2D(int);
+
+	//first order upwind hamilton-jacobi method
+	double HJ_FirstOrder(double, double, int); //velocity
+	//void HJ_ENO(VectorN2, double);
+	//void HJ_WENO(VectorN2, double);
+
+	//reinitialisation
+	void reinitialisation(); //fast marching method
 	//void reconstruction();
 };
 

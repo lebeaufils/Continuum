@@ -368,11 +368,6 @@ void eulerTests2D::test4(){ //sod's tube test, x-aligned
 //--------------------------------------------------------------------------------------------
 //	Ghost Fluid Tests
 //--------------------------------------------------------------------------------------------
-/*
-void gfmTests::set_number_of_cells(int Ncells){
-	N = Ncells;
-}
-
 void gfmTests::test1(){
 	vector Left(1.0, 0.0, 1.0); //density, velocity, pressure
 	vector Right(0.125, 0.0, 0.1);
@@ -383,8 +378,21 @@ void gfmTests::test1(){
 	x0 = 0.5;
 	tstop = 0.25;
 	L = 1.0;
-	yL = 1.4;
-	yR = 1.4;
+
+	var1.N = N;
+	var1.dx = L/N;
+	//var1.x0 = x0; //The GFM class has its own initial condition method
+		//that deals directly with the gfm test struct
+	//var1.tstop = tstop;
+	var1.state_function = StateFunctions::create(EOS_IG);
+	var1.state_function->y = 1.4;
+
+	var2.N = N;
+	var2.dx = L/N;
+	//var2.x0 = x0;
+	//var2.tstop = tstop;
+	var2.state_function = StateFunctions::create(EOS_IG);
+	var2.state_function->y = 1.4;
 }
 
 void gfmTests::test2(){ //Two rarefraction waves, vaccum test
@@ -706,7 +714,7 @@ void gfmTests::switch_test(){
 			exit(0);
 	}
 }
-*/
+
 
 
 

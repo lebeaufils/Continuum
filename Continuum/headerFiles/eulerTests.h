@@ -89,30 +89,35 @@ struct eulerTests2D : public virtual standardTests
 	//void switch_test();	
 };
 
-/*
+
 struct gfmTests : public virtual standardTests
 {
-	int number_of_materials;
+	//For now, only capable of dealing with 2 different materials.
+	Euler1D var1;
+	Euler1D var2;
+
+	int number_of_discontinuities;
 	bool stiffgas = false; //flag for stiffened gas
 
-	double yL;
+	/*double yL;
 	double yR;
 	double yM1;
 	double yM2;
 	double Pref1;
-	double Pref2;
+	double Pref2;*/ //these values are stored inside the variable struce
 
 	double x1;
 	double x2;
+
+	//storage of initial conditions for up to 4 discontinuities.
 	vector initialM1;
 	vector initialM2;
 
-	gfmTests() : standardTests(0, 0), number_of_materials(2), yL(1.4), yR(1.4), yM1(0), yM2(0), Pref1(0), Pref2(0),
+	gfmTests() : standardTests(0, 0), number_of_materials(2),
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0)  {}
-	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2), yL(1.4), yR(1.4), yM1(0), yM2(0), Pref1(0), Pref2(0),
+	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2),
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0) {}
 
-	void set_number_of_cells(int); //changing the resolution. 
 	//single material tests
 	void test1();
 	void test2();
@@ -144,8 +149,6 @@ struct gfmTests : public virtual standardTests
 	//Set EOS parameters
 	//void set_EOS(EOS*, EOS*);
 };
-	
-*/
 
 
 #endif /* TESTS_EULERTESTS_H_ */
