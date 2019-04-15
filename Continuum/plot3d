@@ -14,7 +14,7 @@ splot "dataeuler.txt" using 1:2:3 notitle w dots
 #set yrange [GPVAL_DATA_Y_MIN:GPVAL_DATA_Y_MAX]
 #set xrange [GPVAL_DATA_X_MIN:GPVAL_DATA_X_MAX]
 
-set output "Plots/2Dplot.png"
+set output "Plots/3Dplot.png"
 set terminal png
 
 replot

@@ -1,7 +1,10 @@
 #include "../headerFiles/LevelSet.h"
 
-LevelSetFunction::LevelSetFunction(gfmTests Test)
-	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), x1(Test.x1), x2(Test.x2), phi(N+2, 1), sgn(0) {}
+//LevelSetFunction::LevelSetFunction(gfmTests Test)
+//	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), x1(Test.x1), x2(Test.x2), phi(N+2, 1), sgn(0) {}
+LevelSetFunction::LevelSetFunction()
+	: phi(NULL) {}
+
 
 int LevelSetFunction::get_sgn(double a){
 	//sign function
@@ -10,9 +13,15 @@ int LevelSetFunction::get_sgn(double a){
 	else return 0;
 }
 
-void LevelSetFunction::boundary_conditions(){
+void LevelSetFunction::boundary_conditions(Euler1D var){
 	phi(0) = phi(1);
-	phi(N+1) = phi(N);
+	phi(var.N+1) = phi(var.N);
+}
+
+void LevelSetFunction::signed_distance_function_1D(Euler1D var){
+	for (int i=0; i<Test.N; i++){
+		phi(i+1) = var.X(i) - x0;
+	}
 }
 
 /*
@@ -24,7 +33,9 @@ void LevelSetFunction::signed_distance_function_1D(){
 	}
 }*/
 
-void LevelSetFunction::signed_distance_function_1D(int i){
+/*
+//X is now not a member of the levelsetfucntion
+void LevelSetFunction::signed_distance_function_1D(matrix X, int i, double x0){
 	//phi(i+1) = X(i+1) - x0;
 	double dist = abs(X(i+1) - x0);
 	if (X(i+1) < x0) {
@@ -35,7 +46,7 @@ void LevelSetFunction::signed_distance_function_1D(int i){
 	}
 }
 
-void LevelSetFunction::signed_distance_function_1D_2(int i){
+void LevelSetFunction::signed_distance_function_1D_2(matrix X, int i, double x0, double x1){
 	// positive inside
 	if (x0 > x1) {
 		throw "Interface location incorrectly defined";
@@ -49,18 +60,12 @@ void LevelSetFunction::signed_distance_function_1D_2(int i){
 	else {
 		phi(i+1) = dist;
 	}
-	/*double dist = abs(X(i+1) - x1);
-	if (X(i+1) < x1) {
-		phi(i+1) = -dist;
-	}
-	else {
-		phi(i+1) = dist;
-	}*/
 }
 
 void LevelSetFunction::signed_distance_function_1D_3(int i){
 	// positive inside
-	/*if (x0 > x1 || x1 > x2) {
+	//comment this out
+	if (x0 > x1 || x1 > x2) {
 		throw "Interface location incorrectly defined";
 	}
 
@@ -79,7 +84,9 @@ void LevelSetFunction::signed_distance_function_1D_3(int i){
 
 	else {
 		phi(i+1) = dist;
-	}*/
+	}
+	//end
+	// the above is for 3 material interfaces
 	if (x1 > x2) {
 		throw "Interface location incorrectly defined";
 	}
@@ -140,7 +147,7 @@ void LevelSetFunction::reinitialisation(){
 	}
 	boundary_conditions();
 //Sweeping in the negative x-direction
-/*	for (int i=N; i>0; i--){
+	for (int i=N; i>0; i--){
 		//Consider the region phi > 0;
 		if(phi(i) > 0){
 			//Cell phi(i) is avaliable tp update if it is not adjacent to the interface
@@ -168,10 +175,10 @@ void LevelSetFunction::reinitialisation(){
 			}
 		}
 	}
-	boundary_conditions();*/
+	boundary_conditions();
 }
 
-/*void LevelSetFunction::reconstruction(){
+void LevelSetFunction::reconstruction(){
 	double newx0; 
 	double newx1;
 

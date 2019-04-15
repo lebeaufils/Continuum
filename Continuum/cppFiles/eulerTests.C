@@ -23,7 +23,7 @@ int standardTests::Get_Switch(){
 	}while(true);
 }
 
-void standardTests::switch_resolution(){
+void standardTests::switch_resolution(Domain1D &domain){ //1D
 	std::cout << "Resolution options" << std::endl
 		<< "1. Low (100 Cells)" << std::endl
 		<< "2. Mediumn (200 Cells)" << std::endl
@@ -36,16 +36,16 @@ void standardTests::switch_resolution(){
 	switch(a){
 		case 0:
 		case 1:
-			N = 100;
+			domain.N = 100;
 			break;
 		case 2:
-			N = 200;
+			domain.N = 200;
 			break;
 		case 3:
-			N = 400;
+			domain.N = 400;
 			break;
 		case 4:
-			N = 1000;
+			domain.N = 1000;
 			break;
 		case 5:
 		case 6:
@@ -66,12 +66,9 @@ void eulerTests::test1(){ //sod's tube test
 	initialR = Right;
 
 	x0 = 0.3;
-	tstop = 0.2;
+	domain.tstop = 0.2;
+	domain.dx = domain.L/domain.N;
 
-	var.N = N;
-	var.dx = L/N;
-	var.x0 = x0;
-	var.tstop = tstop;
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 }
@@ -84,12 +81,9 @@ void eulerTests::test1_stationary(){
 	initialR = Right;
 
 	x0 = 0.5;
-	tstop = 0.25;
+	domain.tstop = 0.25;
+	domain.dx = domain.L/domain.N;
 
-	var.N = N;
-	var.dx = L/N;
-	var.x0 = x0;
-	var.tstop = tstop;
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 }
@@ -102,12 +96,9 @@ void eulerTests::test2(){ //Two rarefraction waves, vaccum test
 	initialR = Right;
 
 	x0 = 0.5;
-	tstop = 0.15;
+	domain.tstop = 0.15;
+	domain.dx = domain.L/domain.N;
 
-	var.N = N;
-	var.dx = L/N;
-	var.x0 = x0;
-	var.tstop = tstop;
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 }
@@ -120,12 +111,9 @@ void eulerTests::test3(){ //strong shock wave of shock Mach number 198
 	initialR = Right;
 
 	x0 = 0.5;
-	tstop = 0.012;
+	domain.tstop = 0.012;
+	domain.dx = domain.L/domain.N;
 
-	var.N = N;
-	var.dx = L/N;
-	var.x0 = x0;
-	var.tstop = tstop;
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 }
@@ -138,12 +126,9 @@ void eulerTests::test4(){ //Three strong discontinuities travelling to the right
 	initialR = Right;
 
 	x0 = 0.4;
-	tstop = 0.035;
+	domain.tstop = 0.035;
+	domain.dx = domain.L/domain.N;
 
-	var.N = N;
-	var.dx = L/N;
-	var.x0 = x0;
-	var.tstop = tstop;
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 }
@@ -156,12 +141,9 @@ void eulerTests::test5(){ //slowly moving contact discontinuities
 	initialR = Right;
 
 	x0 = 0.8;
-	tstop = 0.012;
+	domain.tstop = 0.012;
+	domain.dx = domain.L/domain.N;
 
-	var.N = N;
-	var.dx = L/N;
-	var.x0 = x0;
-	var.tstop = tstop;
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 }
@@ -215,14 +197,11 @@ void eulerTests2D::test1(){ //sod's tube test, x-aligned
 	initialR = Right;
 
 	//x0 = 0.5;
-	tstop = 0.25;
+	domain.tstop = 0.25;
 
-	var.Nx = N;
-	var.Ny = Ny;
-	var.dx = L/(N-1);
-	var.dy = Ly/(Ny-1);
-	var.x0 = x0;
-	var.tstop = tstop;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 
@@ -230,10 +209,10 @@ void eulerTests2D::test1(){ //sod's tube test, x-aligned
 	double x = 0;
 	double y = 0;
 
-	for (int i=0; i<N; i++){
-		x = i*var.dx;
-		for (int j=0; j<Ny; j++){
-			y = j*var.dy;
+	for (int i=0; i<domain.Nx; i++){
+		x = i*domain.dx;
+		for (int j=0; j<domain.Ny; j++){
+			y = j*domain.dy;
 			if (x <= 0.5){
 				interface(i, j) = false;
 			}
@@ -253,14 +232,11 @@ void eulerTests2D::test2(){ //sod's tube test, x-aligned
 	initialR = Right;
 
 	//x0 = 0.5;
-	tstop = 0.25;
+	domain.tstop = 0.25;
 
-	var.Nx = N;
-	var.Ny = Ny;
-	var.dx = L/(N-1);
-	var.dy = Ly/(Ny-1);
-	var.x0 = x0;
-	var.tstop = tstop;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 
@@ -268,10 +244,10 @@ void eulerTests2D::test2(){ //sod's tube test, x-aligned
 	double x = 0;
 	double y = 0;
 
-	for (int i=0; i<N; i++){
-		x = i*var.dx;
-		for (int j=0; j<Ny; j++){
-			y = j*var.dy;
+	for (int i=0; i<domain.Nx; i++){
+		x = i*domain.dx;
+		for (int j=0; j<domain.Ny; j++){
+			y = j*domain.dy;
 			if (y <= 0.5){
 				interface(i, j) = false;
 			}
@@ -291,26 +267,23 @@ void eulerTests2D::test3(){ //sod's tube test, x-aligned
 	initialR = Right;
 
 	//x0 = 0.5;
-	tstop = 0.25;
+	domain.tstop = 0.25;
 
-	L = Ly = sqrt(0.5);
+	domain.Lx = domain.Ly = sqrt(0.5);
 
-	var.Nx = N;
-	var.Ny = Ny;
-	var.dx = L/(N-1);
-	var.dy = Ly/(Ny-1);
-	var.x0 = x0;
-	var.tstop = tstop;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+	
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 
 	//setting the list of interfacial points
 	double x = 0;
 	double y = 0;
-	for (int i=0; i<N; i++){
-		x = i*var.dx;
-		for (int j=0; j<Ny; j++){
-			y = j*var.dy;
+	for (int i=0; i<domain.Nx; i++){
+		x = i*domain.dx;
+		for (int j=0; j<domain.Ny; j++){
+			y = j*domain.dy;
 			if ((x + y) <= sqrt(0.5)){
 				interface(i, j) = false;
 			}
@@ -332,26 +305,23 @@ void eulerTests2D::test4(){ //sod's tube test, x-aligned
 	initialR = in;
 
 	//x0 = 0.5;
-	tstop = 0.25;
+	domain.tstop = 0.25;
 
-	L = Ly = 2.0;
+	domain.Lx = domain.Ly = 2.0;
 
-	var.Nx = N;
-	var.Ny = Ny;
-	var.dx = L/(N-1);
-	var.dy = Ly/(Ny-1);
-	var.x0 = x0;
-	var.tstop = tstop;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
 
 	//setting the list of interfacial points
 	double x = 0;
 	double y = 0;
-	for (int i=0; i<N; i++){
-		x = i*var.dx;
-		for (int j=0; j<Ny; j++){
-			y = j*var.dy;
+	for (int i=0; i<domain.Nx; i++){
+		x = i*domain.dx;
+		for (int j=0; j<domain.Ny; j++){
+			y = j*domain.dy;
 			if ((pow((x-1),2) + pow((y-1),2)) >= pow(0.4, 2)){
 				interface(i, j) = false; //outside
 			}
@@ -366,9 +336,21 @@ void eulerTests2D::test4(){ //sod's tube test, x-aligned
 }
 
 //--------------------------------------------------------------------------------------------
+//	Rigid Bpdy Tests
+//--------------------------------------------------------------------------------------------
+void rigidTests::test1(){
+
+	interfacelist.resize(1, 1); 
+	interfacelist << 0.7;
+	//a single interface between rigid body and fluid
+	//essentially, this reduces the computational domain by bringing forward the boundary
+}
+
+
+//--------------------------------------------------------------------------------------------
 //	Ghost Fluid Tests
 //--------------------------------------------------------------------------------------------
-void gfmTests::test1(){
+/*void gfmTests::test1(){
 	vector Left(1.0, 0.0, 1.0); //density, velocity, pressure
 	vector Right(0.125, 0.0, 0.1);
 
@@ -380,7 +362,7 @@ void gfmTests::test1(){
 	L = 1.0;
 
 	var1.N = N;
-	var1.dx = L/N;
+	var1.dx = domain.L/domain.N;
 	//var1.x0 = x0; //The GFM class has its own initial condition method
 		//that deals directly with the gfm test struct
 	//var1.tstop = tstop;
@@ -388,7 +370,7 @@ void gfmTests::test1(){
 	var1.state_function->y = 1.4;
 
 	var2.N = N;
-	var2.dx = L/N;
+	var2.dx = domain.L/domain.N;
 	//var2.x0 = x0;
 	//var2.tstop = tstop;
 	var2.state_function = StateFunctions::create(EOS_IG);
@@ -714,7 +696,7 @@ void gfmTests::switch_test(){
 			exit(0);
 	}
 }
-
+*/
 
 
 

@@ -5,7 +5,7 @@
 int main(void){
 
 	eulerTests2D Tests(101);
-	Tests.test4();
+	Tests.test3();
 
 
 	//eulerTests Test1d(101);
@@ -16,9 +16,6 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	MUSCL::initial_conditions(Tests);
-	MUSCL::solver(Tests.var, 0.9);
-	MUSCL::output(Tests.var);
-
+	MUSCL::muscl_solver(Tests, 0.9);
 }
 

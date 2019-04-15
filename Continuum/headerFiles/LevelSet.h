@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 
 #include "eulerTests.h"
+#include "Variables.h"
 
 typedef Eigen::Vector3d vector;
 typedef Eigen::MatrixXd matrix;
@@ -28,10 +29,11 @@ protected:
 	//int sgn; //sign of the levelset
 
 public:
-	LevelSetFunction(gfmTests);
+	//LevelSetFunction(gfmTests);
+	LevelSetFunction();
 
 	int get_sgn(double);
-	void boundary_conditions();
+	void boundary_conditions(Euler1D);
 	void signed_distance_function_1D(int);
 	void signed_distance_function_1D_2(int); //2 discontinuties
 	void signed_distance_function_1D_3(int); //3 discontinuities
@@ -53,7 +55,7 @@ protected:
 	matrix phi; //List of level set values
 
 public:
-	LevelSetFunction2D(gfmTests);
+	LevelSetFunction2D();
 
 	int get_sgn(double);
 	void boundary_conditions();

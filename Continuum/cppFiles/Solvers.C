@@ -4,17 +4,17 @@
  * MUSCL
  --------------------------------------------------------------------------------*/
 
-void MUSCL::boundary_conditions(Euler1D &var){
+void MUSCL::boundary_conditions(Euler1D &var, Domain1D domain){
 	var.U.row(1) = var.U.row(2); //muscl requires extra ghost cells on either boundary.
 	var.U.row(0) = var.U.row(1);
-	var.U.row(var.N+2) = var.U.row(var.N+1);
-	var.U.row(var.N+3) = var.U.row(var.N+2);
+	var.U.row(domain.N+2) = var.U.row(domain.N+1);
+	var.U.row(domain.N+3) = var.U.row(domain.N+2);
 }
 
 void MUSCL::initial_conditions(eulerTests &Test){
-	Test.var.X.resize(Test.N+2, 1);
-	Test.var.U.resize(Test.N+4, 3);
-	Test.var.F.resize(Test.N+2, 3);
+	//Test.var.X.resize(Test.domain.N+2, 1);
+	Test.var.U.resize(Test.domain.N+4, 3);
+	Test.var.F.resize(Test.domain.N+2, 3);
 
 	vector eulerL;
 	vector eulerR;
@@ -22,15 +22,15 @@ void MUSCL::initial_conditions(eulerTests &Test){
 	eulerL = Test.var.state_function->conservedVar(Test.initialL);
 	eulerR = Test.var.state_function->conservedVar(Test.initialR);
 
-	for (int i=0; i<Test.N; i++){
-		Test.var.X(i+1) = (i+0.5)*Test.var.dx;
-		if (Test.var.X(i+1)  < Test.x0){
+	for (int i=0; i<Test.domain.N; i++){
+		Test.domain.X(i+1) = (i+0.5)*Test.domain.dx;
+		if (Test.domain.X(i+1)  < Test.x0){
 			Test.var.U.row(i+2) = eulerL;
 		}
 		else Test.var.U.row(i+2) = eulerR;
 	}
 
-	boundary_conditions(Test.var);
+	boundary_conditions(Test.var, Test.domain);
 }
 
 //----------------------------------------------------------------------------
@@ -322,7 +322,7 @@ void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &U
 
 //-----------------------------------------------------------------------------------
 
-void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &Smax){
+void MUSCL::compute_fluxes(Euler1D &var, Domain1D &domain, int i, matrix ULi, matrix URi, double &Smax){
 
 	double al, ar;
 
@@ -347,8 +347,8 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 	vector URtmp1 = URi.row(i+1);
 
 	//Post 1/2 time-step evolution left and right states
-	vector ULbar = ULtmp1 + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
-	vector URbar = URtmp + 0.5*(var.dt/var.dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
+	vector ULbar = ULtmp1 + 0.5*(domain.dt/domain.dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
+	vector URbar = URtmp + 0.5*(domain.dt/domain.dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
 
 
 	/*-------------------------------------------------------
@@ -462,18 +462,22 @@ void MUSCL::compute_fluxes(Euler1D &var, int i, matrix ULi, matrix URi, double &
 		}
 }
 
-void MUSCL::conservative_update_formula(Euler1D &var, int i){
-	var.U.row(i) = var.U.row(i) - (var.dt/var.dx)*(var.F.row(i) - var.F.row(i-1));
+void MUSCL::conservative_update_formula(Euler1D &var, Domain1D domain, int i){
+	var.U.row(i) = var.U.row(i) - (domain.dt/domain.dx)*(var.F.row(i) - var.F.row(i-1));
 }
+//F_1 represents F[i-1]
+//void MUSCL::conservative_update_formula(vector& U, vector F, vector F_1, double dt, double dx){
+//	U = U - (dt/dx)*(F - F_1);
+//}
 
 void MUSCL::conservative_update_formula_2D(vector4& U, vector4 F, vector4 F_1, double dt, double dx){
 	U = U - (dt/dx)*(F - F_1);
 }
 
-void MUSCL::solver(Euler1D &var, double CFL){
+void MUSCL::solver(Euler1D &var, Domain1D &domain, double CFL){
 	
-	matrix ULi(var.N+4, 3);
-	matrix URi(var.N+4, 3);
+	matrix ULi(domain.N+4, 3);
+	matrix URi(domain.N+4, 3);
 	double Smax=0;
 
 	slopeLimiter a = getLimiter();
@@ -482,46 +486,53 @@ void MUSCL::solver(Euler1D &var, double CFL){
 	int count = 0;
 	do{
 
-		data_reconstruction(var.U, a, ULi, URi, var.N);
-		for (int i=1; i<var.N+2; i++){
-			compute_fluxes(var, i, ULi, URi, Smax);
+		data_reconstruction(var.U, a, ULi, URi, domain.N);
+		for (int i=1; i<domain.N+2; i++){
+			compute_fluxes(var, domain, i, ULi, URi, Smax);
 		}
 
 		//set timestep
-		if (count > 5) var.dt = CFL*(var.dx/Smax); //updates every timestep
-		else var.dt = 0.2*(var.dx/Smax);
-		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+		if (count > 5) domain.dt = CFL*(domain.dx/Smax); //updates every timestep
+		else domain.dt = 0.2*(domain.dx/Smax);
+		if (t + domain.dt > domain.tstop) domain.dt = domain.tstop - t;
 
-		t += var.dt;
+		t += domain.dt;
 		count += 1;
 
 		//updating U
-		for (int i=2; i<var.N+2; i++){
-			conservative_update_formula(var, i);
+		for (int i=2; i<domain.N+2; i++){
+			conservative_update_formula(var, domain, i);
+			//conservative_update_formula(var.U.row(i), var.F.row(i), var.F.row(i-1), domain.dt, domain.dx);
 		}
 
-		boundary_conditions(var);
+		boundary_conditions(var, domain);
 
-	}while (t < var.tstop);
+	}while (t < domain.tstop);
 	std::cout << count << std::endl;
 }
 
-void MUSCL::output(Euler1D &var){
+void MUSCL::output(Euler1D &var, Domain1D domain){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
 
-	for (int i=2; i<var.N+2; i++){
+	for (int i=2; i<domain.N+2; i++){
 
 		double u = var.U(i, 1)/var.U(i, 0);
 		double P = var.state_function->Pressure(var.U, i);
 		double e = var.state_function->internalE(var.U, i);
 
-		outfile << var.X(i-1) << '\t' << var.U(i, 0) << '\t' << u
+		outfile << domain.X(i-1) << '\t' << var.U(i, 0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}
 	outfile.close();
 	std::cout << "done: MUSCL" << std::endl;
+}
+
+void MUSCL::muscl_solver(eulerTests& Test, double CFL){
+	initial_conditions(Test);
+	solver(Test.var, Test.domain, CFL);
+	output(Test.var, Test.domain);
 }
 
 //--------------------------------------------------------------------------------
@@ -534,65 +545,65 @@ void MUSCL::output(Euler1D &var){
 //--------------------------------------------------------------------------------
 
 
-void MUSCL::boundary_conditions(Euler2D &var){
+void MUSCL::boundary_conditions(Euler2D &var, Domain2D domain){
 
 	if (var.U.cols() == 0 || var.U.rows() == 0){
 		throw "Array is empty.";
 	}
 
 	//assigning ghost values in the x-direction 
-	for (int j=0; j<var.Ny; j++){
+	for (int j=0; j<domain.Ny; j++){
 		var.U(1, j+2) = var.U(2, j+2);
 		var.U(0, j+2) = var.U(1, j+2);
-		var.U(var.Nx+2, j+2) = var.U(var.Nx+1, j+2);
-		var.U(var.Nx+3, j+2) = var.U(var.Nx+2, j+2);
+		var.U(domain.Nx+2, j+2) = var.U(domain.Nx+1, j+2);
+		var.U(domain.Nx+3, j+2) = var.U(domain.Nx+2, j+2);
 	} 
 	//assigning ghost values in the y-direction
-	for (int i=0; i<var.Nx; i++){
+	for (int i=0; i<domain.Nx; i++){
 		var.U(i+2, 1) = var.U(i+2, 2);
 		var.U(i+2, 0) = var.U(i+2, 1);
-		var.U(i+2, var.Ny+2) = var.U(i+2, var.Ny+1);
-		var.U(i+2, var.Ny+3) = var.U(i+2, var.Nx+2);
+		var.U(i+2, domain.Ny+2) = var.U(i+2, domain.Ny+1);
+		var.U(i+2, domain.Ny+3) = var.U(i+2, domain.Nx+2);
 	} 
 }
 
-void MUSCL::boundary_conditions_reflective(Euler2D &var){
+void MUSCL::boundary_conditions_reflective(Euler2D &var, Domain2D domain){
 
 	if (var.U.cols() == 0 || var.U.rows() == 0){
 		throw "Array is empty.";
 	}
 
 	//assigning ghost values in the x-direction 
-	for (int j=0; j<var.Ny; j++){
+	for (int j=0; j<domain.Ny; j++){
 		var.U(1, j+2) = var.U(2, j+2);
 		var.U(0, j+2) = var.U(1, j+2);
-		var.U(var.Nx+2, j+2) = var.U(var.Nx+1, j+2);
-		var.U(var.Nx+3, j+2) = var.U(var.Nx+2, j+2);
+		var.U(domain.Nx+2, j+2) = var.U(domain.Nx+1, j+2);
+		var.U(domain.Nx+3, j+2) = var.U(domain.Nx+2, j+2);
 		//reflecting the normal velocity
 		var.U(1, j+2)(1) = -var.U(2, j+2)(1);
 		var.U(0, j+2)(1) = -var.U(1, j+2)(1);
-		var.U(var.Nx+2, j+2)(1) = -var.U(var.Nx+1, j+2)(1);
-		var.U(var.Nx+3, j+2)(1) = -var.U(var.Nx+2, j+2)(1);
+		var.U(domain.Nx+2, j+2)(1) = -var.U(domain.Nx+1, j+2)(1);
+		var.U(domain.Nx+3, j+2)(1) = -var.U(domain.Nx+2, j+2)(1);
 	} 
 	//assigning ghost values in the y-direction
-	for (int i=0; i<var.Nx; i++){
+	for (int i=0; i<domain.Nx; i++){
 		var.U(i+2, 1) = var.U(i+2, 2);
 		var.U(i+2, 0) = var.U(i+2, 1);
-		var.U(i+2, var.Ny+2) = var.U(i+2, var.Ny+1);
-		var.U(i+2, var.Ny+3) = var.U(i+2, var.Nx+2);
+		var.U(i+2, domain.Ny+2) = var.U(i+2, domain.Ny+1);
+		var.U(i+2, domain.Ny+3) = var.U(i+2, domain.Nx+2);
 		//reflecting the normal velocity
 		var.U(i+2, 1)(3) = -var.U(i+2, 2)(3);
 		var.U(i+2, 0)(3) = -var.U(i+2, 1)(3);
-		var.U(i+2, var.Ny+2)(3) = -var.U(i+2, var.Ny+1)(3);
-		var.U(i+2, var.Ny+3)(3) = -var.U(i+2, var.Nx+2)(3);
+		var.U(i+2, domain.Ny+2)(3) = -var.U(i+2, domain.Ny+1)(3);
+		var.U(i+2, domain.Ny+3)(3) = -var.U(i+2, domain.Nx+2)(3);
 	} 
 }
 
 void MUSCL::initial_conditions(eulerTests2D &Test){
-	Test.var.X.resize(Test.N+2, Test.Ny+2);
-	Test.var.U.resize(Test.N+4, Test.Ny+4);
-	Test.var.F.resize(Test.N+2, Test.N+2);
-	Test.var.G.resize(Test.N+2, Test.N+2);
+	//Test.var.X.resize(Test.domain.N+2, Test.domain.Ny+2);
+	Test.var.U.resize(Test.domain.Nx+4, Test.domain.Ny+4);
+	Test.var.F.resize(Test.domain.Nx+2, Test.domain.Ny+2);
+	Test.var.G.resize(Test.domain.Nx+2, Test.domain.Ny+2);
 
 	vector4 eulerL;
 	vector4 eulerR;
@@ -600,8 +611,8 @@ void MUSCL::initial_conditions(eulerTests2D &Test){
 	eulerL = Test.var.state_function->conservedVar2Dx(Test.initialL);
 	eulerR = Test.var.state_function->conservedVar2Dx(Test.initialR);
 
-	for (int i=0; i<Test.N; i++){
-		for (int j=0; j<Test.Ny; j++){
+	for (int i=0; i<Test.domain.Nx; i++){
+		for (int j=0; j<Test.domain.Ny; j++){
 			if (Test.interface(i, j) == false){
 				Test.var.U(i+2, j+2) = eulerL;			
 			}
@@ -610,11 +621,13 @@ void MUSCL::initial_conditions(eulerTests2D &Test){
 			}
 		}
 	}
-	boundary_conditions(Test.var);
+	boundary_conditions(Test.var, Test.domain);
 	//Test.var.display(Test.var.U);
 }
 
-void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double dx){
+void MUSCL::compute_fluxes(Euler2D &var, Domain2D domain, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double dx){
+	//Here dx is a proxy for a unit cell in any direction
+
 	//soundspeed
 	double al, ar;
 	//velocity components
@@ -641,8 +654,8 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 	vector4 URtmp1 = URi.row(i+1);
 
 	//Post 1/2 time-step evolution left and right states
-	vector4 ULbar = ULtmp1 + 0.5*(var.dt/dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
-	vector4 URbar = URtmp + 0.5*(var.dt/dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
+	vector4 ULbar = ULtmp1 + 0.5*(domain.dt/dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
+	vector4 URbar = URtmp + 0.5*(domain.dt/dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
 
 
 	/*-------------------------------------------------------
@@ -765,17 +778,17 @@ void MUSCL::compute_fluxes(Euler2D &var, matrix &U, vector4 &F, int i, matrix UL
 }
 
 
-void MUSCL::solver(Euler2D &var, double CFL){
+void MUSCL::solver(Euler2D &var, Domain2D &domain, double CFL){
 	
-	matrix ULix(var.Nx+4, 4);
-	matrix URix(var.Nx+4, 4);
+	matrix ULix(domain.Nx+4, 4);
+	matrix URix(domain.Nx+4, 4);
 
-	matrix ULiy(var.Ny+4, 4);
-	matrix URiy(var.Ny+4, 4);
+	matrix ULiy(domain.Ny+4, 4);
+	matrix URiy(domain.Ny+4, 4);
 
 	//Temporary storage for x and y conserved variables 
-	matrix Uxn(var.Nx+4, 4);
-	matrix Uyn(var.Ny+4, 4);
+	matrix Uxn(domain.Nx+4, 4);
+	matrix Uyn(domain.Ny+4, 4);
 
 
 	slopeLimiter a = VanLeer;//getLimiter();
@@ -786,8 +799,8 @@ void MUSCL::solver(Euler2D &var, double CFL){
 		//set timestep, taking maximum wavespeed in x or y directions
 		double Smax=0;
 		//double Smax_y=0;
-		for (int i=2; i<var.Nx+2; i++){
-			for (int j=2; j<var.Ny+2; j++){
+		for (int i=2; i<domain.Nx+2; i++){
+			for (int j=2; j<domain.Ny+2; j++){
 				vector4 Utmp = var.U(i, j);
 				double a_ij = var.state_function->soundspeed(Utmp);
 				double d_ij_x = Utmp(1)/Utmp(0); //velocity in x direction
@@ -799,108 +812,114 @@ void MUSCL::solver(Euler2D &var, double CFL){
 		}
 		if (count <= 5){
 				//using a CFL number of 0,.2 for the first 5 timesteps
-				var.dt = 0.2*fmin((var.dx/Smax), (var.dy/Smax));
+				domain.dt = 0.2*fmin((domain.dx/Smax), (domain.dy/Smax));
 			}
 		else {
-				var.dt = CFL*fmin((var.dx/Smax), (var.dy/Smax));
+				domain.dt = CFL*fmin((domain.dx/Smax), (domain.dy/Smax));
 		}
-		//var.dt = CFL*fmin((var.dx/Smax_xtest), (var.dy/Smax_ytest));
-		if (t + var.dt > var.tstop) var.dt = var.tstop - t;
+		//domain.dt = CFL*fmin((domain.dx/Smax_xtest), (domain.dy/Smax_ytest));
+		if (t + domain.dt > domain.tstop) domain.dt = domain.tstop - t;
 
-		t += var.dt;
+		t += domain.dt;
 		count += 1;
 		//sweeping in the x-direction for each y row
-		for (int j=0; j<var.Ny; j++){
+		for (int j=0; j<domain.Ny; j++){
 			//Within each row, store the values for each grid point in x with a single row list
-			for(int i=0; i<var.Nx+4; i++){
+			for(int i=0; i<domain.Nx+4; i++){
 				Uxn.row(i) = var.U(i, j+2);
 				//the sweep in x is only performed within the real y grid
 			} 
 			//calculate and update to new interpolated values U_i
-			data_reconstruction(Uxn, a, ULix, URix, var.Nx);
+			data_reconstruction(Uxn, a, ULix, URix, domain.Nx);
 
 			//sweeping in the x-direction for each y row
-			for (int i=1; i<var.Nx+2; i++){
+			for (int i=1; i<domain.Nx+2; i++){
 				vector4 Fx(0, 0, 0, 0);
-				compute_fluxes(var, Uxn, Fx, i, ULix, URix, var.dx); //compute flux needs to change
+				compute_fluxes(var, domain, Uxn, Fx, i, ULix, URix, domain.dx); //compute flux needs to change
 				var.F(i, j+1) = Fx; //storing the computed flux.
 			}
 		}
 		//sweeping in the y-direction for each x row
-		for (int i=0; i<var.Nx; i++){
-			for (int j=0; j<var.Ny+4; j++){
+		for (int i=0; i<domain.Nx; i++){
+			for (int j=0; j<domain.Ny+4; j++){
 				Uyn.row(j) = var.swap_xy(var.U(i+2, j));
 			}
-			data_reconstruction(Uyn, a, ULiy, URiy, var.Ny);
+			data_reconstruction(Uyn, a, ULiy, URiy, domain.Ny);
 
-			for (int j=1; j<var.Ny+2; j++){
+			for (int j=1; j<domain.Ny+2; j++){
 				vector4 Fy(0, 0, 0, 0);
-				compute_fluxes(var, Uyn, Fy, j, ULiy, URiy, var.dy); //compute flux needs to change
+				compute_fluxes(var, domain, Uyn, Fy, j, ULiy, URiy, domain.dy); //compute flux needs to change
 				var.G(i+1, j) = Fy; //storing the computed flux.		
 			}
 		}
 
 		//updating U
-		for (int j=0; j<var.Ny; j++){
-			for (int i=2; i<var.Nx+2; i++){
-				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), var.dt/2, var.dx);
+		for (int j=0; j<domain.Ny; j++){
+			for (int i=2; i<domain.Nx+2; i++){
+				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), domain.dt/2, domain.dx);
 			}
 		}
-		for (int i=0; i<var.Nx; i++){
-			for (int j=2; j<var.Ny+2; j++){
-				conservative_update_formula_2D(var.U(i+2, j), var.swap_xy(var.G(i+1, j)), var.swap_xy(var.G(i+1, j-1)), var.dt, var.dy);
+		for (int i=0; i<domain.Nx; i++){
+			for (int j=2; j<domain.Ny+2; j++){
+				conservative_update_formula_2D(var.U(i+2, j), var.swap_xy(var.G(i+1, j)), var.swap_xy(var.G(i+1, j-1)), domain.dt, domain.dy);
 			}
 		}		
-		for (int j=0; j<var.Ny; j++){
-			for (int i=2; i<var.Nx+2; i++){
-				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), var.dt/2, var.dx);
+		for (int j=0; j<domain.Ny; j++){
+			for (int i=2; i<domain.Nx+2; i++){
+				conservative_update_formula_2D(var.U(i, j+2), var.F(i, j+1), var.F(i-1, j+1), domain.dt/2, domain.dx);
 			}
 		}
-		boundary_conditions(var);
+		boundary_conditions(var, domain);
 
-		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
-		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << var.dt << std::endl;
+		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
+		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << Smax_x << '\t' << Smax_y << std::endl;
-		//if (count == 2) t = var.tstop;
-	}while (t < var.tstop);
+		//if (count == 2) t = domain.tstop;
+	}while (t < domain.tstop);
 	std::cout << count << std::endl;
 }
 
-void MUSCL::output(Euler2D &var){
+void MUSCL::output(Euler2D &var, Domain2D domain){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
 
-	for (int i=2; i<var.Nx+2; i++){
-		for (int j=2; j<var.Ny+2; j++){
+	for (int i=2; i<domain.Nx+2; i++){
+		for (int j=2; j<domain.Ny+2; j++){
 			vector4 Ux = var.U(i, j);
 			double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
 			double P = var.state_function->Pressure(Ux);
 			double e = var.state_function->internalE(Ux);
 
 			//central difference to calculate partial derivatives in x, y for density
-			double grad_density_x = (var.U(i+1, j)(0) - var.U(i-1, j)(0))/(2*var.dx);
-			double grad_density_y = (var.U(i, j+1)(0) - var.U(i, j-1)(0))/(2*var.dy);
+			double grad_density_x = (var.U(i+1, j)(0) - var.U(i-1, j)(0))/(2*domain.dx);
+			double grad_density_y = (var.U(i, j+1)(0) - var.U(i, j-1)(0))/(2*domain.dy);
 			//calculating the numerical schlieren
 			double schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
 
-			outfile << var.dx*(i-2) << '\t' << var.dy*(j-2) << '\t' << Ux(0) << '\t' << u
+			outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 			<< '\t' << P << '\t' << e << '\t' << schlieren << std::endl;
 		}
 		outfile << std::endl;
 	}
 	//plotting a slice
-	/*for (int j=(var.Ny/2 +2); j<var.Ny+2; j++){
-		vector4 Ux = var.U(var.Nx/2, j);
+	/*for (int j=(domain.Ny/2 +2); j<domain.Ny+2; j++){
+		vector4 Ux = var.U(domain.Nx/2, j);
 		double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
 		double P = var.state_function->Pressure(Ux);
 		double e = var.state_function->internalE(Ux);
 
-		outfile << var.dy*(j-2) << '\t' << Ux(0) << '\t' << u
+		outfile << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 				<< '\t' << P << '\t' << e << std::endl;
 	}*/
 	outfile.close();
 	std::cout << "done: MUSCL" << std::endl;
+}
+
+void MUSCL::muscl_solver(eulerTests2D& Test, double CFL){
+	initial_conditions(Test);
+	solver(Test.var, Test.domain, CFL);
+	output(Test.var, Test.domain);
 }
 
 
@@ -1212,7 +1231,7 @@ void EXACT::output(){
 
 void EXACT::solver(eulerTests &Test){
 	initial_conditions(Test);
-	sampling(Test.tstop);
+	sampling(Test.domain.tstop);
 	output();
 }
 

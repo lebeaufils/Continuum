@@ -24,26 +24,31 @@ typedef Eigen::MatrixXd matrix;
 
 struct standardTests
 {
-	int N;
-	double L;
-	double x0;
-	double tstop;
+	//int N;
+	//double L;
+	//double x0;
+	//double tstop;
 
 	matrix initialL;
 	matrix initialR;
 
-	standardTests(int N) : N(N), L(1.0), x0(0.5), tstop(0), initialL(3, 1), initialR(3, 1) {}
+	//standardTests(int N) : N(N), L(1.0), x0(0.5), tstop(0), initialL(3, 1), initialR(3, 1) {}
+	standardTests() : initialL(3, 1), initialR(3, 1) {}
 	virtual ~standardTests() {}
 
 	int Get_Switch();
-	void switch_resolution();
+	void switch_resolution(Domain1D&);
 };
 
 struct eulerTests : public virtual standardTests
 {
+	Domain1D domain;
 	Euler1D var;
 
-	eulerTests(int N) : standardTests(N), var() {}
+	double x0; //interface location
+	//only a single interface is supported for standard toro tests
+
+	eulerTests(int N) : standardTests(), domain(N), var() {}
 	virtual ~eulerTests() {}
 
 	void test1();
@@ -62,20 +67,22 @@ struct eulerTests : public virtual standardTests
 
 struct eulerTests2D : public virtual standardTests
 {
+	Domain2D domain;
 	Euler2D var;
 
 	//Additional domain parameters
 		//If x and y have different lengths/ number of cells
-		int Ny;
-		double Ly;
+		//int Ny;
+		//double Ly;
 		//Interface location as a function of x and y (a list of interfacial cells)
 		Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
 
-	eulerTests2D(int N) : standardTests(N), var(), Ny(N), Ly(L), interface(N, Ny) {
+	//eulerTests2D(int N) : standardTests(N), var(), Ny(N), Ly(L), interface(N, Ny) 
+	eulerTests2D(int N) : standardTests(), domain(N), var(), interface(N, N) {
 		initialL.resize(4, 1);
 		initialR.resize(4, 1);
 	}
-	eulerTests2D(int Nx, int Ny) : standardTests(Nx), var(), Ny(Ny), Ly(L), interface(Nx, Ny) {
+	eulerTests2D(int Nx, int Ny) : standardTests(), domain(Nx, Ny), var(), interface(Nx, Ny) {
 		initialL.resize(4, 1);
 		initialR.resize(4, 1);
 	}
@@ -89,8 +96,22 @@ struct eulerTests2D : public virtual standardTests
 	//void switch_test();	
 };
 
+struct rigidTests : public virtual standardTests
+{
+	Domain1D domain;
+	Euler1D fluid;
+	Euler1D rigidbody;
 
-struct gfmTests : public virtual standardTests
+	matrix interfacelist; //list of interface coordinates
+
+	rigidTests(int N) : standardTests(), domain(N), fluid(), rigidbody(), interfacelist(0, 0) {}
+	virtual ~rigidTests() {}
+
+	void test1(); 
+};
+
+
+/*struct gfmTests : public virtual standardTests
 {
 	//For now, only capable of dealing with 2 different materials.
 	Euler1D var1;
@@ -99,12 +120,12 @@ struct gfmTests : public virtual standardTests
 	int number_of_discontinuities;
 	bool stiffgas = false; //flag for stiffened gas
 
-	/*double yL;
-	double yR;
-	double yM1;
-	double yM2;
-	double Pref1;
-	double Pref2;*/ //these values are stored inside the variable struce
+	//double yL;
+	//double yR;
+	//double yM1;
+	//double yM2;
+	//double Pref1;
+	//double Pref2; //these values are stored inside the variable struce
 
 	double x1;
 	double x2;
@@ -113,7 +134,7 @@ struct gfmTests : public virtual standardTests
 	vector initialM1;
 	vector initialM2;
 
-	gfmTests() : standardTests(0, 0), number_of_materials(2),
+	gfmTests() : standardTests(), number_of_materials(2),
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0)  {}
 	gfmTests(double N, double L) : standardTests(N, L), number_of_materials(2),
 	x1(0), x2(0), initialM1(0, 0, 0), initialM2(0, 0, 0) {}
@@ -148,7 +169,9 @@ struct gfmTests : public virtual standardTests
 
 	//Set EOS parameters
 	//void set_EOS(EOS*, EOS*);
+	
 };
+*/
 
 
 #endif /* TESTS_EULERTESTS_H_ */
