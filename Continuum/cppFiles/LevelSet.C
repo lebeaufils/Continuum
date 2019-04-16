@@ -13,14 +13,30 @@ int LevelSetFunction::get_sgn(double a){
 	else return 0;
 }
 
-void LevelSetFunction::boundary_conditions(Euler1D var){
+void LevelSetFunction::boundary_conditions(Domain1D domain){
 	phi(0) = phi(1);
-	phi(var.N+1) = phi(var.N);
+	phi(domain.N+1) = phi(domain.N);
 }
 
-void LevelSetFunction::signed_distance_function_1D(Euler1D var){
+void LevelSetFunction::signed_distance_function_1D(Domain1D domain, double x0, int i){
 	for (int i=0; i<Test.N; i++){
-		phi(i+1) = var.X(i) - x0;
+		phi(i+1) = domain.X(i) - x0; //positive inside
+	}
+}
+
+void LevelSetFunction::signed_distance_function_1D_2(matrix X, int i, double x0, double x1){
+	// positive inside
+	if (x0 > x1) {
+		throw "Interface location incorrectly defined";
+	}
+
+	double dist = fmin(abs(X(i+1) - x0), abs(X(i+1) - x1));
+	if (X(i+1) < x0 || X(i+1) > x1) {
+		phi(i+1) = -dist;
+	}
+
+	else {
+		phi(i+1) = dist;
 	}
 }
 

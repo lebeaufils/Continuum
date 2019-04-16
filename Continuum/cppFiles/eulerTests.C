@@ -67,7 +67,7 @@ void eulerTests::test1(){ //sod's tube test
 
 	x0 = 0.3;
 	domain.tstop = 0.2;
-	domain.dx = domain.L/domain.N;
+	domain.dx = domain.L/(domain.N-1);
 
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
@@ -82,7 +82,7 @@ void eulerTests::test1_stationary(){
 
 	x0 = 0.5;
 	domain.tstop = 0.25;
-	domain.dx = domain.L/domain.N;
+	domain.dx = domain.L/(domain.N-1);
 
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
@@ -97,7 +97,7 @@ void eulerTests::test2(){ //Two rarefraction waves, vaccum test
 
 	x0 = 0.5;
 	domain.tstop = 0.15;
-	domain.dx = domain.L/domain.N;
+	domain.dx = domain.L/(domain.N-1);
 
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
@@ -112,7 +112,7 @@ void eulerTests::test3(){ //strong shock wave of shock Mach number 198
 
 	x0 = 0.5;
 	domain.tstop = 0.012;
-	domain.dx = domain.L/domain.N;
+	domain.dx = domain.L/(domain.N-1);
 
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
@@ -127,7 +127,7 @@ void eulerTests::test4(){ //Three strong discontinuities travelling to the right
 
 	x0 = 0.4;
 	domain.tstop = 0.035;
-	domain.dx = domain.L/domain.N;
+	domain.dx = domain.L/(domain.N-1);
 
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
@@ -142,7 +142,7 @@ void eulerTests::test5(){ //slowly moving contact discontinuities
 
 	x0 = 0.8;
 	domain.tstop = 0.012;
-	domain.dx = domain.L/domain.N;
+	domain.dx = domain.L/(domain.N-1);
 
 	var.state_function = StateFunctions::create(EOS_IG);
 	var.state_function->y = 1.4;
@@ -340,10 +340,49 @@ void eulerTests2D::test4(){ //sod's tube test, x-aligned
 //--------------------------------------------------------------------------------------------
 void rigidTests::test1(){
 
-	interfacelist.resize(1, 1); 
-	interfacelist << 0.7;
+	//Rigid body interface location
+	//number_of_rigidbodies = 1;
+		//Creating the level set array
+		//var.levelset_array.resize(number_of_rigidbodies);
+
+	//storing interface as a nested list
+	//interfacelist.resize(number_of_rigidbodies);
+	//Eigen::Array<double, 1, 2> interfacepoint(0.7, domain.L);
+	//interfacelist << interfacepoint; //list of rigid body interface points
+	//std::cout << interfacelist(0) << std::endl;
+
+	//Shock location
+	double x_s = 0.3;
+
+	//------------------------------------------------------------
+	//initial conditions for shock and unshocked fluid
+	vector shocked(1.0, 0.0, 1.0); //density, velocity, pressure
+	vector unshocked(0.125, 0.0, 0.1);
+
+	initialL = shocked;
+	initialR = unshocked;
+
+	domain.tstop = 0.25;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+	domain.X.resize(domain.Nx, domain.Ny);
+
+	var.fluid.state_function = StateFunctions::create(EOS_IG);
+	var.fluid.state_function->y = 1.4;
+	//------------------------------------------------------------
+
+
+
+	//for (int i=0; i<domain.N; i++){
+	//	domain.X(i) = i*domain.dx;
+	//	if (domain.X(i) <= x_s) interface(i) = 0; //Shocked fluid
+	//	else if (domain.X(i) > x_s && domain.X(i) <= interfacelist(0)(0)) interface(i) = 1; //unshocked fluid
+	//	else interface(i) = 2; //rigid body
+	//}
+
 	//a single interface between rigid body and fluid
 	//essentially, this reduces the computational domain by bringing forward the boundary
+	//std::cout << interface << std::endl;
 }
 
 

@@ -2,6 +2,7 @@
 #define VARIABLES_H_
 
 #include <Eigen/Dense>
+#include <vector>
 //#include <iostream>
 #include "EOS.h"
 
@@ -100,6 +101,32 @@ struct Euler2D
 	template<typename T>
 	T swap_xy(T); //swaps the order of velocity in x-y directions
 };
+
+struct RB_2D
+{
+	//collection of level sets, one for each object
+	//Eigen::Array<matrix, 1, Eigen::Dynamic> levelset_array;
+	std::vector<matrix> levelset_array;
+	Euler2D fluid;
+	Euler2D rigidbody;
+
+	RB_2D() : levelset_array(0), fluid(), rigidbody() {}
+};
+
+struct Polygon
+{	
+	//for an n-sided polygon
+	int n;
+	//Eigen::Array<Eigen::Array<double,1,2>, Eigen::Dynamic, 1> vertices;
+	//Eigen::Array<Eigen::Array<int,1,2>, Eigen::Dynamic, 1> edges;
+	std::vector<Eigen::Array<double,1,2>, Eigen::aligned_allocator<Eigen::Array<double,1,2>>> vertices;
+	std::vector<Eigen::Array<int,1,2>, Eigen::aligned_allocator<Eigen::Array<int,1,2>>> edges;
+	//faces for 3D
+
+	Polygon(int n) : n(n), vertices(n), edges(n) {}
+
+};
+
 
 #include "Variables.tcc"
 

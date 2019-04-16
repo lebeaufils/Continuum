@@ -16,10 +16,36 @@ void RigidBodies::rigid_boundary(Euler1D real, Euler1D &ghost, int i){
 		//checking that the ghost cells remain within computational domain
 		if(i+j+1 < real.N+2) ghost.U.row(i+j+1) = real.state_function->conservedVar(primitive); 
 	}
+	//assigning ghost values in the x-direction 
 }
 
-void RigidBodies::initial_conditions(LevelSetFunction1D levelset, rigidTests &Test){
+void RigidBodies::initial_conditions(rigidTests &Test){
 
+	//Setting the initial fluid conditions
+	for(int i=0; i<Test.domain.N; i++){
+		if (Test.interface(i) == 0){
+			//shocked fluid
+			Test.fluid.U.row(i+2) = Test.initialL;
+		}
+		else if (Test.interface(i) == 1){
+			//shocked fluid
+			Test.fluid.U.row(i+2) = Test.initialR;
+		}
+		else if (Test.interface(i) == 2){
+			//shocked fluid
+			Test.fluid.U.row(i+2) = 0;
+		}
+		else {
+			throw "Number of initial conditions is invalid.";
+		}
+	}
+
+	//Setting the level set function
+	for (int k=0; k<Test.number_of_rigidbodies; k++){
+
+	}
+
+	//populate the rigid body with ghost values (depth of 3 cells)
 }
 
 void RigidBodies::solver(){

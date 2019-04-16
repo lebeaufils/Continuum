@@ -23,7 +23,7 @@ void MUSCL::initial_conditions(eulerTests &Test){
 	eulerR = Test.var.state_function->conservedVar(Test.initialR);
 
 	for (int i=0; i<Test.domain.N; i++){
-		Test.domain.X(i+1) = (i+0.5)*Test.domain.dx;
+		Test.domain.X(i+1) = i*Test.domain.dx;
 		if (Test.domain.X(i+1)  < Test.x0){
 			Test.var.U.row(i+2) = eulerL;
 		}

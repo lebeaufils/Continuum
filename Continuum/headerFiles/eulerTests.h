@@ -98,16 +98,22 @@ struct eulerTests2D : public virtual standardTests
 
 struct rigidTests : public virtual standardTests
 {
-	Domain1D domain;
-	Euler1D fluid;
-	Euler1D rigidbody;
+	//polygon based
+	Domain2D domain;
+	RB_2D var; // n-levelsets, fluid variable and rigidbody variable.
 
-	matrix interfacelist; //list of interface coordinates
+	int number_of_rigidbodies;
+	
+	//Eigen::Array<int,Eigen::Dynamic,Eigen::Dynamic> interface; //might be superseeded by the levelset
+	//Eigen::Array<Eigen::Array<double,1,2>,1,Eigen::Dynamic> interfacelist; //list of interface coordinates, sets of 2 points
 
-	rigidTests(int N) : standardTests(), domain(N), fluid(), rigidbody(), interfacelist(0, 0) {}
+	rigidTests(int N) : standardTests(), domain(N), var(), number_of_rigidbodies(0) {}//interface(N, 1), interfacelist(1) {}
+	rigidTests(int Nx, int Ny) : standardTests(), domain(Nx, Ny), var(), number_of_rigidbodies(0) {}
 	virtual ~rigidTests() {}
 
 	void test1(); 
+
+	//potentially read from an object file to obtain polygon data as lists.
 };
 
 
