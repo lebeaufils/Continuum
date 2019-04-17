@@ -352,7 +352,7 @@ void rigidTests::test1(){
 	//std::cout << interfacelist(0) << std::endl;
 
 	//Shock location
-	double x_s = 0.3;
+	//double x_s = 0.3;
 
 	//------------------------------------------------------------
 	//initial conditions for shock and unshocked fluid
@@ -371,7 +371,15 @@ void rigidTests::test1(){
 	var.fluid.state_function->y = 1.4;
 	//------------------------------------------------------------
 
+	//assigning x values
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates point(i*domain.dx, j*domain.dy);
+			domain.X(i, j) = point;
+		}
+	}
 
+	domain.display_grid();
 
 	//for (int i=0; i<domain.N; i++){
 	//	domain.X(i) = i*domain.dx;

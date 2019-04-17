@@ -1,44 +1,68 @@
 #include "../headerFiles/LevelSet.h"
 
-//LevelSetFunction::LevelSetFunction(gfmTests Test)
-//	: N(Test.N), X(N+2, 1), dx(Test.L/Test.N), x0(Test.x0), x1(Test.x1), x2(Test.x2), phi(N+2, 1), sgn(0) {}
-LevelSetFunction::LevelSetFunction()
-	: phi(NULL) {}
-
-
-int LevelSetFunction::get_sgn(double a){
+int LevelSetMethods::get_sgn(double a){
 	//sign function
 	if (a > 0) return 1;
 	else if (a < 0) return -1; 
 	else return 0;
 }
 
-void LevelSetFunction::boundary_conditions(Domain1D domain){
-	phi(0) = phi(1);
-	phi(domain.N+1) = phi(domain.N);
+
+//----------------------------------------------------------------------------------------------------------
+//1-Dimensional
+//----------------------------------------------------------------------------------------------------------
+void LevelSetMethods::initialise(LevelSet ls, Domain1D domain){
+	ls.phi.resize(domain.N+2, 1); //allows advection
 }
 
-void LevelSetFunction::signed_distance_function_1D(Domain1D domain, double x0, int i){
-	for (int i=0; i<Test.N; i++){
-		phi(i+1) = domain.X(i) - x0; //positive inside
+void LevelSetMethods::boundary_conditions(LevelSet ls, Domain1D domain){
+	ls.phi(0) = ls.phi(1);
+	ls.phi(domain.N+1) = ls.phi(domain.N);
+}
+
+void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, double x0){
+	for (int i=0; i<domain.N; i++){
+		ls.phi(i+1) = domain.X(i) - x0; //positive inside
 	}
 }
 
-void LevelSetFunction::signed_distance_function_1D_2(matrix X, int i, double x0, double x1){
+void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, double x0, double x1, int i){
 	// positive inside
 	if (x0 > x1) {
 		throw "Interface location incorrectly defined";
 	}
 
-	double dist = fmin(abs(X(i+1) - x0), abs(X(i+1) - x1));
-	if (X(i+1) < x0 || X(i+1) > x1) {
-		phi(i+1) = -dist;
+	double dist = fmin(abs(domain.X(i+1) - x0), abs(domain.X(i+1) - x1));
+	if (domain.X(i+1) < x0 || domain.X(i+1) > x1) {
+		ls.phi(i+1) = -dist;
 	}
 
 	else {
-		phi(i+1) = dist;
+		ls.phi(i+1) = dist;
 	}
 }
+//----------------------------------------------------------------------------------------------------------
+//2-Dimensional
+//----------------------------------------------------------------------------------------------------------
+void LevelSetMethods::initialise(LevelSet ls, Domain2D domain, Polygon P){
+	ls.phi.resize(domain.Nx, domain.Ny);
+}
+
+void LevelSetMethods::initialise_circle(LevelSet ls, Domain2D domain, double x0, double y0, double r){
+	ls.phi.resize(domain.Nx, domain.Ny);
+
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			//ls.phi(i, j) = pow(domain.X[i + j*domain.Nx][0] - x0, 2) + pow(domain.X[i + j*domain.Nx][1] - y0, 2) - pow(r, 2);
+			ls.phi(i, j) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
+		}
+	}
+}
+
+void LevelSetMethods::fast_sweep(LevelSet ls, Domain2D domain){
+
+}
+
 
 /*
 void LevelSetFunction::signed_distance_function_1D(){

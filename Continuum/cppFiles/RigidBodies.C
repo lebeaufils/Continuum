@@ -42,7 +42,9 @@ void RigidBodies::initial_conditions(rigidTests &Test){
 
 	//Setting the level set function
 	for (int k=0; k<Test.number_of_rigidbodies; k++){
-
+		for (int i=0; i<Test.domain.N; i++){
+			
+		}
 	}
 
 	//populate the rigid body with ghost values (depth of 3 cells)

@@ -7,8 +7,8 @@ objectFiles/Solvers.o : cppFiles/Solvers.C headerFiles/Solvers.h headerFiles/Var
 #GhostFluid.o : GhostFluid.C GhostFluid.h
 #	${CXX} -c $< -o $@ ${CXXFLAGS}
 
-#objectFiles/LevelSet.o : cppFiles/LevelSet.C headerFiles/LevelSet.h
-#	${CXX} -c $< -o $@ ${CXXFLAGS}
+objectFiles/LevelSet.o : cppFiles/LevelSet.C headerFiles/LevelSet.h
+	${CXX} -c $< -o $@ ${CXXFLAGS}
 
 objectFiles/EOS.o : cppFiles/EOS.C headerFiles/EOS.h
 	${CXX} -c $< -o $@ ${CXXFLAGS}
@@ -22,10 +22,10 @@ objectFiles/eulerTests.o : cppFiles/eulerTests.C headerFiles/eulerTests.h
 main.o : main.C
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
-main : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o #objectFiles/Variables.o
+main : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o
 	g++  $^ -lm -o $@
 
-memcheck : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o #objectFiles/Variables.o
+memcheck : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o
 	g++ -g  $^ -o $@
 
 

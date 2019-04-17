@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <vector>
+#include <array>
 //#include <iostream>
 #include "EOS.h"
 
@@ -14,6 +15,15 @@ typedef Eigen::Matrix<vector4, Eigen::Dynamic, Eigen::Dynamic> vecarray;
 //-----------------------------------------------------------------------------------------------
 //	Data storage
 //-----------------------------------------------------------------------------------------------
+struct Coordinates
+{
+	double x;
+	double y;
+
+	Coordinates() : x(0), y(0) {}
+	Coordinates(double x, double y) : x(x), y(y) {}
+};
+
 struct Domain1D
 {
 	int N;
@@ -39,11 +49,20 @@ struct Domain2D
 	double dy;
 	double tstop;
 
-	matrix X;
+	Eigen::Array<Coordinates, Eigen::Dynamic, Eigen::Dynamic> X; //coordinate pairs (x,y)
 
 	Domain2D() : Nx(0), Ny(0), Lx(0), Ly(0), dt(0), dx(0), tstop(0), X(0, 0) {}
 	Domain2D(int N) : Nx(N), Ny(N), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
 	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
+
+	void display_grid(){
+		for (int j=0; j<Ny; j++){
+			for (int i=0; i<Nx; i++){
+				std::cout << X(i, j).x << ", " << X(i, j).y << '\t'; 
+			}
+			std::cout << std::endl;
+		}
+	}
 };
 
 struct Euler1D
@@ -102,15 +121,22 @@ struct Euler2D
 	T swap_xy(T); //swaps the order of velocity in x-y directions
 };
 
+struct LevelSet
+{
+	matrix phi;
+
+	LevelSet() : phi(0, 0) {}
+};
+
 struct RB_2D
 {
 	//collection of level sets, one for each object
 	//Eigen::Array<matrix, 1, Eigen::Dynamic> levelset_array;
-	std::vector<matrix> levelset_array;
+	std::vector<LevelSet> levelsets; //list of n-levelset
 	Euler2D fluid;
 	Euler2D rigidbody;
 
-	RB_2D() : levelset_array(0), fluid(), rigidbody() {}
+	RB_2D() : levelsets(0), fluid(), rigidbody() {}
 };
 
 struct Polygon
@@ -119,8 +145,8 @@ struct Polygon
 	int n;
 	//Eigen::Array<Eigen::Array<double,1,2>, Eigen::Dynamic, 1> vertices;
 	//Eigen::Array<Eigen::Array<int,1,2>, Eigen::Dynamic, 1> edges;
-	std::vector<Eigen::Array<double,1,2>, Eigen::aligned_allocator<Eigen::Array<double,1,2>>> vertices;
-	std::vector<Eigen::Array<int,1,2>, Eigen::aligned_allocator<Eigen::Array<int,1,2>>> edges;
+	std::vector<Eigen::Array<double,1,2>, Eigen::aligned_allocator<Eigen::Array<double,1,2> > > vertices;
+	std::vector<Eigen::Array<int,1,2>, Eigen::aligned_allocator<Eigen::Array<int,1,2> > > edges;
 	//faces for 3D
 
 	Polygon(int n) : n(n), vertices(n), edges(n) {}
