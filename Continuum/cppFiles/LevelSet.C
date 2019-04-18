@@ -46,6 +46,8 @@ void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, dou
 //----------------------------------------------------------------------------------------------------------
 void LevelSetMethods::initialise(LevelSet ls, Domain2D domain, Polygon P){
 	ls.phi.resize(domain.Nx, domain.Ny);
+
+	//an estimated levelset is produced
 }
 
 void LevelSetMethods::initialise_circle(LevelSet ls, Domain2D domain, double x0, double y0, double r){
@@ -57,6 +59,7 @@ void LevelSetMethods::initialise_circle(LevelSet ls, Domain2D domain, double x0,
 			ls.phi(i, j) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
 		}
 	}
+	//This provides an exact levelset function
 }
 
 void LevelSetMethods::fast_sweep(LevelSet ls, Domain2D domain){

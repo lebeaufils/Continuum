@@ -22,6 +22,27 @@ struct Coordinates
 
 	Coordinates() : x(0), y(0) {}
 	Coordinates(double x, double y) : x(x), y(y) {}
+
+	void scale(double, double);
+	void move(Coordinates);
+
+	//overloaded operators
+	Coordinates operator +(const Coordinates&);
+	Coordinates operator -(const Coordinates&);
+	Coordinates operator *(const double&);
+	Coordinates operator /(const double&);
+
+	double length();
+	void display();
+};
+
+struct Pos_Index{
+	int i; //x index
+	int j; //y index
+	//position indices for reference to a global array eg X(i, j)
+
+	Pos_Index() : i(0), j(0) {}
+	Pos_Index(int i, int j) : i(i), j(j) {}
 };
 
 struct Domain1D
@@ -139,18 +160,54 @@ struct RB_2D
 	RB_2D() : levelsets(0), fluid(), rigidbody() {}
 };
 
+//Polygon storage
+
+struct Vertex
+{
+	Coordinates point;
+
+	Vertex() : point(0, 0) {}
+	Vertex(Coordinates xy) : point(xy) {}
+	Vertex(double x, double y) : point(x, y) {}
+
+	//generate random polygons in the future.
+};
+
+struct Edge
+{
+	Vertex* head;
+	Vertex* tail;
+	//coordinates of edges are stored in domain struct as indices of 
+	//the global array X(i, j)
+
+	Edge() : head(NULL), tail(NULL) {}
+
+};
+
 struct Polygon
 {	
 	//for an n-sided polygon
 	int n;
-	//Eigen::Array<Eigen::Array<double,1,2>, Eigen::Dynamic, 1> vertices;
-	//Eigen::Array<Eigen::Array<int,1,2>, Eigen::Dynamic, 1> edges;
-	std::vector<Eigen::Array<double,1,2>, Eigen::aligned_allocator<Eigen::Array<double,1,2> > > vertices;
-	std::vector<Eigen::Array<int,1,2>, Eigen::aligned_allocator<Eigen::Array<int,1,2> > > edges;
-	//faces for 3D
 
-	Polygon(int n) : n(n), vertices(n), edges(n) {}
+	std::vector<Vertex> vertices;
+	std::vector<Edge> edges;
+	std::vector<Pos_Index> surfacepoints; //list of indices of points on the polygon surface
 
+	Polygon(int n) : n(n), vertices(n), edges(n), surfacepoints(0) {}
+	~Polygon() {}
+
+	void create_square(Domain2D, double, Coordinates);
+	void create();
+	void generate_surfacepoints(Domain2D);
+};
+
+struct Bresenham{
+	static std::vector<Pos_Index> steep_pos(Domain2D, Coordinates, Coordinates);
+	static std::vector<Pos_Index> gradual_pos(Domain2D, Coordinates, Coordinates);
+	static std::vector<Pos_Index> steep_neg(Domain2D, Coordinates, Coordinates);
+	static std::vector<Pos_Index> gradual_neg(Domain2D, Coordinates, Coordinates);
+
+	static std::vector<Pos_Index> line_algorithm(Domain2D, Coordinates, Coordinates);
 };
 
 

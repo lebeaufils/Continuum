@@ -381,13 +381,6 @@ void rigidTests::test1(){
 
 	domain.display_grid();
 
-	//for (int i=0; i<domain.N; i++){
-	//	domain.X(i) = i*domain.dx;
-	//	if (domain.X(i) <= x_s) interface(i) = 0; //Shocked fluid
-	//	else if (domain.X(i) > x_s && domain.X(i) <= interfacelist(0)(0)) interface(i) = 1; //unshocked fluid
-	//	else interface(i) = 2; //rigid body
-	//}
-
 	//a single interface between rigid body and fluid
 	//essentially, this reduces the computational domain by bringing forward the boundary
 	//std::cout << interface << std::endl;
