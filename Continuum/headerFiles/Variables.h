@@ -5,8 +5,9 @@
 #include <boost/ptr_container/ptr_map.hpp>
 #include <vector>
 #include <array>
-#include <map>
-#include <utility>
+//#include <map>
+//#include <utility>
+#include <cstdlib>
 //#include <iostream>
 #include "EOS.h"
 
@@ -25,6 +26,10 @@ struct Coordinates
 
 	Coordinates() : x(0), y(0) {}
 	Coordinates(double x, double y) : x(x), y(y) {}
+	Coordinates(const Coordinates &obj) {
+   		x = obj.x;
+   		y = obj.y;
+	}
 
 	void scale(double, double);
 	void move(Coordinates);
@@ -165,13 +170,11 @@ struct RB_2D
 
 //Polygon storage
 
-struct Vertex
+struct Vertex : public Coordinates
 {
-	Coordinates point;
-
-	Vertex() : point(0, 0) {}
-	Vertex(Coordinates xy) : point(xy) {}
-	Vertex(double x, double y) : point(x, y) {}
+	Vertex() : Coordinates(0, 0) {}
+	Vertex(Coordinates xy) : Coordinates(xy) {}
+	Vertex(double x, double y) : Coordinates(x, y) {}
 	~Vertex() {}
 
 	//generate random polygons in the future.
@@ -213,6 +216,9 @@ struct Polygon
 
 	void create_square(Domain2D, double, Coordinates);
 	void create();
+
+	static int orientation(Coordinates, Coordinates, Coordinates);
+	static void sort(std::vector<Coordinates>);
 };
 
 struct Bresenham{

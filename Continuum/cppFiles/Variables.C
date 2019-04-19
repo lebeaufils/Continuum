@@ -38,7 +38,19 @@ double Coordinates::length(){
 	return sqrt(x*x + y*y);
 }
 
+int Polygon::orientation(Coordinates p0, Coordinates p1, Coordinates p2){
+	//slope_p0p1 - slope_p2p1 = const
+	int a = (p1.y - p0.y)*(p2.x - p1.x) - (p2.y - p1.y)*(p1.x - p0.x); 
+
+	/*if (a > 0) return 1;
+	else if (a < 0) return -1; 
+	else return 0;*/
+
+	return (a > 0) - (a < 0);
+}
+
 void Polygon::generate_edges(std::vector<Vertex> vertices){
+	vertices.push_back(vertices[0]);
 
 	if (!edges.empty()) {
 		throw "There is a pre-existing list of edges";
@@ -61,8 +73,8 @@ void Polygon::generate_edges(std::vector<Vertex> vertices){
 		prevnode->next = &edges[vij];
 		prevnode = &edges[vij];
 	}
-		//link the final node to the first
-		prevnode->next = &edges[v01];
+	//link the final node to the first
+	prevnode->next = &edges[v01];	
 }
 
 void Polygon::generate_surfacepoints(Domain2D domain){
@@ -97,17 +109,17 @@ void Polygon::create_square(Domain2D domain, double length, Coordinates center){
 	//displacement from origin = center(x, y)
 	//scaling and moving the square
 	for (int i=0; i<n; i++){
-		vertices[i].point.scale(length, length);
-		vertices[i].point.move(center);
+		vertices[i].scale(length, length);
+		vertices[i].move(center);
 	}
 
 	generate_edges(vertices);
 	std::cout << edges.size() << std::endl;
-	generate_surfacepoints(domain);
+	//generate_surfacepoints(domain);
 }
 
 void Polygon::create(){
-
+	//generates the convex hull of a random set of points
 }
 
 std::vector<Pos_Index> Bresenham::steep_pos(Domain2D domain, Coordinates P1, Coordinates P2){
@@ -311,8 +323,9 @@ std::vector<Pos_Index> Bresenham::line_algorithm(Domain2D domain, Coordinates P1
 std::vector<Pos_Index> Bresenham::line_algorithm(Domain2D domain, Edge* edge){
 	//P2 must always be to the right of P1
 	//swap the two points if P2 is to the left of P1
-	Coordinates P2 = edge->tail.point;
-	Coordinates P1 = edge->head.point;
+	Coordinates P2 = edge->tail;
+	Coordinates P1 = edge->head;
+	//Object slicing occurs here
 
 	if (P2.x < P1.x){
 		Coordinates tmp;
