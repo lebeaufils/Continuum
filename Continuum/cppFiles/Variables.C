@@ -38,23 +38,61 @@ double Coordinates::length(){
 	return sqrt(x*x + y*y);
 }
 
+void Polygon::generate_edges(std::vector<Vertex> vertices){
+
+	if (!edges.empty()) {
+		throw "There is a pre-existing list of edges";
+	}
+	//assuming vertices are sorted
+	//creating the firstt edge node
+	std::pair<int, int> v01 = std::make_pair(0, 1);
+	edges.insert(v01, new Edge());
+		edges[v01].head = vertices[0];
+		edges[v01].tail = vertices[1];
+		Edge* prevnode = &edges[v01];
+		
+	//create n edges with their assigned vertices
+	for (int i=1; i<n; i++){
+		std::pair<int, int> vij = std::make_pair(i, i+1);
+		edges.insert(vij, new Edge());
+		edges[vij].head = vertices[i];
+		edges[vij].tail = vertices[i+1];
+
+		prevnode->next = &edges[vij];
+		prevnode = &edges[vij];
+	}
+		//link the final node to the first
+		prevnode->next = &edges[v01];
+}
+
+void Polygon::generate_surfacepoints(Domain2D domain){
+	//iterating through the map of edges
+
+	boost::ptr_map<std::pair<int, int>, Edge>::iterator i=edges.begin();
+	while (i != edges.end()){
+		Edge *edge = i->second; //i->second is the Edge* value in the map
+
+		std::vector<Pos_Index> edgepoints = Bresenham::line_algorithm(domain, edge);
+
+		surfacepoints.insert(surfacepoints.end(),
+			std::make_move_iterator(edgepoints.begin()),
+			std::make_move_iterator(edgepoints.end()));
+		i++;
+	}
+}
+
 void Polygon::create_square(Domain2D domain, double length, Coordinates center){
 	n = 4;
-	vertices.resize(n);
-	edges.resize(n);
 
 	//Generating a 1x1 square with vertices counterclockwise 
 	//centered at the origin 
+	std::vector<Vertex> vertices;
+	vertices.resize(n);
+
 	vertices[0] = Vertex(0.5, 0.5);
 	vertices[1] = Vertex(-0.5, 0.5);
 	vertices[2] = Vertex(-0.5, -0.5);
 	vertices[3] = Vertex(0.5, -0.5);
-
-	for (int i=0; i<n; i++){
-		edges[i].head = &vertices[i];
-		if (i+1 < n) edges[i].tail = &vertices[i+1];
-		else edges[i].tail = &vertices[0];
-	}
 
 	//displacement from origin = center(x, y)
 	//scaling and moving the square
@@ -63,20 +101,13 @@ void Polygon::create_square(Domain2D domain, double length, Coordinates center){
 		vertices[i].point.move(center);
 	}
 
+	generate_edges(vertices);
+	std::cout << edges.size() << std::endl;
+	generate_surfacepoints(domain);
 }
 
 void Polygon::create(){
 
-}
-
-void Polygon::generate_surfacepoints(Domain2D domain){
-
-	//Storing the index of points on the surface of polygon
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-
-		}
-	}
 }
 
 std::vector<Pos_Index> Bresenham::steep_pos(Domain2D domain, Coordinates P1, Coordinates P2){
@@ -250,6 +281,39 @@ std::vector<Pos_Index> Bresenham::gradual_neg(Domain2D domain, Coordinates P1, C
 std::vector<Pos_Index> Bresenham::line_algorithm(Domain2D domain, Coordinates P1, Coordinates P2){
 	//P2 must always be to the right of P1
 	//swap the two points if P2 is to the left of P1
+	if (P2.x < P1.x){
+		Coordinates tmp;
+		tmp = P2;
+		P2 = P1;
+		P1 = tmp;
+	}
+
+	//calculate the slope
+	double slope = (P2.y - P1.y) / (P2.x - P1.x);
+	//case A, steep positive slope
+	if (slope > 1){
+		return steep_pos(domain, P1, P2);
+	}
+	//case B, gentle positive slope
+	else if (slope > 0 && slope <= 1){
+		return gradual_pos(domain, P1, P2);
+	}
+	//case C, steep negative slope
+	else if (slope < -1){
+		return steep_neg(domain, P1, P2);
+	}
+	//case D, gentle negative slope
+	else {
+		return gradual_neg(domain, P1, P2);
+	}
+}
+
+std::vector<Pos_Index> Bresenham::line_algorithm(Domain2D domain, Edge* edge){
+	//P2 must always be to the right of P1
+	//swap the two points if P2 is to the left of P1
+	Coordinates P2 = edge->tail.point;
+	Coordinates P1 = edge->head.point;
+
 	if (P2.x < P1.x){
 		Coordinates tmp;
 		tmp = P2;

@@ -19,6 +19,7 @@ int main(void){
 	rigidTests Tests(11);
 	Tests.test1();
 
+	/*
 	Coordinates P1(0.5, 0.8);
 	Coordinates P2(0.8, 0.25);
 
@@ -36,5 +37,22 @@ int main(void){
 	for (int i=0; i<static_cast<int>(indices.size()); i++){
 		Tests.domain.X(indices[i].i, indices[i].j).display();
 	}
+	*/
+
+	Polygon square(4);
+	Coordinates center(0.5, 0.5);
+	try{
+		square.create_square(Tests.domain, 0.3, center);
+	}
+	catch (const char c){
+		std::cout << c << std::endl;
+	}
+	for (int i=0; i<static_cast<int>(square.surfacepoints.size()); i++){
+		Tests.domain.X(square.surfacepoints[i].i, square.surfacepoints[i].j).display();
+	}
+
+	std::cout << square.surfacepoints.size() << std::endl;
+
+
 }
 

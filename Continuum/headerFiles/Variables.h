@@ -2,8 +2,11 @@
 #define VARIABLES_H_
 
 #include <Eigen/Dense>
+#include <boost/ptr_container/ptr_map.hpp>
 #include <vector>
 #include <array>
+#include <map>
+#include <utility>
 //#include <iostream>
 #include "EOS.h"
 
@@ -169,18 +172,25 @@ struct Vertex
 	Vertex() : point(0, 0) {}
 	Vertex(Coordinates xy) : point(xy) {}
 	Vertex(double x, double y) : point(x, y) {}
+	~Vertex() {}
 
 	//generate random polygons in the future.
 };
 
 struct Edge
 {
-	Vertex* head;
-	Vertex* tail;
+	Vertex head;
+	Vertex tail;
+
+	Edge* next;
+
 	//coordinates of edges are stored in domain struct as indices of 
 	//the global array X(i, j)
 
-	Edge() : head(NULL), tail(NULL) {}
+	Edge() : head(), tail(), next(NULL) {}
+	~Edge() {
+		next = NULL;
+	}
 
 };
 
@@ -189,16 +199,20 @@ struct Polygon
 	//for an n-sided polygon
 	int n;
 
-	std::vector<Vertex> vertices;
-	std::vector<Edge> edges;
+	//std::vector<Vertex> vertices; //there are n+1 vertices to close the polygon
+	//std::map <std::pair<int, int>, Edge*> edges; //map of vertex pairs to corresponding edge
+	boost::ptr_map<std::pair<int, int>, Edge> edges;
+		//the pointers here are owned by the polygon class
 	std::vector<Pos_Index> surfacepoints; //list of indices of points on the polygon surface
 
-	Polygon(int n) : n(n), vertices(n), edges(n), surfacepoints(0) {}
+	Polygon(int n) : n(n), edges(), surfacepoints(0) {}
 	~Polygon() {}
+
+	void generate_edges(std::vector<Vertex>);
+	void generate_surfacepoints(Domain2D);
 
 	void create_square(Domain2D, double, Coordinates);
 	void create();
-	void generate_surfacepoints(Domain2D);
 };
 
 struct Bresenham{
@@ -208,6 +222,7 @@ struct Bresenham{
 	static std::vector<Pos_Index> gradual_neg(Domain2D, Coordinates, Coordinates);
 
 	static std::vector<Pos_Index> line_algorithm(Domain2D, Coordinates, Coordinates);
+	static std::vector<Pos_Index> line_algorithm(Domain2D, Edge*);
 };
 
 

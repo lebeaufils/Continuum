@@ -23,7 +23,7 @@ main.o : main.C
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
 main : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o objectFiles/Variables.o
-	g++  $^ -lm -o $@
+	g++ $^ -lm -o $@ 
 
 memcheck : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o objectFiles/Variables.o
 	g++ -g  $^ -o $@

@@ -379,7 +379,7 @@ void rigidTests::test1(){
 		}
 	}
 
-	domain.display_grid();
+	//domain.display_grid();
 
 	//a single interface between rigid body and fluid
 	//essentially, this reduces the computational domain by bringing forward the boundary
