@@ -8,8 +8,11 @@
 //#include <map>
 //#include <utility>
 #include <cstdlib>
-//#include <iostream>
+#include <stack> 
+#include <random>
+#include <fstream>
 #include "EOS.h"
+
 
 typedef Eigen::Vector3d vector;
 typedef Eigen::Vector4d vector4;
@@ -173,7 +176,7 @@ struct RB_2D
 struct Vertex : public Coordinates
 {
 	Vertex() : Coordinates(0, 0) {}
-	Vertex(Coordinates xy) : Coordinates(xy) {}
+	Vertex(Coordinates xy) : Coordinates(xy) {} //constructor to copy base class
 	Vertex(double x, double y) : Coordinates(x, y) {}
 	~Vertex() {}
 
@@ -202,23 +205,27 @@ struct Polygon
 	//for an n-sided polygon
 	int n;
 
-	//std::vector<Vertex> vertices; //there are n+1 vertices to close the polygon
+	std::vector<Vertex> vertices;
 	//std::map <std::pair<int, int>, Edge*> edges; //map of vertex pairs to corresponding edge
 	boost::ptr_map<std::pair<int, int>, Edge> edges;
 		//the pointers here are owned by the polygon class
 	std::vector<Pos_Index> surfacepoints; //list of indices of points on the polygon surface
 
+	Polygon() : n(0), edges(), surfacepoints(0) {}
 	Polygon(int n) : n(n), edges(), surfacepoints(0) {}
 	~Polygon() {}
 
+	void convex_hull(std::vector<Coordinates>); //graham scan
+
 	void generate_edges(std::vector<Vertex>);
 	void generate_surfacepoints(Domain2D);
+	void display(Domain2D);
 
 	void create_square(Domain2D, double, Coordinates);
-	void create();
+	void create(Domain2D, double,int);
 
 	static int orientation(Coordinates, Coordinates, Coordinates);
-	static void sort(std::vector<Coordinates>);
+	static std::vector<Coordinates> random_points(double, double, int);
 };
 
 struct Bresenham{

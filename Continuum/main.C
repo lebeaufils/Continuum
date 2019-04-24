@@ -16,7 +16,7 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	rigidTests Tests(11);
+	rigidTests Tests(101);
 	Tests.test1();
 
 	/*
@@ -39,7 +39,7 @@ int main(void){
 	}
 	*/
 
-	Polygon square(4);
+	/*Polygon square(4);
 	Coordinates center(0.5, 0.5);
 	try{
 		square.create_square(Tests.domain, 0.3, center);
@@ -52,6 +52,16 @@ int main(void){
 	}
 
 	std::cout << square.surfacepoints.size() << std::endl;
+	*/
+
+	Polygon poly;
+	try{
+		poly.create(Tests.domain, 0.3, 10);
+	}
+	catch (const char c){
+		std::cout << c << std::endl;
+	}
+	poly.display(Tests.domain);
 
 
 }

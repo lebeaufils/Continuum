@@ -39,14 +39,148 @@ double Coordinates::length(){
 }
 
 int Polygon::orientation(Coordinates p0, Coordinates p1, Coordinates p2){
-	//slope_p0p1 - slope_p2p1 = const
-	int a = (p1.y - p0.y)*(p2.x - p1.x) - (p2.y - p1.y)*(p1.x - p0.x); 
+	//The sign of the cross product tells us if the points are oriented in an 
+		// anti-clockwise orientation (negative)
+		// clockwise orientation (positive)
+	double a = (p1.y - p0.y)*(p2.x - p0.x) - (p2.y - p0.y)*(p1.x - p0.x); 
 
 	/*if (a > 0) return 1;
 	else if (a < 0) return -1; 
 	else return 0;*/
 
 	return (a > 0) - (a < 0);
+}
+
+void Polygon::convex_hull(std::vector<Coordinates> points){
+	//O(nlogn)
+	
+	Coordinates p0 = points[0];
+	int min_index = 0;
+
+	//swap function
+	auto swp = [](Coordinates &a, Coordinates &b){
+		Coordinates tmp = a;
+		a = b;
+		b = tmp;
+	};
+
+	// l1-norm from p0
+	auto dist = [p0](const Coordinates &a){
+		return abs(a.x - p0.x) + abs(a.y - p0.y);
+	};
+
+	//find the lowest point
+	for (int i=0; i < static_cast<int>(points.size()); i++){
+		if (points[i].y < p0.y){
+			p0 = points[i];
+			min_index = i;
+		}
+		else if (points[i].y == p0.y){
+			if (points[i].x < p0.x){
+				p0 = points[i];
+				min_index = i;
+			}
+		}
+	}
+
+	swp(points[0], p0);
+
+	//the lambda function is the comparison condition
+	/*std::sort(points.begin()+1, points.end(), [p0, dist](const Coordinates &a, const Coordinates &b){
+		int o = orientation(p0, a, b);
+		if (o==0) {
+			return (dist(a) <= dist(b)) ? -1 : 1; //the closer norm is ranked higher
+		}
+		else {
+			return (o==1) ? 1 : -1;
+		}
+		//a return value of -1 indicates an anticlock wise orientation and is placed 
+		//at the front of the list;
+		//an anti-clockwise orientation means p1 has a greater angle than p2.
+	});*/
+	auto compare = [p0, dist](const Coordinates &a, const Coordinates &b){
+		int o = orientation(p0, a, b);
+		if (o==0) {
+			return dist(a) <= dist(b); //the closer norm is ranked higher
+		}
+		else {
+			return (o==-1) ? true : false;
+		}	
+	};
+
+	std::sort(points.begin()+1,points.end(),compare);
+
+//	for (int i=0; i < static_cast<int>(points.size()); i++){
+//		points[i].display();
+//	}
+
+
+	//now that a sorted list of points is obtained based on angle to the lowest point p0,
+	//3 points are compared at a time, prev, current and next, to determine if the current point 
+	//is part of the convex hull.
+
+	//First, colinear points within the convex hull are removed.
+	int m = 1;
+	int n = static_cast<int>(points.size());
+	for (int i=1; i<n; i++){
+		//skipping over any points that have a colinear orientation
+		while (orientation(p0, points[i], points[i+1]) == 0 && i<(n-1)){
+			i++; //ignore all points that have have the same angle
+			//the last point does not need to be compared,
+			//and the comparison is halted at the second last point such that i+1 remains valid
+		}
+
+		//copying any points that do not have the same angle
+		points[m] = points[i];
+		m++; //size of the "new" array of points
+	}
+
+	std::cout << "m = " << m << std::endl;
+	if (m<3) {
+		throw "Convex hull does not exist for this set of points";
+	}
+
+	//Pushing values to the stack and removing all points that result in a clockwise orientation
+	std::stack<Coordinates> s_hull;
+	//pushing the first three points
+	s_hull.push(points[0]);
+	s_hull.push(points[1]);
+	s_hull.push(points[2]);
+
+	//Function to retrieve the 2nd value in the stack
+	auto prev = [](std::stack<Coordinates> &stack){
+		Coordinates top = stack.top();
+		stack.pop();
+		Coordinates prev_value = stack.top();
+		stack.push(top);
+		return prev_value;
+	};
+
+	//searching the rest of the points
+	//the top two points in the stack are compared with points in the list
+	for (int i=3; i<m; i++){
+		while (orientation(prev(s_hull), s_hull.top(), points[i]) != -1){
+			s_hull.pop(); //remove the top value if it results in an anti-clockwise orientation
+			//continue comparing the remaining points on the stack,
+			//removing points until a clockwise orientation is obtained.
+		}
+		//once a left turn is established, push the next point 
+		s_hull.push(points[i]);
+	}
+	//a stack is used to store values as arrays are inefficient when deleting elements.
+	std::stack<Coordinates> reverse_s_hull;
+	while (!s_hull.empty()){
+		reverse_s_hull.push(s_hull.top());
+		s_hull.pop();
+	}
+
+	vertices.clear();
+	while (!reverse_s_hull.empty()){
+		vertices.push_back(reverse_s_hull.top());
+		reverse_s_hull.pop();
+	}
+	//Polygon classification of the convex hull
+	this->n = static_cast<int>(vertices.size());
 }
 
 void Polygon::generate_edges(std::vector<Vertex> vertices){
@@ -93,6 +227,52 @@ void Polygon::generate_surfacepoints(Domain2D domain){
 	}
 }
 
+std::vector<Coordinates> Polygon::random_points(double min, double max, int N){
+	std::random_device r;
+	std::seed_seq seed{ r(), r() };
+	std::mt19937 rng(seed); //Mersenne Twister random engine  
+	std::uniform_real_distribution<double> dist(min, max);
+
+	std::vector<Coordinates> points;
+
+	for(int i=0; i<N; i++){
+		Coordinates p(dist(rng), dist(rng));
+		points.push_back(p);
+		//p.display();
+	}
+
+	return points;
+}
+
+void Polygon::display(Domain2D domain){
+	std::ofstream outfile;
+	std::ofstream outfile_2;
+
+	outfile.open("polygon.txt");
+	outfile_2.open("edgepoints.txt");
+
+	for (int i=0; i<n; i++){
+		outfile << vertices[i].x << '\t' << vertices[i].y << std::endl;
+	}
+
+	for (int i=0; i<static_cast<int>(surfacepoints.size()); i++){
+		outfile_2 << domain.X(surfacepoints[i].i, surfacepoints[i].j).x <<
+		'\t' << domain.X(surfacepoints[i].i, surfacepoints[i].j).y << std::endl;
+	}
+
+	boost::ptr_map<std::pair<int, int>, Edge>::iterator it = edges.begin();
+	while (it != edges.end()){
+		it->second->head.display();
+		std::cout << '\t' << '\t';
+		it->second->tail.display();
+		std::cout << std::endl;
+		it++;
+	}
+
+	outfile.close();
+	outfile_2.close();
+}
+
 void Polygon::create_square(Domain2D domain, double length, Coordinates center){
 	n = 4;
 
@@ -115,11 +295,30 @@ void Polygon::create_square(Domain2D domain, double length, Coordinates center){
 
 	generate_edges(vertices);
 	std::cout << edges.size() << std::endl;
-	//generate_surfacepoints(domain);
+	generate_surfacepoints(domain);
 }
 
-void Polygon::create(){
+void Polygon::create(Domain2D domain, double size, int K){
 	//generates the convex hull of a random set of points
+	double halflength_x = domain.Lx/2.;
+	double halflength_y = domain.Ly/2.;
+	double halflength = fmin(halflength_x, halflength_y);
+	//creating a "uniformly" sized polygon
+	//i.e. y and x have the same distribution
+	if (size >= halflength){
+		throw "Size of polygon exceeds domain size";
+	}
+	std::vector<Coordinates> points = random_points(halflength - size, halflength + size, K);
+	try {
+		convex_hull(points);
+	}
+	catch (const char c){
+		std::cout << c << std::endl;
+	}
+	std::cout << n << std::endl;
+	generate_edges(vertices);
+	std::cout << edges.size() << std::endl;
+	generate_surfacepoints(domain);
 }
 
 std::vector<Pos_Index> Bresenham::steep_pos(Domain2D domain, Coordinates P1, Coordinates P2){
