@@ -215,17 +215,18 @@ struct Polygon
 	Polygon(int n) : n(n), edges(), surfacepoints(0) {}
 	~Polygon() {}
 
-	void convex_hull(std::vector<Coordinates>); //graham scan
+	void convex_hull(std::vector<Coordinates>&); //graham scan
 
 	void generate_edges(std::vector<Vertex>);
 	void generate_surfacepoints(Domain2D);
-	void display(Domain2D);
+	void output(Domain2D);
 
 	void create_square(Domain2D, double, Coordinates);
 	void create(Domain2D, double,int);
 
 	static int orientation(Coordinates, Coordinates, Coordinates);
 	static std::vector<Coordinates> random_points(double, double, int);
+	static int point_in_polygon(Coordinates);
 };
 
 struct Bresenham{

@@ -61,7 +61,17 @@ int main(void){
 	catch (const char c){
 		std::cout << c << std::endl;
 	}
-	poly.display(Tests.domain);
+
+/*
+	Coordinates center(0.5,0.5);
+	try{
+		poly.create_square(Tests.domain, 0.3, center);
+	}
+	catch (const char c){
+		std::cout << c << std::endl;
+	}
+*/
+
 
 
 }

@@ -43,10 +43,10 @@ public:
 	//-----------------------------------------------------
 	//2-Dimensional
 	//-----------------------------------------------------
-	static void initialise(LevelSet, Domain2D, Polygon);
-	static void initialise_circle(LevelSet, Domain2D, double, double, double);
+	static void initialise(LevelSet&, Domain2D, Polygon);
+	static void initialise_circle(LevelSet&, Domain2D, double, double, double);
 
-	static void fast_sweep(LevelSet, Domain2D);
+	static void fast_sweep(LevelSet&, Domain2D);
 };
 
 

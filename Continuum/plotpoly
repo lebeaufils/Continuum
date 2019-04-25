@@ -26,10 +26,17 @@ set style line 6 lt 1 lc rgb "#00D0D0" lw 2 pt 12 ps 0.5
 set style line 7 lt 1 lc rgb "#B200B2" lw 2
 set style line 8 lc rgb "black" pt 65 ps 0.5
 set style line 9 lc rgb "black" pt 7 ps 1
+set style line 10 lc rgb "red" pt 1 ps 1
 #set title "FORCE_LA (step)"
 
 set xrange [0: 1]
 set yrange [0: 1]
 
+
+
+set xtics 1./20.
+set ytics 1./20.
+
 plot "polygon.txt" w p ls 9,\
-	"edgepoints.txt" w p ls 8
+	"edgepoints.txt" w p ls 8, \
+	"points.txt" w p ls 10

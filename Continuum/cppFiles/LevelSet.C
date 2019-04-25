@@ -44,13 +44,38 @@ void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, dou
 //----------------------------------------------------------------------------------------------------------
 //2-Dimensional
 //----------------------------------------------------------------------------------------------------------
-void LevelSetMethods::initialise(LevelSet ls, Domain2D domain, Polygon P){
+void LevelSetMethods::initialise(LevelSet &ls, Domain2D domain, Polygon P){
 	ls.phi.resize(domain.Nx, domain.Ny);
 
-	//an estimated levelset is produced
+	//The initial levelset has all points on the boundary set as 0
+	for (int i=0; i<static_cast<int>(P.surfacepoints.size()); i++){
+		ls.phi(P.surfacepoints[i].i, P.surfacepoints[i].j) = 0;
+	}
+	//finding the x and y boundary of the polygon
+	double max_x = 0; double min_x = domain.Lx;
+	double max_y = 0; double min_y = domain.Ly;
+	/*for (int i=0; i < static_cast<int>(P.vertices.size()) i++){
+		Coordinate point = P.vertices[i]
+		if (point.x > max_x) max_x = point.x;
+		if (point.y > max_y) max_y = point.y;
+		if (point.x < min_x) min_y = point.x;
+		if (point.y < min_y) min_y = point.y;
+	}
+
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			if (domain.X(i, j).x <= min_x) ls.phi(i, j) = 1e6;
+			else if (domain.X(i, j).y <= min_y) ls.phi(i, j) = 1e6;
+			else if (domain.X(i, j).x >= max_x) ls.phi(i, j) = 1e6;
+			else if (domain.X(i, j).y >= max_y) ls.phi(i, j) = 1e6;
+		}
+	}*/
+
+	//for the rest of the points, ray casting needs to be performed
+
 }
 
-void LevelSetMethods::initialise_circle(LevelSet ls, Domain2D domain, double x0, double y0, double r){
+void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){
 	ls.phi.resize(domain.Nx, domain.Ny);
 
 	for (int i=0; i<domain.Nx; i++){
@@ -62,8 +87,78 @@ void LevelSetMethods::initialise_circle(LevelSet ls, Domain2D domain, double x0,
 	//This provides an exact levelset function
 }
 
-void LevelSetMethods::fast_sweep(LevelSet ls, Domain2D domain){
+void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
+	//Solver for the eikonal equation
+	auto eikonal = [&ls, domain](int i, int j){
+		//Consider the region phi > 0;
+		if(ls.phi(i,j) > 0){
+			//Cells that are not fixed (at the boundary) are avaliable for update
+			//Taking the value of phi_x closest to the boudnary
+			double phi_x = fmin(ls.phi(i+1, j), ls.phi(i-1, j));
+			double phi_y = fmin(ls.phi(i, j+1), ls.phi(i, j-1));
+			//updating value based on the eikonal equation
+			double phi_tmp;
+			if (pow(phi_x - phi_y, 2) >= pow(domain.dx, 2) + pow(domain.dy, 2)){
+				phi_tmp = fmin(phi_x, phi_y) + sqrt(pow(domain.dx, 2) + pow(domain.dy, 2));
+			}
+			else {
+				phi_tmp = (pow(domain.dy, 2)*phi_x + pow(domain.dx, 2)*phi_y + 
+				domain.dx*domain.dy*sqrt(pow(domain.dx, 2) + pow(domain.dy, 2) - pow(phi_x - phi_y, 2)))/(pow(domain.dx, 2) + pow(domain.dy, 2));
+			}
+			if (phi_tmp < ls.phi(i,j)) ls.phi(i,j) = phi_tmp;
+		}
+		//Consider the region phi < 0;
+		else if (ls.phi(i,j) < 0){
+			//Since phi is negative, the value closest to the boundary is the larger number
+			double phi_x = fmax(ls.phi(i+1, j), ls.phi(i-1, j));
+			double phi_y = fmax(ls.phi(i, j+1), ls.phi(i, j-1));
+			//if (i==N) phi_x = phi(i-1);
+			double phi_tmp;
+			if (pow(phi_x - phi_y, 2) >= pow(domain.dx, 2) + pow(domain.dy, 2)){
+				phi_tmp = fmax(phi_x, phi_y) - sqrt(pow(domain.dx, 2) + pow(domain.dy, 2));
+			}
+			else {
+				//taking the negative root
+				phi_tmp = (pow(domain.dy, 2)*phi_x + pow(domain.dx, 2)*phi_y - 
+				domain.dx*domain.dy*sqrt(pow(domain.dx, 2) + pow(domain.dy, 2) - pow(phi_x - phi_y, 2)))/(pow(domain.dx, 2) + pow(domain.dy, 2));
+			}
+			if (phi_tmp > ls.phi(i,j)) ls.phi(i,j) = phi_tmp;
+		}
+	};
+	//Gauss Seidel iteration for alternate directions.
+	//A total of four sweeps is performed over the entire computational domain
+	//1) i = 1:I, j = 1:J
+	//2) i = I:1, j = 1:J
+	//3) i = I:1, J = J:1
+	//4) i = 1:I, j = J:1
 
+	//1) i = 1:I, j = 1:J
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			eikonal(i, j);
+		}
+	}
+
+	//2) i = I:1, j = 1:J
+	for (int i=domain.Nx-1; i>=0; i--){
+		for (int j=0; j<domain.Ny; j++){
+			eikonal(i, j);
+		}
+	}
+
+	//3) i = I:1, J = J:1
+	for (int i=domain.Nx-1; i>=0; i--){
+		for (int j=domain.Ny-1; j>=0; j--){
+			eikonal(i, j);
+		}
+	}
+
+	//1) i = 1:I, j = 1:J
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=domain.Ny-1; j>=0; j--){
+			eikonal(i, j);
+		}
+	}
 }
 
 
