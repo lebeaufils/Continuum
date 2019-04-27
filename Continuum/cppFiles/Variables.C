@@ -43,7 +43,7 @@ int Polygon::orientation(Coordinates p0, Coordinates a, Coordinates b){
 		// anti-clockwise orientation (negative)
 		// clockwise orientation (positive)
 
-	//Compute the cross product of vectors from the lowest point
+	//Compute the cross product of vectors from the lowest point (determinant)
 	double det = (a.x - p0.x) * (b.y - p0.y) - (b.x - p0.x) * (a.y - p0.y);
 	if (det > 0)
 		return -1;
@@ -86,24 +86,13 @@ void Polygon::convex_hull(std::vector<Coordinates> &points){
 
 	swp(points[0], points[min_index]);
 
-	//the lambda function is the comparison condition
-	/*std::sort(points.begin()+1, points.end(), [p0, dist](const Coordinates &a, const Coordinates &b){
-		int o = orientation(p0, a, b);
-		if (o==0) {
-			return (dist(a) <= dist(b)) ? -1 : 1; //the closer norm is ranked higher
-		}
-		else {
-			return (o==1) ? 1 : -1;
-		}
-		//a return value of -1 indicates an anticlock wise orientation and is placed 
-		//at the front of the list;
-		//an anti-clockwise orientation means p1 has a greater angle than p2.
-	});*/
-
 	auto compare = [p0, dist](Coordinates a, Coordinates b){
 	    int o = orientation(p0, a, b);
+	    //if the points are colinear, priority is given to the nearer point
+	    //this facilitates removal of colinear points later
 	    if (o == 0)
 	        return dist(a) <= dist(b);
+	    //else, return true if a is to the left of b (anti clockwise)
 	    return (o == -1);
 	};
 
@@ -143,49 +132,6 @@ void Polygon::convex_hull(std::vector<Coordinates> &points){
 	if (m<3) {
 		throw "Convex hull does not exist for this set of points";
 	}
-
-	//Pushing values to the stack and removing all points that result in a clockwise orientation
-	/*std::stack<Coordinates> s_hull;
-	//pushing the first three points
-	s_hull.push(points[0]);
-	s_hull.push(points[1]);
-	s_hull.push(points[2]);
-
-	//Function to retrieve the 2nd value in the stack
-	auto prev = [](std::stack<Coordinates> &stack){
-		Coordinates top = stack.top();
-		stack.pop();
-		Coordinates prev_value = stack.top();
-		stack.push(top);
-		return prev_value;
-	};
-
-	//searching the rest of the points
-	//the top two points in the stack are compared with points in the list
-	for (int i=3; i<m; i++){
-		while (static_cast<int>(s_hull.size()) > 2 && orientation(prev(s_hull), s_hull.top(), points[i]) != -1){
-			std::cout << "Rejected Coordinates = ";
-			s_hull.top().display(); std::cout << std::endl;
-			s_hull.pop(); //remove the top value if it results in an anti-clockwise orientation
-			//continue comparing the remaining points on the stack,
-			//removing points until a clockwise orientation is obtained.
-		}
-		//once a left turn is established, push the next point 
-		s_hull.push(points[i]);
-	}
-	//a stack is used to store values as arrays are inefficient when deleting elements.
-	std::stack<Coordinates> reverse_s_hull;
-	while (!s_hull.empty()){
-		reverse_s_hull.push(s_hull.top());
-		s_hull.pop();
-	}
-
-	vertices.clear();
-	while (!reverse_s_hull.empty()){
-		vertices.push_back(reverse_s_hull.top());
-		reverse_s_hull.pop();
-	}
-	*/
 
 	std::vector<Coordinates> chull;
 	//pushing the first three points
@@ -242,7 +188,7 @@ void Polygon::generate_edges(std::vector<Vertex> vertices){
 		prevnode = &edges[vij];
 	}
 	//link the final node to the first
-	prevnode->next = &edges[v01];	
+	prevnode->next = &edges[v01];
 }
 
 void Polygon::generate_surfacepoints(Domain2D domain){
@@ -356,29 +302,49 @@ void Polygon::create(Domain2D domain, double size, int K){
 	output(domain);
 }
 
-int Polygon::point_in_polygon(Coordinates testpoint){
-	//Copyright (c) 1970-2003, Wm. Randolph Franklin
-	//PNPOLY - Point Inclusion in Polygon Test
-	//W. Randolph Franklin (WRF)
+int Polygon::point_in_polygon(Coordinates p){
+	//PNPOLY Algorithm from Copyright (c) 1970-2003, Wm. Randolph Franklin
 	//https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html#The%20Method
+	
+	//Bounding box
+	double xmin = 1e6;
+	double xmax = 0;
+	double ymin = 1e6;
+	double ymax = 0;
 
-	//Jordan's curve theorem - for any closed loop that is a shared boundary between domains A and B, any line connecting
-	//a point in A to that in B must cross the loop once.
+	for (std::vector<Vertex>::iterator it = vertices.begin(); it < vertices.end(); it++){
+		if (it->x > xmax) xmax = it->x;
+		if (it->x < xmin) xmin = it->x;
+		if (it->y > ymax) ymax = it->y;
+		if (it->y < ymin) ymin = it->y;
+	}
 
-	//Method arbitary polygons (no holes)
+	//Out of polygon boundaries
+	if (p.x < xmin || p.x > xmax || p.y < ymin || p.y > ymax) {
+    	return 0;
+	}
 
-	//int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
-	//{
-	//  int i, j, c = 0;
-	//  for (i = 0, j = nvert-1; i < nvert; j = i++) {
-	//    if ( ((verty[i]>testy) != (verty[j]>testy)) &&
-	//	 (testx < (vertx[j]-vertx[i]) * (testy-verty[i]) / (verty[j]-verty[i]) + vertx[i]) )
-	//       c = !c;
-	//  }
-	//  return c;
-	//}
-
-
+	//Crossings test using the jordan curve
+	int c = 0;
+	//if ( ((verty[i]>testy) != (verty[j]>testy))
+	//The first equality checks if the test point is within the y range of the edge
+	//The second equality identifies if the point is to the left or right of the edgeline
+	//if the line equation (point and slope) is satisfied, point p lies on the line
+	//hence if p.x is less than this value, it lies to the left.
+	//
+	//effectively, an imaginary horizontal line is projected towards the right
+	//if p lies to the left of the line, this imaginary ray will cross the line
+	//the line equation is given by x - x0 = (x1 - x0)/(y1 - y0) * (y - y0)
+	///////
+	Edge* current_edge = edges.begin()->second;
+	do{
+		if ( ((current_edge->tail.y > p.y) != (current_edge->head.y > p.y)) &&
+			(p.x < (current_edge->tail.x - current_edge->head.x) * (p.y - current_edge->head.y) / (current_edge->tail.y - current_edge->head.y) + current_edge->head.x) ){
+			c = !c; //flips if it crosses an edge
+		}
+		current_edge = current_edge->next;
+	}while(current_edge != edges.begin()->second);
+	return c;
 }
 
 std::vector<Pos_Index> Bresenham::steep_pos(Domain2D domain, Coordinates P1, Coordinates P2){

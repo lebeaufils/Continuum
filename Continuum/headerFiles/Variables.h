@@ -224,9 +224,11 @@ struct Polygon
 	void create_square(Domain2D, double, Coordinates);
 	void create(Domain2D, double,int);
 
+	int point_in_polygon(Coordinates);
+
 	static int orientation(Coordinates, Coordinates, Coordinates);
 	static std::vector<Coordinates> random_points(double, double, int);
-	static int point_in_polygon(Coordinates);
+
 };
 
 struct Bresenham{

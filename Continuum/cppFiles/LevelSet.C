@@ -44,35 +44,28 @@ void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, dou
 //----------------------------------------------------------------------------------------------------------
 //2-Dimensional
 //----------------------------------------------------------------------------------------------------------
-void LevelSetMethods::initialise(LevelSet &ls, Domain2D domain, Polygon P){
+void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &poly){
 	ls.phi.resize(domain.Nx, domain.Ny);
 
-	//The initial levelset has all points on the boundary set as 0
-	for (int i=0; i<static_cast<int>(P.surfacepoints.size()); i++){
-		ls.phi(P.surfacepoints[i].i, P.surfacepoints[i].j) = 0;
+	//Finding if the points are inside or outside the polygon
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			if (poly.point_in_polygon(domain.X(i, j))) ls.phi(i, j) = -1e6;
+			else ls.phi(i, j) = 1e6;
+		}
 	}
-	//finding the x and y boundary of the polygon
-	double max_x = 0; double min_x = domain.Lx;
-	double max_y = 0; double min_y = domain.Ly;
-	/*for (int i=0; i < static_cast<int>(P.vertices.size()) i++){
-		Coordinate point = P.vertices[i]
-		if (point.x > max_x) max_x = point.x;
-		if (point.y > max_y) max_y = point.y;
-		if (point.x < min_x) min_y = point.x;
-		if (point.y < min_y) min_y = point.y;
+
+	//The initial levelset has all points on the boundary set as 0
+	for (int i=0; i<static_cast<int>(poly.surfacepoints.size()); i++){
+		ls.phi(poly.surfacepoints[i].i, poly.surfacepoints[i].j) = 0;
 	}
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			if (domain.X(i, j).x <= min_x) ls.phi(i, j) = 1e6;
-			else if (domain.X(i, j).y <= min_y) ls.phi(i, j) = 1e6;
-			else if (domain.X(i, j).x >= max_x) ls.phi(i, j) = 1e6;
-			else if (domain.X(i, j).y >= max_y) ls.phi(i, j) = 1e6;
+			std::cout << ls.phi(i,j) << '\t';
 		}
-	}*/
-
-	//for the rest of the points, ray casting needs to be performed
-
+		std::cout << std::endl;
+	}
 }
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){

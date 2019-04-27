@@ -1,4 +1,5 @@
 #include "headerFiles/Solvers.h"
+#include "headerFiles/LevelSet.h"
 #include <typeinfo>
 
 
@@ -16,7 +17,7 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	rigidTests Tests(101);
+	rigidTests Tests(21);
 	Tests.test1();
 
 	/*
@@ -62,17 +63,17 @@ int main(void){
 		std::cout << c << std::endl;
 	}
 
-/*
+/*	Polygon poly;
 	Coordinates center(0.5,0.5);
 	try{
 		poly.create_square(Tests.domain, 0.3, center);
 	}
 	catch (const char c){
 		std::cout << c << std::endl;
-	}
-*/
+	}*/
 
-
+	LevelSet ls;
+	LevelSetMethods::initialise(ls, Tests.domain, poly);
 
 }
 
