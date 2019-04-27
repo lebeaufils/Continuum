@@ -87,14 +87,7 @@ struct Domain2D
 	Domain2D(int N) : Nx(N), Ny(N), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
 	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
 
-	void display_grid(){
-		for (int j=0; j<Ny; j++){
-			for (int i=0; i<Nx; i++){
-				std::cout << X(i, j).x << ", " << X(i, j).y << '\t'; 
-			}
-			std::cout << std::endl;
-		}
-	}
+	void display_grid();
 };
 
 struct Euler1D
@@ -158,6 +151,8 @@ struct LevelSet
 	matrix phi;
 
 	LevelSet() : phi(0, 0) {}
+
+	void display_grid();
 };
 
 struct RB_2D
@@ -169,6 +164,8 @@ struct RB_2D
 	Euler2D rigidbody;
 
 	RB_2D() : levelsets(0), fluid(), rigidbody() {}
+
+	void add_levelset();
 };
 
 //Polygon storage

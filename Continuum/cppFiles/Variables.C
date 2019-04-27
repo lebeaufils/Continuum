@@ -38,6 +38,17 @@ double Coordinates::length(){
 	return sqrt(x*x + y*y);
 }
 
+void Domain2D::display_grid(){
+	{
+		for (int j=0; j<Ny; j++){
+			for (int i=0; i<Nx; i++){
+				std::cout << X(i, j).x << ", " << X(i, j).y << '\t'; 
+			}
+			std::cout << std::endl;
+		}
+	}
+}
+
 int Polygon::orientation(Coordinates p0, Coordinates a, Coordinates b){
 	//The sign of the cross product tells us if the points are oriented in an 
 		// anti-clockwise orientation (negative)
@@ -240,14 +251,14 @@ void Polygon::output(Domain2D domain){
 		'\t' << domain.X(surfacepoints[i].i, surfacepoints[i].j).y << std::endl;
 	}
 
-	boost::ptr_map<std::pair<int, int>, Edge>::iterator it = edges.begin();
+	/*boost::ptr_map<std::pair<int, int>, Edge>::iterator it = edges.begin();
 	while (it != edges.end()){
 		it->second->head.display();
 		std::cout << '\t' << '\t';
 		it->second->tail.display();
 		std::cout << std::endl;
 		it++;
-	}
+	}*/
 
 	outfile.close();
 	outfile_2.close();
@@ -273,7 +284,7 @@ void Polygon::create_square(Domain2D domain, double length, Coordinates center){
 	}
 
 	generate_edges(vertices);
-	std::cout << edges.size() << std::endl;
+	//std::cout << edges.size() << std::endl;
 	generate_surfacepoints(domain);
 	output(domain);
 }
@@ -295,9 +306,9 @@ void Polygon::create(Domain2D domain, double size, int K){
 	catch (const char c){
 		std::cout << c << std::endl;
 	}
-	std::cout << n << std::endl;
+	//std::cout << n << std::endl;
 	generate_edges(vertices);
-	std::cout << edges.size() << std::endl;
+	//std::cout << edges.size() << std::endl;
 	generate_surfacepoints(domain);
 	output(domain);
 }
@@ -347,6 +358,9 @@ int Polygon::point_in_polygon(Coordinates p){
 	return c;
 }
 
+//
+//Rastor representstion of lines
+//
 std::vector<Pos_Index> Bresenham::steep_pos(Domain2D domain, Coordinates P1, Coordinates P2){
 	//stepping through in y (positive direction)
 	double e = 0; //error
@@ -577,6 +591,20 @@ std::vector<Pos_Index> Bresenham::line_algorithm(Domain2D domain, Edge* edge){
 	else {
 		return gradual_neg(domain, P1, P2);
 	}
+}
+
+void LevelSet::display_grid(){
+	for (int i=1; i<phi.rows()-1; i++){
+		for (int j=1; j<phi.cols()-1; j++){
+			std::cout << phi(i, j) << '\t';
+		}
+		std::cout << std::endl;
+	}
+}
+
+void RB_2D::add_levelset(){
+	LevelSet ls;
+	levelsets.push_back(ls);
 }
 
 

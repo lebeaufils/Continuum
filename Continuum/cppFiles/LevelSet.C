@@ -44,40 +44,52 @@ void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, dou
 //----------------------------------------------------------------------------------------------------------
 //2-Dimensional
 //----------------------------------------------------------------------------------------------------------
+void LevelSetMethods::boundary_conditions(LevelSet ls, Domain2D domain){
+	//assigning ghost values in the x-direction 
+	for (int j=0; j<domain.Ny; j++){
+		ls.phi(0, j) = ls.phi(1, j);
+		ls.phi(domain.Nx+1, j) = ls.phi(domain.Nx, j);
+	} 
+	//assigning ghost values in the y-direction
+	for (int i=0; i<domain.Nx; i++){
+		ls.phi(i, 0) = ls.phi(i, 1);
+		ls.phi(i, domain.Ny+1) = ls.phi(i, domain.Ny);
+	} 
+}
+
 void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &poly){
-	ls.phi.resize(domain.Nx, domain.Ny);
+	ls.phi = matrix::Zero(domain.Nx+2, domain.Ny+2);
 
 	//Finding if the points are inside or outside the polygon
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			if (poly.point_in_polygon(domain.X(i, j))) ls.phi(i, j) = -1e6;
-			else ls.phi(i, j) = 1e6;
+			if (poly.point_in_polygon(domain.X(i, j))) ls.phi(i+1, j+1) = -1e6;
+			else ls.phi(i+1, j+1) = 1e6;
 		}
 	}
+	boundary_conditions(ls, domain);
+
 
 	//The initial levelset has all points on the boundary set as 0
 	for (int i=0; i<static_cast<int>(poly.surfacepoints.size()); i++){
-		ls.phi(poly.surfacepoints[i].i, poly.surfacepoints[i].j) = 0;
+		ls.phi(poly.surfacepoints[i].i+1, poly.surfacepoints[i].j+1) = 0;
 	}
 
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			std::cout << ls.phi(i,j) << '\t';
-		}
-		std::cout << std::endl;
-	}
+	fast_sweep(ls, domain);
+	//ls.display_grid();
 }
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){
-	ls.phi.resize(domain.Nx, domain.Ny);
+	//This provides an exact levelset function
+	ls.phi.resize(domain.Nx+2, domain.Ny+2);
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			//ls.phi(i, j) = pow(domain.X[i + j*domain.Nx][0] - x0, 2) + pow(domain.X[i + j*domain.Nx][1] - y0, 2) - pow(r, 2);
-			ls.phi(i, j) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
+			ls.phi(i+1, j+1) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
 		}
 	}
-	//This provides an exact levelset function
+	//ls.display_grid();
 }
 
 void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
@@ -128,14 +140,14 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 	//1) i = 1:I, j = 1:J
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			eikonal(i, j);
+			eikonal(i+1, j+1);
 		}
 	}
 
 	//2) i = I:1, j = 1:J
 	for (int i=domain.Nx-1; i>=0; i--){
 		for (int j=0; j<domain.Ny; j++){
-			eikonal(i, j);
+			eikonal(i+1, j+1);
 		}
 	}
 
@@ -149,8 +161,15 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 	//1) i = 1:I, j = 1:J
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=domain.Ny-1; j>=0; j--){
-			eikonal(i, j);
+			eikonal(i+1, j+1);
 		}
+	}
+
+	for (int i=1; i<domain.Nx+1; i++){
+		for (int j=1; j<domain.Ny+1; j++){
+			std::cout << ls.phi(i,j) << '\t';
+		}
+		std::cout << std::endl;
 	}
 }
 

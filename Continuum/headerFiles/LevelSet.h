@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <Eigen/Dense>
 
-#include "eulerTests.h"
+//#include "eulerTests.h"
 #include "Variables.h"
 
 typedef Eigen::Vector3d vector;
@@ -43,6 +43,7 @@ public:
 	//-----------------------------------------------------
 	//2-Dimensional
 	//-----------------------------------------------------
+	static void boundary_conditions(LevelSet, Domain2D);
 	static void initialise(LevelSet&, const Domain2D&, Polygon&);
 	static void initialise_circle(LevelSet&, Domain2D, double, double, double);
 

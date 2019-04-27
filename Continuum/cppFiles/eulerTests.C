@@ -379,7 +379,16 @@ void rigidTests::test1(){
 		}
 	}
 
+	//------------------------------------------------------------
+	var.add_levelset();
+	//generating the level set as a circle
+	LevelSetMethods::initialise_circle(var.levelsets[0], domain, 0.5, 0.5, 0.2);
+
 	//domain.display_grid();
+
+	//std::cout << std::endl;
+
+	//var.levelsets[0].display_grid();
 
 	//a single interface between rigid body and fluid
 	//essentially, this reduces the computational domain by bringing forward the boundary

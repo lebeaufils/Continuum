@@ -54,7 +54,7 @@ int main(void){
 
 	std::cout << square.surfacepoints.size() << std::endl;
 	*/
-
+/*
 	Polygon poly;
 	try{
 		poly.create(Tests.domain, 0.3, 10);
@@ -62,6 +62,7 @@ int main(void){
 	catch (const char c){
 		std::cout << c << std::endl;
 	}
+*/
 
 /*	Polygon poly;
 	Coordinates center(0.5,0.5);
@@ -70,10 +71,12 @@ int main(void){
 	}
 	catch (const char c){
 		std::cout << c << std::endl;
-	}*/
+	}
+*/
 
-	LevelSet ls;
-	LevelSetMethods::initialise(ls, Tests.domain, poly);
+	//LevelSet ls;
+	//LevelSetMethods::initialise(ls, Tests.domain, poly);
+	//LevelSetMethods::initialise_circle(ls, Tests.domain, 0.5, 0.5, 0.3);
 
 }
 
