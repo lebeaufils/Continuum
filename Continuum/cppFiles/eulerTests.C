@@ -356,8 +356,8 @@ void rigidTests::test1(){
 
 	//------------------------------------------------------------
 	//initial conditions for shock and unshocked fluid
-	vector shocked(1.0, 0.0, 1.0); //density, velocity, pressure
-	vector unshocked(0.125, 0.0, 0.1);
+	vector4 shocked(1.0, 0.0, 0.0, 1.0); //density, velocity, pressure
+	vector4 unshocked(0.125, 0.0, 0.0, 0.1);
 
 	initialL = shocked;
 	initialR = unshocked;
@@ -370,7 +370,8 @@ void rigidTests::test1(){
 	var.fluid.state_function = StateFunctions::create(EOS_IG);
 	var.fluid.state_function->y = 1.4;
 	//------------------------------------------------------------
-
+	//	Domain
+	//------------------------------------------------------------
 	//assigning x values
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
@@ -378,7 +379,23 @@ void rigidTests::test1(){
 			domain.X(i, j) = point;
 		}
 	}
-
+	interface.resize(domain.Nx, domain.Ny);
+	//------------------------------------------------------------
+	//	Fluid
+	//------------------------------------------------------------
+	//initial conditions of the fluid surrounding the levelset
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			if (domain.X(i, j).x <= 0.2){
+				interface(i, j) = false;
+			}
+			else {
+				interface(i, j) = true;
+			}
+		}
+	}
+	//------------------------------------------------------------
+	//	Rigid body (level set definition)
 	//------------------------------------------------------------
 	var.add_levelset();
 	//generating the level set as a circle

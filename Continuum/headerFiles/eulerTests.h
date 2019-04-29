@@ -25,11 +25,6 @@ typedef Eigen::MatrixXd matrix;
 
 struct standardTests
 {
-	//int N;
-	//double L;
-	//double x0;
-	//double tstop;
-
 	matrix initialL;
 	matrix initialR;
 
@@ -71,12 +66,8 @@ struct eulerTests2D : public virtual standardTests
 	Domain2D domain;
 	Euler2D var;
 
-	//Additional domain parameters
-		//If x and y have different lengths/ number of cells
-		//int Ny;
-		//double Ly;
-		//Interface location as a function of x and y (a list of interfacial cells)
-		Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
+	//Interface location as a function of x and y (a list of interfacial cells)
+	Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
 
 	//eulerTests2D(int N) : standardTests(N), var(), Ny(N), Ly(L), interface(N, Ny) 
 	eulerTests2D(int N) : standardTests(), domain(N), var(), interface(N, N) {
@@ -103,13 +94,13 @@ struct rigidTests : public virtual standardTests
 	Domain2D domain;
 	RB_2D var; // n-levelsets, fluid variable and rigidbody variable.
 
-	int number_of_rigidbodies;
+	Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
 	
 	//Eigen::Array<int,Eigen::Dynamic,Eigen::Dynamic> interface; //might be superseeded by the levelset
 	//Eigen::Array<Eigen::Array<double,1,2>,1,Eigen::Dynamic> interfacelist; //list of interface coordinates, sets of 2 points
 
-	rigidTests(int N) : standardTests(), domain(N), var(), number_of_rigidbodies(0) {}//interface(N, 1), interfacelist(1) {}
-	rigidTests(int Nx, int Ny) : standardTests(), domain(Nx, Ny), var(), number_of_rigidbodies(0) {}
+	rigidTests(int N) : standardTests(), domain(N), var(), interface(0, 0) {}//interface(N, 1), interfacelist(1) {}
+	rigidTests(int Nx, int Ny) : standardTests(), domain(Nx, Ny), var(), interface(0, 0) {}
 	virtual ~rigidTests() {}
 
 	void test1(); 

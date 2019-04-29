@@ -9,8 +9,10 @@
 
 struct RigidBodies
 {
-	static void rigid_boundary(Euler1D, Euler1D&, int);
-	static void initial_conditions();
+	static void fast_sweep(const LevelSet&, RB_2D&, const Domain2D&, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic>&);
+	static vector4 reflected_state(const RB_2D&, int, int, const vector2&);
+	static void boundary_conditions(RB_2D&, const Domain2D&);
+	static void initial_conditions(rigidTests&);
 	static void solver();
 	static void output();
 

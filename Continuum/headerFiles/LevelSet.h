@@ -48,6 +48,7 @@ public:
 	static void initialise_circle(LevelSet&, Domain2D, double, double, double);
 
 	static void fast_sweep(LevelSet&, Domain2D);
+	static vector2 normal(LevelSet, Domain2D, int, int);
 };
 
 

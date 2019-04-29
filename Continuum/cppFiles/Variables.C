@@ -607,6 +607,20 @@ void RB_2D::add_levelset(){
 	levelsets.push_back(ls);
 }
 
+void RB_2D::zeroes(int N, int M){
+	fluid.U.resize(N, M);
+	fluid.F.resize(N, M);
+	fluid.G.resize(N, M);
+
+	for (int i=0; i<N; i++){
+		for (int j=0; j<M; j++){
+			fluid.U(i, j).setZero();
+			fluid.F(i, j).setZero();
+			fluid.G(i, j).setZero();
+		}
+	}
+}
+
 
 
 

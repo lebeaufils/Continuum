@@ -76,7 +76,6 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &
 	}
 
 	fast_sweep(ls, domain);
-	//ls.display_grid();
 }
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){
@@ -173,6 +172,18 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 	}
 }
 
+vector2 LevelSetMethods::normal(LevelSet ls, Domain2D domain, int i, int j){
+	//Compute the normal vector using the central difference approximation
+	double dphi_x = (ls.phi(i+1, j) - ls.phi(i-1, j))/(2*domain.dx);
+	double dphi_y = (ls.phi(i, j+1) - ls.phi(i, j-1))/(2*domain.dy);
+	double grad_phi = sqrt(dphi_x*dphi_x + dphi_y*dphi_y);
+
+	vector2 n_i(dphi_x, dphi_y);
+	if (grad_phi > 0){	
+		n_i = n_i/grad_phi;
+	}
+	return n_i;
+}
 
 /*
 void LevelSetFunction::signed_distance_function_1D(){

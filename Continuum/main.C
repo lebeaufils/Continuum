@@ -1,5 +1,6 @@
 #include "headerFiles/Solvers.h"
 #include "headerFiles/LevelSet.h"
+#include "headerFiles/RigidBodies.h"
 #include <typeinfo>
 
 
@@ -17,7 +18,7 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	rigidTests Tests(21);
+	rigidTests Tests(101);
 	Tests.test1();
 
 	/*
@@ -77,6 +78,9 @@ int main(void){
 	//LevelSet ls;
 	//LevelSetMethods::initialise(ls, Tests.domain, poly);
 	//LevelSetMethods::initialise_circle(ls, Tests.domain, 0.5, 0.5, 0.3);
+
+	RigidBodies::initial_conditions(Tests);
+
 
 }
 

@@ -15,6 +15,7 @@
 
 
 typedef Eigen::Vector3d vector;
+typedef Eigen::Vector2d vector2;
 typedef Eigen::Vector4d vector4;
 typedef Eigen::MatrixXd matrix;
 typedef Eigen::Matrix<vector4, Eigen::Dynamic, Eigen::Dynamic> vecarray;
@@ -161,11 +162,11 @@ struct RB_2D
 	//Eigen::Array<matrix, 1, Eigen::Dynamic> levelset_array;
 	std::vector<LevelSet> levelsets; //list of n-levelset
 	Euler2D fluid;
-	Euler2D rigidbody;
 
-	RB_2D() : levelsets(0), fluid(), rigidbody() {}
+	RB_2D() : levelsets(0), fluid() {}
 
 	void add_levelset();
+	void zeroes(int Nx, int Ny); //resize and set zeroes
 };
 
 //Polygon storage
