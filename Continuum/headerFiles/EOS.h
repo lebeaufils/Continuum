@@ -36,6 +36,7 @@ struct StateFunctions
 	virtual vector conservedVar(vector) = 0;
 	virtual vector4 conservedVar2Dx(vector4) = 0;
 	virtual vector4 conservedVar2Dy(vector4) = 0;
+	virtual vector4 primitiveVar(vector4) = 0;
 	double internalE(Eigen::MatrixXd, int);
 	double internalE(vector4);
 	vector fluxes(vector); //flux
@@ -66,6 +67,7 @@ struct IdealGas : public virtual StateFunctions
 	//2D
 	vector4 conservedVar2Dx(vector4); 
 	vector4 conservedVar2Dy(vector4);
+	vector4 primitiveVar(vector4);
 	//the conserved variables have been reordered to read
 		//Density, momentum in the sweep-direction, energy, momentum in the other direction
 
@@ -94,7 +96,7 @@ struct StiffenedGas : public virtual StateFunctions
 	//2D
 	vector4 conservedVar2Dx(vector4);
 	vector4 conservedVar2Dy(vector4);
-
+	vector4 primitiveVar(vector4);
 	//exact
 	void y_constants(vector);
 	double fk(double);

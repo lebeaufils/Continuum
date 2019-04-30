@@ -11,22 +11,22 @@ int LevelSetMethods::get_sgn(double a){
 //----------------------------------------------------------------------------------------------------------
 //1-Dimensional
 //----------------------------------------------------------------------------------------------------------
-void LevelSetMethods::initialise(LevelSet ls, Domain1D domain){
+void LevelSetMethods::initialise(LevelSet &ls, const Domain1D &domain){
 	ls.phi.resize(domain.N+2, 1); //allows advection
 }
 
-void LevelSetMethods::boundary_conditions(LevelSet ls, Domain1D domain){
+void LevelSetMethods::boundary_conditions(LevelSet &ls, const Domain1D &domain){
 	ls.phi(0) = ls.phi(1);
 	ls.phi(domain.N+1) = ls.phi(domain.N);
 }
 
-void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, double x0){
+void LevelSetMethods::signed_distance_function(LevelSet &ls, const Domain1D &domain, double x0){
 	for (int i=0; i<domain.N; i++){
 		ls.phi(i+1) = domain.X(i) - x0; //positive inside
 	}
 }
 
-void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, double x0, double x1, int i){
+void LevelSetMethods::signed_distance_function(LevelSet &ls, const Domain1D &domain, double x0, double x1, int i){
 	// positive inside
 	if (x0 > x1) {
 		throw "Interface location incorrectly defined";
@@ -44,16 +44,16 @@ void LevelSetMethods::signed_distance_function(LevelSet ls, Domain1D domain, dou
 //----------------------------------------------------------------------------------------------------------
 //2-Dimensional
 //----------------------------------------------------------------------------------------------------------
-void LevelSetMethods::boundary_conditions(LevelSet ls, Domain2D domain){
+void LevelSetMethods::boundary_conditions(LevelSet &ls, const Domain2D &domain){
 	//assigning ghost values in the x-direction 
 	for (int j=0; j<domain.Ny; j++){
-		ls.phi(0, j) = ls.phi(1, j);
-		ls.phi(domain.Nx+1, j) = ls.phi(domain.Nx, j);
+		ls.phi(0, j+1) = ls.phi(1, j+1);
+		ls.phi(domain.Nx+1, j+1) = ls.phi(domain.Nx, j+1);
 	} 
 	//assigning ghost values in the y-direction
 	for (int i=0; i<domain.Nx; i++){
-		ls.phi(i, 0) = ls.phi(i, 1);
-		ls.phi(i, domain.Ny+1) = ls.phi(i, domain.Ny);
+		ls.phi(i+1, 0) = ls.phi(i+1, 1);
+		ls.phi(i+1, domain.Ny+1) = ls.phi(i+1, domain.Ny);
 	} 
 }
 
@@ -88,7 +88,9 @@ void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0
 			ls.phi(i+1, j+1) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
 		}
 	}
+	boundary_conditions(ls, domain);
 	//ls.display_grid();
+
 }
 
 void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
@@ -182,6 +184,9 @@ vector2 LevelSetMethods::normal(LevelSet ls, Domain2D domain, int i, int j){
 	if (grad_phi > 0){	
 		n_i = n_i/grad_phi;
 	}
+	//else {
+	//	throw "normal vector is 0";
+	//}
 	return n_i;
 }
 

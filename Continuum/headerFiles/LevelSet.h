@@ -24,11 +24,11 @@ public:
 	//-----------------------------------------------------
 	//1-Dimensional
 	//-----------------------------------------------------
-	static void initialise(LevelSet, Domain1D);
+	static void initialise(LevelSet&, const Domain1D&);
 
-	static void boundary_conditions(LevelSet, Domain1D);
-	static void signed_distance_function(LevelSet, Domain1D, double);
-	static void signed_distance_function(LevelSet, Domain1D, double, double, int); //2 discontinuties
+	static void boundary_conditions(LevelSet&, const Domain1D&);
+	static void signed_distance_function(LevelSet&, const Domain1D&, double);
+	static void signed_distance_function(LevelSet&, const Domain1D&, double, double, int); //2 discontinuties
 	//void signed_distance_function_1D_3(int); //3 discontinuities
 	
 	//first order upwind hamilton-jacobi method
@@ -43,7 +43,7 @@ public:
 	//-----------------------------------------------------
 	//2-Dimensional
 	//-----------------------------------------------------
-	static void boundary_conditions(LevelSet, Domain2D);
+	static void boundary_conditions(LevelSet&, const Domain2D&);
 	static void initialise(LevelSet&, const Domain2D&, Polygon&);
 	static void initialise_circle(LevelSet&, Domain2D, double, double, double);
 

@@ -18,7 +18,7 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	rigidTests Tests(101);
+	rigidTests Tests(21);
 	Tests.test1();
 
 	/*

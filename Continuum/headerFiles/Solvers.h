@@ -64,7 +64,7 @@ struct MUSCL
 
 	static void solver(Euler2D&, Domain2D&, double);
 	static void dimensional_splitting(Euler2D&); //to be altered
-	static void output(Euler2D&, Domain2D);
+	static void output(const Euler2D&, const Domain2D&);
 	static void muscl_solver(eulerTests2D&, double);
 };
 

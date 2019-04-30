@@ -132,6 +132,16 @@ vector4 IdealGas::conservedVar2Dy(vector4 W){
 	return consV;
 }
 
+vector4 IdealGas::primitiveVar(vector4 U){
+	//U is assumed to have the structure of conservedVar2Dx 
+	vector4 primV;
+	primV(0) = U(0);
+	primV(1) = fmax(U(1)/U(0), 0);
+	primV(2) = fmax(U(3)/U(0), 0);
+	primV(3) = fmax(Pressure(U), 0);
+	return primV;
+}
+
 /*----------------------------------------------------------------------------------
 	Stiffened Gas EOS
 ----------------------------------------------------------------------------------*/
@@ -186,6 +196,15 @@ vector4 StiffenedGas::conservedVar2Dy(vector4 W){
 	consV(2) = (W(3) + y*Pref)/(y-1) + 0.5*W(0)*(pow(W(1), 2) + pow(W(2), 2)); //Total Energy
 	consV(3) = W(0)*W(1); //Density * Velocity_y
 	return consV;
+}
+
+vector4 StiffenedGas::primitiveVar(vector4 U){
+	vector4 primV;
+	primV(0) = U(0);
+	primV(1) = U(1)/U(0);
+	primV(2) = U(3)/U(0);
+	primV(3) = Pressure(U);
+	return primV;
 }
 
 //-------------------------------------------------------------------------

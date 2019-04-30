@@ -594,8 +594,8 @@ std::vector<Pos_Index> Bresenham::line_algorithm(Domain2D domain, Edge* edge){
 }
 
 void LevelSet::display_grid(){
-	for (int i=1; i<phi.rows()-1; i++){
-		for (int j=1; j<phi.cols()-1; j++){
+	for (int i=0; i<phi.rows(); i++){
+		for (int j=0; j<phi.cols(); j++){
 			std::cout << phi(i, j) << '\t';
 		}
 		std::cout << std::endl;

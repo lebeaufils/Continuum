@@ -879,7 +879,7 @@ void MUSCL::solver(Euler2D &var, Domain2D &domain, double CFL){
 	std::cout << count << std::endl;
 }
 
-void MUSCL::output(Euler2D &var, Domain2D domain){
+void MUSCL::output(const Euler2D &var, const Domain2D &domain){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
