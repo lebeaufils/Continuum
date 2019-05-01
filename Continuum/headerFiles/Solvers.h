@@ -59,11 +59,12 @@ struct MUSCL
 	static void boundary_conditions_reflective(Euler2D&, Domain2D);
 	static void initial_conditions(eulerTests2D&);
 
-	static void compute_fluxes(Euler2D&, Domain2D, matrix&, vector4&, int, matrix, matrix, double);
+	static void compute_fluxes(const Euler2D&, const matrix&, vector4&, int);
+	static void compute_fluxes(const Euler2D&, const Domain2D&, const matrix&, vector4&, int, const matrix&, const matrix&, double);
 	static void conservative_update_formula_2D(vector4&, vector4, vector4, double, double);
 
 	static void solver(Euler2D&, Domain2D&, double);
-	static void dimensional_splitting(Euler2D&); //to be altered
+	//static void dimensional_splitting(Euler2D&); //to be altered
 	static void output(const Euler2D&, const Domain2D&);
 	static void muscl_solver(eulerTests2D&, double);
 };

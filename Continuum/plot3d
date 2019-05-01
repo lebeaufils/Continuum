@@ -10,7 +10,7 @@ set dgrid3d 101,101
 set palette grey
 set size ratio -1
 
-splot "extrapolation.txt" using 1:2:3 notitle w dots
+splot "dataeuler.txt" using 1:2:3 notitle w dots
 #set yrange [GPVAL_DATA_Y_MIN:GPVAL_DATA_Y_MAX]
 #set xrange [GPVAL_DATA_X_MIN:GPVAL_DATA_X_MAX]
 

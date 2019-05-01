@@ -48,17 +48,17 @@ void LevelSetMethods::boundary_conditions(LevelSet &ls, const Domain2D &domain){
 	//assigning ghost values in the x-direction 
 	for (int j=0; j<domain.Ny; j++){
 		ls.phi(0, j+1) = ls.phi(1, j+1);
-		ls.phi(domain.Nx+1, j+1) = ls.phi(domain.Nx, j+1);
+		ls.phi(domain.Nx+3, j+1) = ls.phi(domain.Nx+2, j+1) = ls.phi(domain.Nx+1, j+1) = ls.phi(domain.Nx, j+1);
 	} 
 	//assigning ghost values in the y-direction
 	for (int i=0; i<domain.Nx; i++){
 		ls.phi(i+1, 0) = ls.phi(i+1, 1);
-		ls.phi(i+1, domain.Ny+1) = ls.phi(i+1, domain.Ny);
+		ls.phi(i+1, domain.Ny+3) = ls.phi(i+1, domain.Ny+2) = ls.phi(i+1, domain.Ny+1) = ls.phi(i+1, domain.Ny);
 	} 
 }
 
 void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &poly){
-	ls.phi = matrix::Zero(domain.Nx+2, domain.Ny+2);
+	ls.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
 
 	//Finding if the points are inside or outside the polygon
 	for (int i=0; i<domain.Nx; i++){
@@ -80,7 +80,7 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){
 	//This provides an exact levelset function
-	ls.phi.resize(domain.Nx+2, domain.Ny+2);
+	ls.phi.resize(domain.Nx+4, domain.Ny+4);
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){

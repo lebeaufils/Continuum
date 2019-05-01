@@ -10,7 +10,6 @@
 struct RigidBodies
 {
 	static void fast_sweep(const LevelSet&, RB_2D&, const Domain2D&, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic>&);
-	static vector4 reflected_state(const RB_2D&, int, int, const vector2&);
 	static void reflected_state(RB_2D&, const vecarray&, int i, int j, const vector2&);
 	//static void boundary_conditions(RB_2D&, const Domain2D&);
 	static void initial_conditions(rigidTests&);

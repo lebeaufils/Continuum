@@ -1,21 +1,5 @@
 #include "../headerFiles/RigidBodies.h"
 
-vector4 RigidBodies::reflected_state(const RB_2D &var, int i, int j, const vector2 &n_i){
-	//to be used when (phi<0) --> ghost fluid state within rigid body
-
-	//extrapolated values
-	double density = var.fluid.U(i, j)(0);
-	double pressure = var.fluid.state_function->Pressure(var.fluid.U(i, j));
-	vector2 velocity(var.fluid.U(i, j)(1)/var.fluid.U(i, j)(0), var.fluid.U(i, j)(3)/var.fluid.U(i, j)(0)); //(u, v)
-
-	vector2 v_ghost = velocity - 2*(n_i.dot(velocity))*(n_i);
-	//reflected state, conserved variables
-	vector4 reflected(density, v_ghost(0), v_ghost(1), pressure);
-	vector4 reflected_cons = var.fluid.state_function->conservedVar2Dx(reflected);
-
-	return reflected_cons;
-}
-
 void RigidBodies::reflected_state(RB_2D &var, const vecarray &primV, int i, int j, const vector2 &n_i){
 	vector2 velocity(primV(i,j)(1), primV(i,j)(2));
 	vector2 v_ghost = velocity - 2*(n_i.dot(velocity))*(n_i);
@@ -79,7 +63,7 @@ void RigidBodies::fast_sweep(const LevelSet &ls, RB_2D &rb, const Domain2D &doma
 		if (dx == 0) nx = 0;
 		if (dy == 0) ny = 0;
 		//using the update formula for q(i, j)
-		double nxny=0;
+		double nxny = 0;
 		if ((nx!=0) || (ny!=0)){
 			if((nx>0) != (ny>0)){
 				nxny = nx/domain.dx - ny/domain.dy;
@@ -96,21 +80,8 @@ void RigidBodies::fast_sweep(const LevelSet &ls, RB_2D &rb, const Domain2D &doma
 				vij = (nx*(vx)/domain.dx + ny*(vy)/domain.dy)/nxny;
 			}
 		}
-		/*if (nxny !=0){
-			dij = (nx*(dx)/domain.dx + ny*(dy)/domain.dy)/nxny;//(n_i(0)*(dx)/domain.dx + n_i(1)*(dy)/domain.dy)/nxny;
-			Pij = (nx*(Px)/domain.dx + ny*(Py)/domain.dy)/nxny;
-			uij = (nx*(ux)/domain.dx + ny*(uy)/domain.dy)/nxny;
-			vij = (nx*(vx)/domain.dx + ny*(vy)/domain.dy)/nxny;
-		}*/
 
-		//std::cout << nxny << '\t' << n_i(0) << '\t' << n_i(1) << std::endl;
-		//if (dx != 0) std::cout << dx << '\t' << dy << '\t' << dij << '\t' << n_i(0) << '\t' << n_i(1) << '\t' << '(' << i << ", " << j << ')' << std::endl;
-		//std::cout << dx << '\t' << Px << '\t' << ux << '\t' << vx << std::endl;
-		std::cout << Pij << '\t' << i-2 << ", " << j-2 << '\t' << '\t' << Px << '\t' << Py << '\t' << '\t' << nxny << '\t' << nx << '\t' << ny << std::endl; //<< Pij << '\t' << uij << '\t' << vij << std::endl;
-
-		//vector4 extrapolatedW(dij, uij, vij, Pij);
-		//vector4 extrapolatedU = fluid.state_function->conservedVar2Dx(extrapolatedW);
-		//return extrapolatedU;
+		//std::cout << Pij << '\t' << i-2 << ", " << j-2 << '\t' << '\t' << Px << '\t' << Py << '\t' << '\t' << nxny << '\t' << nx << '\t' << ny << std::endl; //<< Pij << '\t' << uij << '\t' << vij << std::endl;
 
 		primitive(i, j) = vector4(dij, uij, vij, Pij);
 	};
@@ -132,46 +103,50 @@ void RigidBodies::fast_sweep(const LevelSet &ls, RB_2D &rb, const Domain2D &doma
 	//4) i = 1:I, j = J:1
 
 	// a narrowband of abs(phi) < cellwidth is imposed
+	auto gauss_seidel = [heaviside, ghost_fluid, domain, ls, normal](vecarray &primitive){
+		//1) i = 1:I, j = 1:J
+		for (int i=0; i<domain.Nx; i++){
+			for (int j=0; j<domain.Ny; j++){
+				if (heaviside(i+1, j+1)){
+					ghost_fluid(primitive, i+2, j+2, normal(i, j));
+					if (ls.phi(i+1, j+1) < -(domain.dx)) break;
+				}
+			}
+		}
 
-	//1) i = 1:I, j = 1:J
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			if (heaviside(i+1, j+1)){
-				ghost_fluid(primitive, i+2, j+2, normal(i, j));
-				if (ls.phi(i+1, j+1) < -(domain.dx)) break;
+		//2) i = I:1, j = 1:J
+		for (int i=domain.Nx-1; i>=0; i--){
+			for (int j=0; j<domain.Ny; j++){
+				if (heaviside(i+1, j+1)){
+					ghost_fluid(primitive, i+2, j+2, normal(i, j));
+					if (ls.phi(i, j) < -(domain.dx)) break;
+				}
 			}
 		}
-	}
 
-	//2) i = I:1, j = 1:J
-	for (int i=domain.Nx-1; i>=0; i--){
-		for (int j=0; j<domain.Ny; j++){
-			if (heaviside(i+1, j+1)){
-				ghost_fluid(primitive, i+2, j+2, normal(i, j));
-				if (ls.phi(i, j) < -(domain.dx)) break;
+		//3) i = I:1, J = J:1
+		for (int i=domain.Nx-1; i>=0; i--){
+			for (int j=domain.Ny-1; j>=0; j--){
+				if (heaviside(i+1, j+1)){
+					ghost_fluid(primitive, i+2, j+2, normal(i, j));
+					if (ls.phi(i, j) < -(domain.dx)) break;
+				}
 			}
 		}
-	}
-/*
-	//3) i = I:1, J = J:1
-	for (int i=domain.Nx-1; i>=0; i--){
-		for (int j=domain.Ny-1; j>=0; j--){
-			if (heaviside(i+1, j+1)){
-				ghost_fluid(primitive, i+2, j+2, normal(i, j));
-				if (ls.phi(i, j) < -(domain.dx)) break;
-			}
-		}
-	}
 
-	//1) i = 1:I, j = 1:J
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=domain.Ny-1; j>=0; j--){
-			if (heaviside(i+1, j+1)){
-				ghost_fluid(primitive, i+2, j+2, normal(i, j));
-				if (ls.phi(i, j) < -(domain.dx)) break;
+		//1) i = 1:I, j = 1:J
+		for (int i=0; i<domain.Nx; i++){
+			for (int j=domain.Ny-1; j>=0; j--){
+				if (heaviside(i+1, j+1)){
+					ghost_fluid(primitive, i+2, j+2, normal(i, j));
+					if (ls.phi(i, j) < -(domain.dx)) break;
+				}
 			}
 		}
-	}*/
+	};
+
+	gauss_seidel(primitive);
+	gauss_seidel(primitive);
 
 	//reflect the ghostfluid states
 	for (int i=0; i<domain.Nx; i++){
@@ -219,34 +194,12 @@ void RigidBodies::initial_conditions(rigidTests &Test){
 		}
 	}
 
-
-	/*for(int i=0; i<Test.domain.Nx; i++){
-		for(int j=0; j<Test.domain.Ny; j++){
-			std::cout << Test.var.fluid.U(i+2, j+2)(0) << '\t';
-			//std::cout << Test.var.levelsets[0].phi(i+1, j+1) << '\t';
-			//std::cout << normal(i, j)(0) << ", " << normal(i, j)(1) << '\t';
-			//std::cout << normal(i, j).transpose() << std::endl;
-			//std::cout << Test.var.levelsets[0].phi(i+1, j+1) << '\t';
-		}
-		std::cout << std::endl;
-	}*/
-
 	//populate the rigid body with ghost values
 	//note that these values need to be reflected before use
+	//values are currently reflected in the fast sweep function
 	for (int a=0; a<static_cast<int>(Test.var.levelsets.size()); a++){
 		fast_sweep(Test.var.levelsets[a], Test.var, Test.domain, normal);
-
-		//reflect the ghostfluid states
-		/*for (int i=0; i<Test.domain.Nx; i++){
-			for(int j=0; j<Test.domain.Ny; j++){
-				if (Test.var.levelsets[a].phi(i+1, j+1) < 0 && Test.var.levelsets[a].phi(i+1, j+1) >= -(Test.domain.dx))
-					Test.var.fluid.U(i+2, j+2) = reflected_state(Test.var, i+2, j+2, normal(i, j));
-				}
-		}
-		*/
 	}
-
-
 
 	std::ofstream outfile;
 	outfile.open("extrapolation.txt");
@@ -258,13 +211,13 @@ void RigidBodies::initial_conditions(rigidTests &Test){
 	}
 	outfile.close();
 	
-	for(int i=0; i<Test.domain.Nx; i++){
+	/*for(int i=0; i<Test.domain.Nx; i++){
 		for(int j=0; j<Test.domain.Ny; j++){
 			std::cout << Test.var.fluid.U(i+2, j+2)(2) << '\t';
 			//std::cout << Test.var.levelsets[0].phi(i+1, j+1) << '\t';
 		}
 		std::cout << std::endl;
-	}
+	}*/
 }
 
 void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
@@ -286,6 +239,14 @@ void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
 
 
 	slopeLimiter a = VanLeer;//getLimiter();
+
+	//compute the normal vector using the levelset function. only valid for non moving levelsets
+	Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			normal(i, j) = LevelSetMethods::normal(var.levelsets[0], domain, i+1, j+1);
+		}
+	}
 
 	double t = 0.0;
 	int count = 0;
@@ -316,6 +277,7 @@ void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
 
 		t += domain.dt;
 		count += 1;
+
 		//sweeping in the x-direction for each y row
 		for (int j=0; j<domain.Ny; j++){
 			//Within each row, store the values for each grid point in x with a single row list
@@ -328,10 +290,17 @@ void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
 
 			//sweeping in the x-direction for each y row
 			for (int i=1; i<domain.Nx+2; i++){
-				if (var.levelsets[0].phi(i, j+1) >= 0){
+				if (var.levelsets[0].phi(i, j+1) >= 0 || var.levelsets[0].phi(i+1, j+1) >= 0 || var.levelsets[0].phi(i-1, j+1) >= 0){
 					vector4 Fx(0, 0, 0, 0);
-					//if (var.levelsets[0].phi(i, j+1) >= 0)
-					MUSCL::compute_fluxes(var.fluid, domain, Uxn, Fx, i, ULix, URix, domain.dx); //compute flux needs to change
+					//edge case where there is only one ghost cell
+					if (var.levelsets[0].phi(i+1, j+1) < 0 && var.levelsets[0].phi(i+2, j+1) >= 0){
+						MUSCL::compute_fluxes(var.fluid, Uxn, Fx, i);
+						std::cout << i-1 << '\t' << j << '\t' << var.levelsets[0].phi(i+1, j+1) << std::endl;
+					}
+					//normal case
+					else {
+						MUSCL::compute_fluxes(var.fluid, domain, Uxn, Fx, i, ULix, URix, domain.dx);
+					}
 					var.fluid.F(i, j+1) = Fx; //storing the computed flux.
 				}
 			}
@@ -345,9 +314,15 @@ void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
 			MUSCL::data_reconstruction(Uyn, a, ULiy, URiy, domain.Ny);
 
 			for (int j=1; j<domain.Ny+2; j++){
-				if (var.levelsets[0].phi(i+1, j) >= 0){
+				if (var.levelsets[0].phi(i+1, j) >= 0 || var.levelsets[0].phi(i+1, j+1) >= 0 || var.levelsets[0].phi(i+1, j-1) >=0){
 					vector4 Fy(0, 0, 0, 0);
-					MUSCL::compute_fluxes(var.fluid, domain, Uyn, Fy, j, ULiy, URiy, domain.dy); //compute flux needs to change
+					if (var.levelsets[0].phi(i+1, j+1) < 0 && var.levelsets[0].phi(i+1, j+2) >= 0){
+						MUSCL::compute_fluxes(var.fluid, Uyn, Fy, j);
+						//std::cout << i << '\t' << j-1 << '\t' << var.levelsets[0].phi(i+1, j+1) << std::endl;
+					}	
+					else {
+						MUSCL::compute_fluxes(var.fluid, domain, Uyn, Fy, j, ULiy, URiy, domain.dy);
+					}
 					var.fluid.G(i+1, j) = Fy; //storing the computed flux.
 				}		
 			}
@@ -358,6 +333,7 @@ void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
 			for (int i=2; i<domain.Nx+2; i++){
 				if (var.levelsets[0].phi(i-1, j+1) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i, j+2), var.fluid.F(i, j+1), var.fluid.F(i-1, j+1), domain.dt/2, domain.dx);
+					//std::cout << var.fluid.F(i, j+1).transpose()  << '\t'  << '\t' << var.fluid.F(i-1, j+1).transpose() << std::endl;
 				}
 			}
 		}
@@ -377,12 +353,15 @@ void RigidBodies::solver(RB_2D &var, Domain2D &domain, double CFL){
 		}
 		MUSCL::boundary_conditions(var.fluid, domain);
 
+		//Extrapolate new ghost values
+		fast_sweep(var.levelsets[0], var, domain, normal);
+
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << Smax_x << '\t' << Smax_y << std::endl;
-		//if (count == 2) t = domain.tstop;
+		//if (count == 30) t = domain.tstop;
 	}while (t < domain.tstop);
-	std::cout << count << std::endl;
+	std::cout << "count = "  << count << std::endl;
 }
 
 void RigidBodies::output(const RB_2D &var, const Domain2D &domain){
@@ -392,7 +371,7 @@ void RigidBodies::output(const RB_2D &var, const Domain2D &domain){
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
-			if (var.levelsets[0].phi(i, j+1) >= 0){
+			if (var.levelsets[0].phi(i-1, j-1) >= 0){
 				vector4 Ux = var.fluid.U(i, j);
 				double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
 				double P = var.fluid.state_function->Pressure(Ux);
@@ -407,10 +386,10 @@ void RigidBodies::output(const RB_2D &var, const Domain2D &domain){
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 				<< '\t' << P << '\t' << e << '\t' << schlieren << std::endl;
 			}
-			else {
+			/*else {
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << 0 << '\t' << 0
 				<< '\t' << 0 << '\t' << 0 << '\t' << 0 << std::endl;
-			}
+			}*/
 		}
 		outfile << std::endl;
 	}

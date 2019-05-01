@@ -340,24 +340,13 @@ void eulerTests2D::test4(){ //sod's tube test, x-aligned
 //--------------------------------------------------------------------------------------------
 void rigidTests::test1(){
 
-	//Rigid body interface location
-	//number_of_rigidbodies = 1;
-		//Creating the level set array
-		//var.levelset_array.resize(number_of_rigidbodies);
-
-	//storing interface as a nested list
-	//interfacelist.resize(number_of_rigidbodies);
-	//Eigen::Array<double, 1, 2> interfacepoint(0.7, domain.L);
-	//interfacelist << interfacepoint; //list of rigid body interface points
-	//std::cout << interfacelist(0) << std::endl;
-
 	//Shock location
 	//double x_s = 0.3;
 
 	//------------------------------------------------------------
 	//initial conditions for shock and unshocked fluid
-	vector4 shocked(1.0, 0.0, 0.0, 1.0); //density, velocity, pressure
-	vector4 unshocked(0.125, 0.0, 0.0, 0.1);
+	vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
+	vector4 unshocked(1.0, 0.0, 0.0, 1.0);
 
 	initialL = shocked;
 	initialR = unshocked;

@@ -18,7 +18,7 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	rigidTests Tests(21);
+	rigidTests Tests(101);
 	Tests.test1();
 
 	/*
@@ -79,7 +79,8 @@ int main(void){
 	//LevelSetMethods::initialise(ls, Tests.domain, poly);
 	//LevelSetMethods::initialise_circle(ls, Tests.domain, 0.5, 0.5, 0.3);
 
-	RigidBodies::initial_conditions(Tests);
+	//RigidBodies::initial_conditions(Tests);
+	RigidBodies::rigid_body_solver(Tests, 0.7);
 
 
 }

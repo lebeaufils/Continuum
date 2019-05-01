@@ -318,6 +318,19 @@ void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &U
 	}
 }
 
+
+void MUSCL::conservative_update_formula(Euler1D &var, Domain1D domain, int i){
+	var.U.row(i) = var.U.row(i) - (domain.dt/domain.dx)*(var.F.row(i) - var.F.row(i-1));
+}
+//F_1 represents F[i-1]
+//void MUSCL::conservative_update_formula(vector& U, vector F, vector F_1, double dt, double dx){
+//	U = U - (dt/dx)*(F - F_1);
+//}
+
+void MUSCL::conservative_update_formula_2D(vector4& U, vector4 F, vector4 F_1, double dt, double dx){
+	U = U - (dt/dx)*(F - F_1);
+}
+
 //-----------------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------------
@@ -460,18 +473,6 @@ void MUSCL::compute_fluxes(Euler1D &var, Domain1D &domain, int i, matrix ULi, ma
 		else if (0 >= SR){
 			var.F.row(i) = FR;
 		}
-}
-
-void MUSCL::conservative_update_formula(Euler1D &var, Domain1D domain, int i){
-	var.U.row(i) = var.U.row(i) - (domain.dt/domain.dx)*(var.F.row(i) - var.F.row(i-1));
-}
-//F_1 represents F[i-1]
-//void MUSCL::conservative_update_formula(vector& U, vector F, vector F_1, double dt, double dx){
-//	U = U - (dt/dx)*(F - F_1);
-//}
-
-void MUSCL::conservative_update_formula_2D(vector4& U, vector4 F, vector4 F_1, double dt, double dx){
-	U = U - (dt/dx)*(F - F_1);
 }
 
 void MUSCL::solver(Euler1D &var, Domain1D &domain, double CFL){
@@ -625,7 +626,103 @@ void MUSCL::initial_conditions(eulerTests2D &Test){
 	//Test.var.display(Test.var.U);
 }
 
-void MUSCL::compute_fluxes(Euler2D &var, Domain2D domain, matrix &U, vector4 &F, int i, matrix ULi, matrix URi, double dx){
+//Piecewise constant intterpolation -- HLLC, for boundaries with only 1 ghost point
+void MUSCL::compute_fluxes(const Euler2D &var, const matrix &U, vector4 &F, int i){
+	//Here dx is a proxy for a unit cell in any direction
+
+	//soundspeed
+	double al, ar;
+	//velocity components
+	double ul, ur; //direction currently being swept
+	double vl, vr; //other direction
+
+	double dl, dr;
+	double Pl, Pr;
+
+	double mvl, mvr;
+	double El, Er;
+
+	double SL, SR, Sstar;
+
+	vector4 tmp;
+
+	/*-------------------------------------------------------
+	 * HLLC solver
+	 -------------------------------------------------------*/
+	vector4 hllcUL = U.row(i);
+	vector4 hllcUR = U.row(i+1);
+
+	//if (count == 1) std::cout << U.row(i) << std::endl;
+
+	//conservative variables
+		//density
+		dl = hllcUL(0);
+		dr = hllcUR(0);
+		//momentum
+		mvl = hllcUL(1);
+		mvr = hllcUR(1);
+		//energy
+		El = hllcUL(2);
+		Er = hllcUR(2);
+
+		//Pressure
+		Pl = var.state_function->Pressure(hllcUL);
+		Pr = var.state_function->Pressure(hllcUR);
+
+		//velocity
+		ul = hllcUL(1)/hllcUL(0);
+		ur = hllcUR(1)/hllcUR(0);
+
+		vl = hllcUL(3)/hllcUL(0);
+		vr = hllcUR(3)/hllcUR(0);
+
+		//soundspeed
+		al = var.state_function->soundspeed(hllcUL);
+		ar = var.state_function->soundspeed(hllcUR);
+
+
+		//Davies Wave Speed Estimates
+		//double Splus = fmax(abs(ul) + al, abs(ur) + ar);
+		//SL = -Splus; SR = Splus;
+		
+		double uspecial = (ul + ur)/2. + (al - ar)/(var.state_function->y - 1);
+		double aspecial = (al + ar)/2. + (ul - ur)*(var.state_function->y - 1)/4.;
+		SL = fmin(0, fmin(ul - al, uspecial - aspecial));
+		SR = fmax(0, fmax(ur + ar, uspecial + aspecial));
+
+		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
+		//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
+		//initialize FL and FR for each timestep
+		vector4 FL(mvl, mvl*ul + Pl, ul*(El + Pl), mvl*vl);
+		vector4 FR(mvr, mvr*ur + Pr, ur*(Er + Pr), mvr*vr);		
+
+		if (0 <= SL){
+			F = FL;
+		}
+
+		//non trivial, subsonic case, region between the 2 acoustic waves. Fhll.
+		else if (SL<=0 && Sstar>=0){
+			double tmpUstar = dl*((SL - ul)/(SL - Sstar));
+			vector4 UstarL(tmpUstar, tmpUstar*Sstar, tmpUstar*((El/dl) + (Sstar - ul)*(Sstar + (Pl/(dl*(SL - ul))))),
+				tmpUstar*vl);
+			tmp = U.row(i);
+			F = FL + SL*(UstarL - tmp);
+		}
+
+		else if (Sstar<=0 && SR>=0){
+			double tmpUstar = dr*((SR - ur)/(SR - Sstar));
+			vector4 UstarR(tmpUstar, tmpUstar*Sstar, tmpUstar*((Er/dr) + (Sstar - ur)*(Sstar + (Pr/(dr*(SR - ur))))),
+				tmpUstar*vr);
+			tmp = U.row(i+1);
+			F = FR + SR*(UstarR - tmp);
+		}
+
+		else if (0 >= SR){
+			F = FR;
+		}
+}
+
+void MUSCL::compute_fluxes(const Euler2D &var, const Domain2D &domain, const matrix &U, vector4 &F, int i, const matrix &ULi, const matrix &URi, double dx){
 	//Here dx is a proxy for a unit cell in any direction
 
 	//soundspeed

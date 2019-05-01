@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set terminal unknown
+#set view map
+#set dgrid3d
+set pm3d map
+
+#set palette rgb 33,13,10; set title "Density"
+set palette grey
+set size ratio -1
+
+splot "dataeuler.txt" using 1:2:7 notitle
+set yrange [GPVAL_DATA_Y_MIN:GPVAL_DATA_Y_MAX]
+set xrange [GPVAL_DATA_X_MIN:GPVAL_DATA_X_MAX]
+
+set output "Plots/2Dplot.png"
+set terminal png
+
+replot
+
+
