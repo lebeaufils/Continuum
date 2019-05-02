@@ -104,6 +104,8 @@ struct rigidTests : public virtual standardTests
 	virtual ~rigidTests() {}
 
 	void test1(); 
+	void test2();
+	void test3();
 
 	//potentially read from an object file to obtain polygon data as lists.
 };

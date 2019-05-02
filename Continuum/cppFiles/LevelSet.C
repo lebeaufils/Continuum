@@ -76,6 +76,16 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &
 	}
 
 	fast_sweep(ls, domain);
+	
+	std::ofstream outfile;
+	outfile.open("extrapolation.txt");
+	for(int i=0; i<domain.Nx; i++){
+		for(int j=0; j<domain.Ny; j++){
+			outfile << i*domain.dx << '\t' << j*domain.dy << '\t' << ls.phi(i+1, j+1) << std::endl;
+		}
+		outfile << std::endl;
+	}
+	outfile.close();
 }
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){
@@ -155,7 +165,7 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 	//3) i = I:1, J = J:1
 	for (int i=domain.Nx-1; i>=0; i--){
 		for (int j=domain.Ny-1; j>=0; j--){
-			eikonal(i, j);
+			eikonal(i+1, j+1);
 		}
 	}
 
@@ -166,12 +176,13 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 		}
 	}
 
-	for (int i=1; i<domain.Nx+1; i++){
+	/*for (int i=1; i<domain.Nx+1; i++){
 		for (int j=1; j<domain.Ny+1; j++){
 			std::cout << ls.phi(i,j) << '\t';
 		}
 		std::cout << std::endl;
-	}
+	}*/
+
 }
 
 vector2 LevelSetMethods::normal(LevelSet ls, Domain2D domain, int i, int j){

@@ -19,7 +19,7 @@ int main(void){
 	//theExact.solver(Test1d);
 
 	rigidTests Tests(101);
-	Tests.test1();
+	Tests.test3();
 
 	/*
 	Coordinates P1(0.5, 0.8);
