@@ -18,9 +18,6 @@ int main(void){
 	//EXACT theExact(Test1d);
 	//theExact.solver(Test1d);
 
-	rigidTests Tests(101);
-	Tests.test3();
-
 	/*
 	Coordinates P1(0.5, 0.8);
 	Coordinates P2(0.8, 0.25);
@@ -73,15 +70,16 @@ int main(void){
 	catch (const char c){
 		std::cout << c << std::endl;
 	}
-*/
+*/	
+	//rigidTests Tests(101);
+	//Tests.test4();
 
 	//LevelSet ls;
 	//LevelSetMethods::initialise(ls, Tests.domain, poly);
 	//LevelSetMethods::initialise_circle(ls, Tests.domain, 0.5, 0.5, 0.3);
 
 	//RigidBodies::initial_conditions(Tests);
-	RigidBodies::rigid_body_solver(Tests, 0.7);
-
-
+	//RigidBodies::rigid_body_solver(Tests, 0.7);
+	
 }
 

@@ -526,6 +526,70 @@ void rigidTests::test3(){
 
 }
 
+void rigidTests::test4(){
+
+	//Shock location
+	//double x_s = 0.3;
+
+	//------------------------------------------------------------
+	//initial conditions for shock and unshocked fluid
+	vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
+	vector4 unshocked(1.0, 0.0, 0.0, 1.0);
+
+	initialL = shocked;
+	initialR = unshocked;
+
+	domain.tstop = 0.25;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+	domain.X.resize(domain.Nx, domain.Ny);
+
+	var.fluid.state_function = StateFunctions::create(EOS_IG);
+	var.fluid.state_function->y = 1.4;
+	//------------------------------------------------------------
+	//	Domain
+	//------------------------------------------------------------
+	//assigning x values
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates point(i*domain.dx, j*domain.dy);
+			domain.X(i, j) = point;
+		}
+	}
+	interface.resize(domain.Nx, domain.Ny);
+	//------------------------------------------------------------
+	//	Fluid
+	//------------------------------------------------------------
+	//initial conditions of the fluid surrounding the levelset
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			if (domain.X(i, j).x <= 0.2){
+				interface(i, j) = false;
+			}
+			else {
+				interface(i, j) = true;
+			}
+		}
+	}
+	//------------------------------------------------------------
+	//	Rigid body (level set definition)
+	//------------------------------------------------------------
+	Grain poly(1.0);
+	try{
+		poly.create_from_file(domain);
+	}
+	catch (const char c){
+		std::cout << c << std::endl;
+	}
+
+	var.add_levelset();
+	//generating the level set as a circle
+	LevelSetMethods::initialise(var.levelsets[0], domain, poly);
+	std::cout << "mass = " << LevelSetMethods::mass(var.levelsets[0], domain, poly) << std::endl;
+	std::cout << "Xc = " << LevelSetMethods::center_of_mass(var.levelsets[0], domain, poly).transpose() << std::endl;
+	std::cout << "moment of inertia = " << LevelSetMethods::moment_of_inertia(var.levelsets[0], domain, poly) << std::endl;
+}
+
 
 //--------------------------------------------------------------------------------------------
 //	Ghost Fluid Tests

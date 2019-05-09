@@ -75,8 +75,22 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &
 		ls.phi(poly.surfacepoints[i].i+1, poly.surfacepoints[i].j+1) = 0;
 	}
 
+	/*for(int i=0; i<domain.Nx; i++){
+		for(int j=0; j<domain.Ny; j++){
+			std::cout << ls.phi(i+1, j+1) << '\t';
+		}
+		std::cout << std::endl;
+	}*/
+
 	fast_sweep(ls, domain);
-	
+
+	/*for(int i=0; i<domain.Nx; i++){
+		for(int j=0; j<domain.Ny; j++){
+			std::cout << ls.phi(i+1, j+1) << '\t';
+		}
+		std::cout << std::endl;
+	}*/
+
 	std::ofstream outfile;
 	outfile.open("extrapolation.txt");
 	for(int i=0; i<domain.Nx; i++){
@@ -88,7 +102,7 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &
 	outfile.close();
 }
 
-void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0, double y0, double r){
+void LevelSetMethods::initialise_circle(LevelSet &ls, const Domain2D &domain, double x0, double y0, double r){
 	//This provides an exact levelset function
 	ls.phi.resize(domain.Nx+4, domain.Ny+4);
 
@@ -103,7 +117,7 @@ void LevelSetMethods::initialise_circle(LevelSet &ls, Domain2D domain, double x0
 
 }
 
-void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
+void LevelSetMethods::fast_sweep(LevelSet &ls, const Domain2D &domain){
 	//Solver for the eikonal equation
 	auto eikonal = [&ls, domain](int i, int j){
 		//Consider the region phi > 0;
@@ -115,11 +129,14 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 			//updating value based on the eikonal equation
 			double phi_tmp;
 			if (pow(phi_x - phi_y, 2) >= pow(domain.dx, 2) + pow(domain.dy, 2)){
+				//if the quadratic solution is ill-defined
 				phi_tmp = fmin(phi_x, phi_y) + sqrt(pow(domain.dx, 2) + pow(domain.dy, 2));
+				//std::cout << "undefined " << i*domain.dx << '\t' << j*domain.dy << std::endl;
 			}
 			else {
 				phi_tmp = (pow(domain.dy, 2)*phi_x + pow(domain.dx, 2)*phi_y + 
 				domain.dx*domain.dy*sqrt(pow(domain.dx, 2) + pow(domain.dy, 2) - pow(phi_x - phi_y, 2)))/(pow(domain.dx, 2) + pow(domain.dy, 2));
+				//std::cout << "          " << i*domain.dx << '\t' << j*domain.dy << std::endl;
 			}
 			if (phi_tmp < ls.phi(i,j)) ls.phi(i,j) = phi_tmp;
 		}
@@ -132,6 +149,7 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 			double phi_tmp;
 			if (pow(phi_x - phi_y, 2) >= pow(domain.dx, 2) + pow(domain.dy, 2)){
 				phi_tmp = fmax(phi_x, phi_y) - sqrt(pow(domain.dx, 2) + pow(domain.dy, 2));
+				//std::cout << i*domain.dx << '\t' << j*domain.dy << std::endl;
 			}
 			else {
 				//taking the negative root
@@ -185,7 +203,7 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, Domain2D domain){
 
 }
 
-vector2 LevelSetMethods::normal(LevelSet ls, Domain2D domain, int i, int j){
+vector2 LevelSetMethods::normal(const LevelSet &ls, const Domain2D &domain, int i, int j){
 	//Compute the normal vector using the central difference approximation
 	double dphi_x = (ls.phi(i+1, j) - ls.phi(i-1, j))/(2*domain.dx);
 	double dphi_y = (ls.phi(i, j+1) - ls.phi(i, j-1))/(2*domain.dy);
@@ -201,210 +219,148 @@ vector2 LevelSetMethods::normal(LevelSet ls, Domain2D domain, int i, int j){
 	return n_i;
 }
 
-/*
-void LevelSetFunction::signed_distance_function_1D(){
-	//initial conditions
-	for (int i=0; i<Test.N; i++){
-		X(i+1) = i*dx;
-		phi(i+1) = X(i) - x0;
-	}
-}*/
+double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& domain, const Coordinates& p){
+	//finding the 4 grid points surrounding point p
+	int i = floor(p.x/domain.dx);
+	int j = floor(p.y/domain.dy);
 
-/*
-//X is now not a member of the levelsetfucntion
-void LevelSetFunction::signed_distance_function_1D(matrix X, int i, double x0){
-	//phi(i+1) = X(i+1) - x0;
-	double dist = abs(X(i+1) - x0);
-	if (X(i+1) < x0) {
-		phi(i+1) = -dist;
+	//translation
+	double x = p.x - domain.X(i, j).x;
+	double y = p.y - domain.X(i, j).y;
+
+	//bilinear interpolation
+	double phi_xy = 0;
+	for (int a=0; a<=1; a++){
+		for (int b=0; b<=1; b++){
+			//from the bilinear interpolation formnula,
+			//if a is 0, contribution is (1-x), else if a is 1, contribution is x
+
+			//additionally, to translate the interpolation square into the 
+			phi_xy += ls.phi(a+i, b+j) * ((1-a)*(1-x) + a*x) * ((1-b)*(1-y) + b*y);
+			//where phi(i, j) = c00, phi(i+1, j) = c10, phi(i, j+1) = c01 and phi(i+1, j+1) = c11
+		}
 	}
-	else {
-		phi(i+1) = dist;
+	return phi_xy;
+}
+
+vector2 LevelSetMethods::interpolation_gradient(const LevelSet& ls, const Domain2D& domain, const Coordinates& p){
+	//differentiate the expression from interpolation value
+
+	//As before,
+	int i = floor(p.x/domain.dx);
+	int j = floor(p.y/domain.dy);
+
+	double x = p.x - domain.X(i, j).x;
+	double y = p.y - domain.X(i, j).y;
+
+	//using bilinear interpolation, taking the x and y derivatives
+	double grad_x = 0;
+	double grad_y = 0;
+	for (int a=0; a<=1; a++){
+		for (int b=0; b<=1; b++){
+			grad_x += ls.phi(a+i, b+j) * (2*a-1) * ((1-b)*(1-y) + b*y);
+			grad_y += ls.phi(a+i, b+j) * ((1-a)*(1-x) + a*x) * (2*b-1);
+		}
+	}
+	return vector2(grad_x, grad_y);
+}
+
+
+//--------------------------------------------------------------------------------
+// Calculating inertial properties using the levelsett function
+//--------------------------------------------------------------------------------
+double LevelSetMethods::smoothed_heaviside(const LevelSet &ls, const Domain2D &domain, int i, int j){
+	const double e = 1.5*(domain.dx*domain.dy); //smoothness parameter
+	const double pi = 3.14159265358979323846; //pi
+
+	if (ls.phi(i, j) < -e){ //inside rigid body
+		return 1;
+	}
+	else if (ls.phi(i, j) > e){ //outside rigid body
+		return 0;
+	}
+	else { //within smoohed region
+		return 0.5*(1 + ls.phi(i, j)/e + sin(pi*ls.phi(i, j)/e)/pi);
 	}
 }
 
-void LevelSetFunction::signed_distance_function_1D_2(matrix X, int i, double x0, double x1){
-	// positive inside
-	if (x0 > x1) {
-		throw "Interface location incorrectly defined";
-	}
+double LevelSetMethods::mass(const LevelSet& ls, const Domain2D& domain, const Grain& gr){
 
-	double dist = fmin(abs(X(i+1) - x0), abs(X(i+1) - x1));
-	if (X(i+1) < x0 || X(i+1) > x1) {
-		phi(i+1) = -dist;
-	}
+	double m = 0;
 
-	else {
-		phi(i+1) = dist;
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			m += smoothed_heaviside(ls,domain, i+1, j+1);
+			//sums the number of cells within the rigid body, including the
+			//transition zone
+		}
 	}
+	m = gr.density*domain.dx*domain.dy*m; //rho * g^2 where g is the grid spacing
+
+	return m;
 }
 
-void LevelSetFunction::signed_distance_function_1D_3(int i){
-	// positive inside
-	//comment this out
-	if (x0 > x1 || x1 > x2) {
-		throw "Interface location incorrectly defined";
-	}
+vector2 LevelSetMethods::center_of_mass(const LevelSet& ls, const Domain2D& domain, const Grain& gr){
+	//For a mass with density rho(r) within the solid, the integral of the weighted (density) position
+	//coordinates relative to its center of mass is 0
+	double c_x = 0;
+	double c_y = 0;
 
-	double dist = fmin(fmin(abs(X(i+1) - x0), abs(X(i+1) - x1)), abs(X(i+1) - x2));
-	if (X(i+1) <= x0) {
-		phi(i+1) = -dist;
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			c_x += smoothed_heaviside(ls,domain, i+1, j+1)*(domain.X(i, j).x);
+			c_y += smoothed_heaviside(ls,domain, i+1, j+1)*(domain.X(i, j).y);
+		}
 	}
-
-	else if (X(i+1) > x0 && X(i+1) <= x1){
-		phi(i+1) = dist;
-	}
-
-	else if (X(i+1) > x1 && X(i+1) <= x2){
-		phi(i+1) = -dist;
-	}
-
-	else {
-		phi(i+1) = dist;
-	}
-	//end
-	// the above is for 3 material interfaces
-	if (x1 > x2) {
-		throw "Interface location incorrectly defined";
-	}
-
-	double dist = fmin(abs(X(i+1) - x1), abs(X(i+1) - x2));
-	if (X(i+1) < x1 || X(i+1) > x2) {
-		phi(i+1) = -dist;
-	}
-
-	else {
-		phi(i+1) = dist;
-	}
+	double m = mass(ls, domain, gr);
+	c_x = (gr.density*domain.dx*domain.dy/m)*c_x;
+	c_y = (gr.density*domain.dx*domain.dy/m)*c_y;
+	vector2 c(c_x, c_y);
+	return c;
 }
 
-double LevelSetFunction::HJ_FirstOrder(double velocity, double dt, int i){ //velocity and dt to follow numerical method
+double LevelSetMethods::moment_of_inertia(const LevelSet& ls, const Domain2D& domain, const Grain& gr){
+	//for rotation confined to a plane, the mass moment of inertia reduces to a scalar value.
+	vector2 c = center_of_mass(ls, domain, gr);
 
-	double phi_1;
-
-	if (velocity <= 0){
-		phi_1 = phi(i) - velocity*(dt/dx)*(phi(i+1) - phi(i));
+	double inertia = 0;
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			inertia += smoothed_heaviside(ls,domain, i+1, j+1)*(i*domain.dx - c(0))*(j*domain.dy - c(1));
+		}
 	}
-	else {
-		phi_1 = phi(i) - velocity*(dt/dx)*(phi(i) - phi(i-1));
-	}
-
-	return phi_1;
+	inertia = -gr.density*domain.dx*domain.dy*inertia;
+	return inertia;
 }
 
-void LevelSetFunction::reinitialisation(){
-//Sweeping in the positive x-direction
-	for (int i=1; i<N+1; i++){
-		//Consider the region phi > 0;
-		if(phi(i) > 0){
-			//Cell phi(i) is avaliable tp update if it is not adjacent to the interface
-			if (phi(i+1) > 0 && phi(i-1) > 0){
-				//Neither of its neighbours are <= 0
-				//Taking the value of phi_x closest to the boudnary
-				double phi_x = fmin(phi(i+1), phi(i-1));
-				//if (i==N) phi_x = phi(i-1);
-				//updating value based on the eikonal equation
-				double phi_tmp = phi_x + dx; //taking the positive root
-				//if (phi_tmp < phi(i)) phi(i) = phi_tmp;
-				phi(i) = phi_tmp;
-			}
-		}
+//--------------------------------------------------------
+// Motion
+//--------------------------------------------------------
+// Discrete equations of motion (assumes forces are provided (eg surface forces from fluid))
 
-		else if (phi(i) < 0){
-			//Consider the region phi < 0;
-			if (phi(i+1) < 0 && phi(i-1) < 0){
-				//Since phi is negative, the value closest to the boundary is the larger number
-				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
-				//if (i==N) phi_x = phi(i-1);
-				double phi_tmp = phi_x - dx;
-				//if (phi_tmp > phi(i)) phi(i) = phi_tmp;
-				phi(i) = phi_tmp;
-			}
+LevelSet LevelSetMethods::translation(const LevelSet& ls, const Domain2D& domain, const vector2& velocity){
+	//x(n+1) = x(n) + v(t)*t
+	//phi(x, t) = phi(x - vt, 0)
+	//Temporary storage for levelset values at time t
+	//The levelset can be updated using its initial values and current position
+	LevelSet ls_t; //ls at time t
+	ls_t.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates displacement(domain.X(i,j).x - velocity(0), domain.X(i, j).y - velocity(1));
+			ls_t.phi(i+1, j+1) = interpolation_value(ls, domain, displacement);
 		}
 	}
-	boundary_conditions();
-//Sweeping in the negative x-direction
-	for (int i=N; i>0; i--){
-		//Consider the region phi > 0;
-		if(phi(i) > 0){
-			//Cell phi(i) is avaliable tp update if it is not adjacent to the interface
-			if (phi(i+1) > 0 && phi(i-1) > 0){
-				//Neither of its neighbours are <= 0
-				//Taking the value of phi_x closest to the boudnary
-				double phi_x = fmin(phi(i+1), phi(i-1));
-				//if (i==N) phi_x = phi(i-1);
-				//updating value based on the eikonal equation
-				double phi_tmp = phi_x + dx; //taking the positive root
-				//if (phi_tmp < phi(i)) phi(i) = phi_tmp;
-				phi(i) = phi_tmp;
-			}
-		}
 
-		else if (phi(i) < 0){
-			//Consider the region phi < 0;
-			if (phi(i+1) < 0 && phi(i-1) < 0){
-				//Since phi is negative, the value closest to the boundary is the larger number
-				double phi_x = fmax(phi(i+1), phi(i-1)); //taking the negative root
-				//if (i==N) phi_x = phi(i-1);
-				double phi_tmp = phi_x - dx;
-				//if (phi_tmp > phi(i)) phi(i) = phi_tmp;
-				phi(i) = phi_tmp;
-			}
-		}
-	}
-	boundary_conditions();
+	boundary_conditions(ls_t, domain);
+	return ls_t;
 }
 
-void LevelSetFunction::reconstruction(){
-	double newx0; 
-	double newx1;
-
-	int count = 0;
-	for (int i=1; i<N+1; i++){
-		int testsgn = (get_sgn(phi(i)) + get_sgn(phi(i+1)));
-		if (count == 0){
-			if (testsgn == 0) {
-				double diff = dx*phi(i)/(phi(i+1) - phi(i));
-				newx0 = phi(i) + diff;
-				count = 1;
-				i += 1;
-			}
-			else if (phi(i) == 0) {
-				newx0 = phi(i);
-				count = 1;
-				i += 1;
-			}
-		}
-
-		else if (count == 1) {
-			if (testsgn == 0) {
-				double diff = dx*phi(i)/(phi(i+1) - phi(i));
-				newx1 = phi(i) + diff;
-				count = 2;
-			}
-
-			else if (phi(i) == 0) {
-				newx1 = phi(i);
-				count = 2;
-			}
-		}
-	}
-
-
-	//std::cout << "Interface: " << newx0 << '\t' << newx1 << std::endl;
-	// reconstructing the levelset function
-	for (int i=0; i<N; i++){
-		double dist = fmin(abs(X(i+1) - newx0), abs(X(i+1) - newx1));
-		if (X(i+1) < newx0 || X(i+1) > newx1) {
-			phi(i+1) = -dist;
-		}
-
-		else {
-			phi(i+1) = dist;
-		}
-	}
-}*/
-
+void LevelSetMethods::rotation(LevelSet& ls, const Domain2D& domain){
+	//the linear velocity is spatially dependent
+	//vb = 2πω (r_rot × x)
+}
 
 
 

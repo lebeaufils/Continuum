@@ -313,6 +313,29 @@ void Polygon::create(Domain2D domain, double size, int K){
 	output(domain);
 }
 
+void Polygon::create_from_file(Domain2D domain){
+	std::ifstream infile;
+
+	infile.open("vertices_polygon.txt");
+
+	if (!infile) {
+	    throw "Unable to open file";
+	}
+
+	double x, y;
+	while (infile >> x >> y){
+		vertices.push_back(Vertex(x, y));
+		vertices.back().display();
+		n++;
+	}
+	infile.close();
+
+	generate_edges(vertices);
+	std::cout << n << '\t' << edges.size() << std::endl;
+	generate_surfacepoints(domain);
+	output(domain);
+}
+
 int Polygon::point_in_polygon(Coordinates p){
 	//PNPOLY Algorithm from Copyright (c) 1970-2003, Wm. Randolph Franklin
 	//https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html#The%20Method
@@ -358,9 +381,9 @@ int Polygon::point_in_polygon(Coordinates p){
 	return c;
 }
 
-//
+//--------------------------------------------------------------
 //Rastor representstion of lines
-//
+//--------------------------------------------------------------
 std::vector<Pos_Index> Bresenham::steep_pos(Domain2D domain, Coordinates P1, Coordinates P2){
 	//stepping through in y (positive direction)
 	double e = 0; //error
@@ -621,8 +644,83 @@ void RB_2D::zeroes(int N, int M){
 	}
 }
 
+//-----rotors-----
+Bivector2 Bivector2::exterior_product(const vector2& a, const vector2& b){
+	Bivector2 bv(a(0)*b(1) - a(1)*b(0));
+	return bv;
+}
 
+//rotion involves multiplying on both sides by the rotor: ba v ab
+Rotor2::Rotor2(const vector2& vstart, const vector2& vend){
+	a = 1 + vstart.dot(vend);
 
+	Bivector2 b = Bivector2::exterior_product(vend, vstart); //end to start
+	// note that this b is negative, representing the rotor ba on the left
+	b12 = b.b12;
+	normalise();
+}
+
+Rotor2::Rotor2(double theta){
+	//angle (theta) is given in radians, plane is normalised 
+	double sina = sin(theta/2.); //the half angle is used for rotation
+	a = cos(theta/2.);
+	//to set the rotor on the left side, the bivectors are reversed in sign
+	b12 = -sina;
+}
+
+Rotor2::Rotor2(double theta, const Bivector2& plane){
+	//angle (theta) is given in radians, plane is normalised 
+	double sina = sin(theta/2.); //the half angle is used for rotation
+	a = cos(theta/2.);
+	//to set the rotor on the left side, the bivectors are reversed in sign
+	b12 = -sina * plane.b12;
+}
+
+vector2 Rotor2::rotate(const vector2& v) const{
+//to reflect a vector, flip the perpendivular part and keep the parallel part unchanged
+	//Ra(v) = -ava, Rb(Ra(v)) = -b(-ava)b = ba v ab
+	//first, compute ba v
+	const Rotor2& rotor = *this;
+	//the geometric product is the dot product + exterior product.
+	//since the rotor used is normalised, the dot product reduces to |v|cos(theta)
+	vector2 r;
+	r(0) = rotor.a*rotor.a*v(0) + 2*rotor.a*rotor.b12*v(1) - v(0)*rotor.b12*rotor.b12;
+	r(1) = rotor.a*rotor.a*v(1) - 2*rotor.a*rotor.b12*v(0) - v(1)*rotor.b12*rotor.b12;
+
+	return r;
+}
+
+double Rotor2::sqlength() const{ //cheaper computation if sqrt is not needed
+	return a*a + b12*b12;
+}
+
+double Rotor2::length() const{
+	return sqrt(sqlength());
+}
+
+void Rotor2::normalise(){
+	double l = length();
+	a /= l;
+	b12 /= l;
+}
+
+Rotor2 Rotor2::reverse() const{ //reverses the direction of the bivector -- complex conjugate
+	return Rotor2(a, -b12);
+}
+
+Rotor2 Rotor2::nrotor() const{
+	Rotor2 r = *this;
+	r.normalise();
+	return r;
+}
+
+vector2 Rotor2::rotate_about(const vector2& v, const vector2& p, double w, double t){
+	//w is the angular frequency, given by 2*pi*f, where f is the frequency of rotation
+	Rotor2 rotor(w*t);
+	rotor.normalise();
+	vector2 ra = p + rotor.rotate(v-p);
+	return ra;
+}
 
 
 

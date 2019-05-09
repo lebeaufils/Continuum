@@ -174,7 +174,7 @@ struct RB_2D
 struct Vertex : public Coordinates
 {
 	Vertex() : Coordinates(0, 0) {}
-	Vertex(Coordinates xy) : Coordinates(xy) {} //constructor to copy base class
+	Vertex(const Coordinates& xy) : Coordinates(xy) {} //constructor to copy base class
 	Vertex(double x, double y) : Coordinates(x, y) {}
 	~Vertex() {}
 
@@ -221,6 +221,7 @@ struct Polygon
 
 	void create_square(Domain2D, double, Coordinates);
 	void create(Domain2D, double,int);
+	void create_from_file(Domain2D);
 
 	int point_in_polygon(Coordinates);
 
@@ -228,6 +229,16 @@ struct Polygon
 	static std::vector<Coordinates> random_points(double, double, int);
 
 };
+
+struct Grain : public Polygon
+{
+	double density = 1;
+	//If the mass of the grain is nott important..
+
+	Grain() : Polygon() {}
+	Grain(double d) : Polygon(), density(d) {}
+};
+
 
 struct Bresenham{
 	static std::vector<Pos_Index> steep_pos(Domain2D, Coordinates, Coordinates);
@@ -238,6 +249,58 @@ struct Bresenham{
 	static std::vector<Pos_Index> line_algorithm(Domain2D, Coordinates, Coordinates);
 	static std::vector<Pos_Index> line_algorithm(Domain2D, Edge*);
 };
+
+//------Rotors------
+//modified from http://marctenbosch.com/quaternions/
+//------------------
+struct Bivector2
+{
+	//in 2D, the bivector of two vectors is confined to a single plane in xy
+	double b12 = 0;
+
+	Bivector2(double b) : b12(b) {}
+
+	static Bivector2 exterior_product(const vector2&, const vector2&);
+};
+
+struct Rotor2
+{	
+	//exponential form
+	// R = ab = cos(theta) + a^b
+	//magnitude of rotation
+	double a = 1; 
+	//bivector
+	double b12 = 1; //unit bi-vector. in 2D, only one plane e12 exists and there is
+	//only one choice for the unit plane
+
+	//constructors
+	Rotor2() {}
+	Rotor2(double a, double b) : a(a), b12(b) {}
+	//Rotor2(double a, const Bivector2 &bv) : a(a), b12(bv.b12) {}
+	//advanced initialisation
+	//Given initial and final vectors
+	Rotor2(const vector2&, const vector2&);
+	//Given angle and normalised plane(axis)
+	Rotor2(double); //plane is bounded to xy in 2D
+	Rotor2(double, const Bivector2&);
+
+	//rotate a vector
+	vector2 rotate(const vector2& v) const;
+
+	//utility functions
+	double sqlength() const; //cheaper computation if sqrt is not needed
+	double length() const;
+	void normalise();
+	Rotor2 reverse() const; //reverses the direction of the bivector -- complex conjugatte
+	Rotor2 nrotor() const; //normalised rotor
+	//static Rotor2 geometric_product(const Rotor2&, const Rotor2&); //geometric product of two rotors
+	//Rotor2 rotate_rotor(const Rotor2&);
+
+	//wrapper to rotate about point p with a given angular velocity and lapsed time
+	static vector2 rotate_about(const vector2& v, const vector2& p, double angularv, double t);
+};
+
+
 
 
 #include "Variables.tcc"

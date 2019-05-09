@@ -45,10 +45,28 @@ public:
 	//-----------------------------------------------------
 	static void boundary_conditions(LevelSet&, const Domain2D&);
 	static void initialise(LevelSet&, const Domain2D&, Polygon&);
-	static void initialise_circle(LevelSet&, Domain2D, double, double, double);
+	static void initialise_circle(LevelSet&, const Domain2D&, double, double, double);
 
-	static void fast_sweep(LevelSet&, Domain2D);
-	static vector2 normal(LevelSet, Domain2D, int, int);
+	static void fast_sweep(LevelSet&, const Domain2D&);
+
+	static vector2 normal(const LevelSet&, const Domain2D&, int, int);
+	static double interpolation_value(const LevelSet&, const Domain2D&, const Coordinates&);
+	static vector2 interpolation_gradient(const LevelSet&, const Domain2D&, const Coordinates&);
+
+	//-----------------------------------------------------
+	//Inertial properties
+	//-----------------------------------------------------
+	static double smoothed_heaviside(const LevelSet&, const Domain2D&, int, int);
+	static double mass(const LevelSet&, const Domain2D&, const Grain&);
+	static vector2 center_of_mass(const LevelSet&, const Domain2D&, const Grain&);
+	static double moment_of_inertia(const LevelSet&, const Domain2D&, const Grain&);
+
+	//-----------------------------------------------------
+	//Motion
+	//-----------------------------------------------------
+	static LevelSet translation(const LevelSet&, const Domain2D&, const vector2&);
+	static void rotation(LevelSet&, const Domain2D&);
+
 };
 
 
