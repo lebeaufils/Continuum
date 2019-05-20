@@ -690,6 +690,32 @@ vector2 Rotor2::rotate(const vector2& v) const{
 	return r;
 }
 
+Rotor2 Rotor2::operator*(const Rotor2& q) const{
+	const Rotor2& p = *this;
+	Rotor2 r;
+
+	//geometric product of two rotors
+	//(a + ib)*(c + id) 
+	//note that ib*id = -bd, a scalar
+	r.a = p.a*q.a - p.b12*q.b12;
+	r.b12 = (q.a * p.b12) + (p.a * q.b12);
+	//(a + ib + jc + kd)*(e + if + jg + kh)
+	return r;
+}
+
+Rotor2 Rotor2::operator/(const Rotor2& q) const{
+	const Rotor2& p = *this;
+	const Rotor2& q_reverse = q.reverse();
+	Rotor2 r;
+
+	//the division of (complex numbers) A by B involves multiplying by the conjugate
+	//AB-1 = A(B†/BB†)
+	double divisor = q.sqlength();
+	r.a = (p.a*q_reverse.a - p.b12*q_reverse.b12)/divisor;
+	r.b12 = (q_reverse.a * p.b12) + (p.a * q_reverse.b12)/divisor;
+	return r;
+}
+
 double Rotor2::sqlength() const{ //cheaper computation if sqrt is not needed
 	return a*a + b12*b12;
 }
@@ -714,13 +740,34 @@ Rotor2 Rotor2::nrotor() const{
 	return r;
 }
 
-vector2 Rotor2::rotate_about(const vector2& v, const vector2& p, double w, double t){
+Rotor2 Rotor2::inverse() const{ //reverses the direction of the bivector -- complex conjugate
+	const Rotor2& rotor = *this;
+	double divisor = rotor.sqlength();
+	Rotor2 inverse = rotor.reverse();
+	inverse.a /= divisor;
+	inverse.b12 /= divisor;
+
+	return inverse;
+}
+
+vector2 Rotor2::rotate_about(const vector2& v, const vector2& c, double w, double t){
 	//w is the angular frequency, given by 2*pi*f, where f is the frequency of rotation
+	//c is the center of mass and v is the point to be rotated.
 	Rotor2 rotor(w*t);
 	rotor.normalise();
-	vector2 ra = p + rotor.rotate(v-p);
+	vector2 ra = c + rotor.rotate(v-c);
 	return ra;
 }
+
+vector2 Rotor2::rotate_reverse(const vector2& v, const vector2& c, double w, double t){
+	//rotating in the reverse direction
+	Rotor2 rotor(w*t);
+	rotor.normalise();
+	Rotor2 inverse = rotor.inverse();
+	vector2 ra = c + inverse.rotate(v-c);
+	return ra;
+}
+
 
 
 

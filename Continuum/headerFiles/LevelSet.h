@@ -54,18 +54,30 @@ public:
 	static vector2 interpolation_gradient(const LevelSet&, const Domain2D&, const Coordinates&);
 
 	//-----------------------------------------------------
-	//Inertial properties
+	//Utility
 	//-----------------------------------------------------
 	static double smoothed_heaviside(const LevelSet&, const Domain2D&, int, int);
-	static double mass(const LevelSet&, const Domain2D&, const Grain&);
-	static vector2 center_of_mass(const LevelSet&, const Domain2D&, const Grain&);
-	static double moment_of_inertia(const LevelSet&, const Domain2D&, const Grain&);
+	static double smoothed_delta(const LevelSet&, const Domain2D&, int, int);
+
+	//-----------------------------------------------------
+	//Inertial properties
+	//-----------------------------------------------------
+	static double mass(const LevelSet&, const Domain2D&, const Particle&);
+	static vector2 center_of_mass(const LevelSet&, const Domain2D&, const Particle&);
+	static double moment_of_inertia(const LevelSet&, const Domain2D&, const Particle&);
+
+	//-----------------------------------------------------
+	//Forces
+	//-----------------------------------------------------
+	static vector2 force(const Euler2D&, const LevelSet&, const Domain2D&);
+	static double torque (const Euler2D&, const LevelSet&, const Domain2D&, const vector2&);
 
 	//-----------------------------------------------------
 	//Motion
 	//-----------------------------------------------------
-	static LevelSet translation(const LevelSet&, const Domain2D&, const vector2&);
-	static void rotation(LevelSet&, const Domain2D&);
+	static Coordinates translation(const Coordinates&, const vector2&, double);
+	static Coordinates rotation(const Coordinates&, const Particle&, double, double);
+	static LevelSet motion(const LevelSet&, const Domain2D&, const Particle&, const vector2&, double, double);
 
 };
 

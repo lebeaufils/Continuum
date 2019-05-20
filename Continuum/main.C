@@ -6,73 +6,9 @@
 
 int main(void){
 
-	//eulerTests2D Tests(101);
-	//Tests.test3();
-	//MUSCL::muscl_solver(Tests, 0.9);
 
-	//eulerTests Test1d(101);
-	//Test1d.test1_stationary();
-	//Tests.switch_resolution();
-	//Tests.switch_test();
-
-	//EXACT theExact(Test1d);
-	//theExact.solver(Test1d);
-
-	/*
-	Coordinates P1(0.5, 0.8);
-	Coordinates P2(0.8, 0.25);
-
-	std::vector<Pos_Index> indices;
-
-	indices = Bresenham::line_algorithm(Tests.domain, P1, P2);
-
-	std::cout << std::endl;
-	std::cout << std::endl;
-
-	//for (int i=0; i<static_cast<int>(indices.size()); i++){
-		//Tests.domain.X(indices[i].i, indices[i].j).display();
-		//std::cout << indices[i].i << ", " << indices[i].j << '\t';
-	//}
-	for (int i=0; i<static_cast<int>(indices.size()); i++){
-		Tests.domain.X(indices[i].i, indices[i].j).display();
-	}
-	*/
-
-	/*Polygon square(4);
-	Coordinates center(0.5, 0.5);
-	try{
-		square.create_square(Tests.domain, 0.3, center);
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-	for (int i=0; i<static_cast<int>(square.surfacepoints.size()); i++){
-		Tests.domain.X(square.surfacepoints[i].i, square.surfacepoints[i].j).display();
-	}
-
-	std::cout << square.surfacepoints.size() << std::endl;
-	*/
-/*
-	Polygon poly;
-	try{
-		poly.create(Tests.domain, 0.3, 10);
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-*/
-
-/*	Polygon poly;
-	Coordinates center(0.5,0.5);
-	try{
-		poly.create_square(Tests.domain, 0.3, center);
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-*/	
-	//rigidTests Tests(101);
-	//Tests.test4();
+	rigidTests Tests(101);
+	Tests.test2();
 
 	//LevelSet ls;
 	//LevelSetMethods::initialise(ls, Tests.domain, poly);
@@ -80,6 +16,28 @@ int main(void){
 
 	//RigidBodies::initial_conditions(Tests);
 	//RigidBodies::rigid_body_solver(Tests, 0.7);
-	
+
+	Polygon poly;
+	Coordinates center(0.5,0.5);
+	try{
+		poly.create_square(Tests.domain, 0.3, center);
+	}
+	catch (const char c){
+		std::cout << c << std::endl;
+	}
+	//Particle grain;
+
+	/*vector2 c =  LevelSetMethods::center_of_mass(Tests.var.levelsets[0], Tests.domain, poly);
+	std::cout << "Center of mass = " << c.transpose() << std::endl;
+	for (int i=0; i<static_cast<int>(poly.vertices.size()); i++){
+		vector2 v(poly.vertices[i].x, poly.vertices[i].y);
+		vector2 r = Rotor2::rotate_about(v, c, 1, 4*atan(1.)/3);
+		poly.vertices[i].x = r(0);
+		poly.vertices[i].y = r(1);
+	}
+
+	poly.output(Tests.domain);
+	std::cout << poly.vertices[0].x << '\t' << poly.vertices[0].y << std::endl;
+	*/
 }
 

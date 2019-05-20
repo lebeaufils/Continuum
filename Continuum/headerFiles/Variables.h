@@ -230,13 +230,22 @@ struct Polygon
 
 };
 
-struct Grain : public Polygon
+struct Particle //NEEDS WORK
 {
+	//RB_2D should store particles rather than levelsets.
+	//each particle can have its reference levelset and nodes
 	double density = 1;
-	//If the mass of the grain is nott important..
 
-	Grain() : Polygon() {}
-	Grain(double d) : Polygon(), density(d) {}
+	LevelSet ls;
+	vector2 centroid;
+	//std::vector<Coordinates> nodes;
+	//If the mass of the Particle is nott important..
+
+	Particle(Polygon poly);// : centroid(0, 0) {}
+	//Particle(double d); //no real need to specify density for rigid bodies
+
+	double diameter(); //estimated particle diameter, equidiv?
+	//void check_contact(); //?
 };
 
 
@@ -288,16 +297,20 @@ struct Rotor2
 	vector2 rotate(const vector2& v) const;
 
 	//utility functions
+	Rotor2 operator*(const Rotor2&) const; //multiply 2 rotors
+	Rotor2 operator/(const Rotor2&) const; //divide 2 rotors
 	double sqlength() const; //cheaper computation if sqrt is not needed
 	double length() const;
 	void normalise();
 	Rotor2 reverse() const; //reverses the direction of the bivector -- complex conjugatte
 	Rotor2 nrotor() const; //normalised rotor
+	Rotor2 inverse() const; //reverses the rotation
 	//static Rotor2 geometric_product(const Rotor2&, const Rotor2&); //geometric product of two rotors
 	//Rotor2 rotate_rotor(const Rotor2&);
 
 	//wrapper to rotate about point p with a given angular velocity and lapsed time
-	static vector2 rotate_about(const vector2& v, const vector2& p, double angularv, double t);
+	static vector2 rotate_about(const vector2&, const vector2&, double angularv, double t);
+	static vector2 rotate_reverse(const vector2&, const vector2&, double angularv, double t);
 };
 
 

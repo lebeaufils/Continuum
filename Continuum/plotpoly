@@ -36,8 +36,7 @@ set yrange [0: 1]
 
 set xtics 1./20.
 set ytics 1./20.
-
-#plot "polygon.txt" w p ls 9,\
-#	"edgepoints.txt" w p ls 8
+plot "polygon.txt" w p ls 9,\
+	"edgepoints.txt" w p ls 8
 	#"points.txt" w p ls 10
-plot "points.txt" w p ls 9
+#plot "points.txt" w p ls 9
