@@ -57,7 +57,7 @@ void LevelSetMethods::boundary_conditions(LevelSet &ls, const Domain2D &domain){
 	} 
 }
 
-void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, Polygon &poly){
+void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, const Polygon &poly){
 	ls.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
 
 	//Finding if the points are inside or outside the polygon
@@ -267,7 +267,7 @@ vector2 LevelSetMethods::interpolation_gradient(const LevelSet& ls, const Domain
 
 
 //--------------------------------------------------------------------------------
-// Calculating inertial properties using the levelsett function
+// Utility functions
 //--------------------------------------------------------------------------------
 double LevelSetMethods::smoothed_heaviside(const LevelSet &ls, const Domain2D &domain, int i, int j){
 	const double e = 1.5*(domain.dx*domain.dy); //smoothness parameter
@@ -285,66 +285,35 @@ double LevelSetMethods::smoothed_heaviside(const LevelSet &ls, const Domain2D &d
 }
 
 double LevelSetMethods::smoothed_delta(const LevelSet &ls, const Domain2D &domain, int i, int j){
-	const double e = 1.5*(domain.dx*domain.dy); //smoothness parameter
+	const double e = 1.5*domain.dx;//(domain.dx*domain.dy); //smoothness parameter
 	const double pi = 3.14159265358979323846; //pi
 
-	if (abs(ls.phi(i, j)) > e){ //inside rigid body
+	if (ls.phi(i, j) > e || ls.phi(i, j) < -e){ //inside rigid body
 		return 0;
 	}
 	else { //outside rigid body
-		return 0.5*(1/e + cos(pi*ls.phi(i, j)/e)/e);
+		return (1/(2*e) + 1/(2*e)*cos(pi*ls.phi(i, j)/e));
 	}
 }
 
-double LevelSetMethods::mass(const LevelSet& ls, const Domain2D& domain, const Particle& gr){
-
-	double m = 0;
-
+LevelSet LevelSetMethods::merge(const std::vector<LevelSet>& levelsets, const Domain2D& domain){
+	LevelSet ls(domain.Nx+4, domain.Ny+4);
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			m += smoothed_heaviside(ls,domain, i+1, j+1);
-			//sums the number of cells within the rigid body, including the
-			//transition zone
+			double min_phi = 0;
+			for (int a=0; a<static_cast<int>(levelsets.size()); a++){
+				if (levelsets[a].phi(i+1, j+1) < min_phi) min_phi = levelsets[a].phi(i+1, j+1);
+			}
+			ls.phi(i+1, j+1) = min_phi;
 		}
 	}
-	m = gr.density*domain.dx*domain.dy*m; //rho * g^2 where g is the grid spacing
+	boundary_conditions(ls, domain);
 
-	return m;
+	return ls;
 }
 
-vector2 LevelSetMethods::center_of_mass(const LevelSet& ls, const Domain2D& domain, const Particle& gr){
-	//For a mass with density rho(r) within the solid, the integral of the weighted (density) position
-	//coordinates relative to its center of mass is 0
-	double c_x = 0;
-	double c_y = 0;
-
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			c_x += smoothed_heaviside(ls,domain, i+1, j+1)*(domain.X(i, j).x);
-			c_y += smoothed_heaviside(ls,domain, i+1, j+1)*(domain.X(i, j).y);
-		}
-	}
-	double m = mass(ls, domain, gr);
-	c_x = (gr.density*domain.dx*domain.dy/m)*c_x;
-	c_y = (gr.density*domain.dx*domain.dy/m)*c_y;
-	vector2 c(c_x, c_y);
-	return c;
-}
-
-double LevelSetMethods::moment_of_inertia(const LevelSet& ls, const Domain2D& domain, const Particle& gr){
-	//for rotation confined to a plane, the mass moment of inertia reduces to a scalar value.
-	vector2 c = center_of_mass(ls, domain, gr);
-	//in 2d, moment of inertia is a 1x1 tensor given by J = sum(m_i * (x_i^2 + y_i^2))
-	double inertia = 0;
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			inertia += smoothed_heaviside(ls, domain, i+1, j+1)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
-		}
-	}
-	inertia = -gr.density*domain.dx*domain.dy*inertia;
-	return inertia;
-}
-
+//LevelSet LevelSetMethods::intersection(const std::vector<LevelSet>&, const Domain2D& domain);
+//LevelSet LevelSetMethods::difference(const std::vector<LevelSet>&, const Domain2D& domain);
 //--------------------------------------------------------
 // Forces
 //--------------------------------------------------------
@@ -375,8 +344,8 @@ double LevelSetMethods::torque (const Euler2D& var, const LevelSet& ls, const Do
 			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+1, j+1);
 			double p = var.state_function->Pressure(var.U(i+2, j+2)); //fluid pressure in cell i, j
 			
-			//torque += -(delta * p * r_i.cross(n_i)); //the normal direction is out of the rigid body
-			torque = -(delta * p * (r_i(0)*n_i(1) - r_i(1)*n_i(0))); //NEED TO IMPLEMENT THIS BECAUSE EIGEN IS SHIT
+			//(x-c) x pn
+			torque += -(delta * p * (r_i(0)*n_i(1) - r_i(1)*n_i(0)));//the normal direction is out of the rigid body
 		}
 	}
 	return torque;
@@ -397,20 +366,20 @@ Coordinates LevelSetMethods::translation(const Coordinates& p, const vector2& v_
 	return originalpos;
 }
 
-Coordinates LevelSetMethods::rotation(const Coordinates& p, const Particle& gr, double f, double time){
+Coordinates LevelSetMethods::rotation(const Coordinates& p, const vector2& centroid, double f, double time){
 	//ω is the angular velocity, which is a 'scalar' value in 2D,
 	//f is the frequency of rotation, given by w/2pi
 	//where a positive value corresponds to counter-clockwise rotation and negative clockwise.
 	//the linear velocity is spatially dependent
 	//vb = 2πω (r_rot × x)
 
-	vector2 v = Rotor2::rotate_reverse(vector2(p.x, p.y), gr.centroid, f, time); 
+	vector2 v = Rotor2::rotate_reverse(vector2(p.x, p.y), centroid, f, time); 
 	//by reversing the rotation at point i, j, the "original position" of the level set is retrieved
 	Coordinates originalpos(v(0), v(1)); //original position of the levelset
 	return originalpos;
 }
 
-LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, const Particle& gr, const vector2& v_c, double w, double time){
+LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, const vector2& centroid, const vector2& v_c, double w, double time){
 	//Temporary storage for levelset values at time t
 	//The levelset can be updated using its initial values and current position
 	LevelSet ls_t; //ls at time t
@@ -424,7 +393,7 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 		for (int j=0; j<domain.Ny; j++){
 			Coordinates originalpos = domain.X(i, j);
 			originalpos = translation(originalpos, v_c, time); //translate the point
-			originalpos = rotation(originalpos, gr, frequency, time); //rotate the point
+			originalpos = rotation(originalpos, centroid, frequency, time); //rotate the point
 			double phi_tmp = interpolation_value(ls, domain, originalpos);
 			if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
 				ls_t.phi(i+1, j+1) = phi_tmp;
@@ -439,48 +408,77 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 	boundary_conditions(ls_t, domain);
 	return ls_t;
 }
-/*
-LevelSet LevelSetMethods::translation(const LevelSet& ls, const Domain2D& domain, const vector2& v_c, double time){
-	//x(n+1) = x(n) + v(t)*t
-	//phi(x, t) = phi(x - vt, 0)
-	//Temporary storage for levelset values at time t
-	//The levelset can be updated using its initial values and current position
-	LevelSet ls_t; //ls at time t
-	ls_t.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+
+//--------------------------------------------------------------
+//Particles
+//--------------------------------------------------------------
+Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), vc(0, 0), w(0) {
+	LevelSetMethods::initialise(ls, domain, poly);
+	centroid = center_of_mass(*this, domain);
+	std::cout << centroid.transpose() << std::endl;
+}
+
+double Particle::mass(const Particle& gr, const Domain2D& domain){
+
+	double m = 0;
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			Coordinates originalpos(domain.X(i,j).x - v_c(0)*time, domain.X(i, j).y - v_c(1)*time); //original position of the levelset
-			ls_t.phi(i+1, j+1) = interpolation_value(ls, domain, originalpos);
+			m += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1);
+			//sums the number of cells within the rigid body, including the
+			//transition zone
 		}
 	}
+	m = gr.density*domain.dx*domain.dy*m; //rho * g^2 where g is the grid spacing
 
-	boundary_conditions(ls_t, domain);
-	return ls_t;
-	//NOTE additional code needs to be written such that only the zero countour is computed
+	return m;
 }
 
-LevelSet LevelSetMethods::rotation(const LevelSet& ls, const Domain2D& domain, const Particle& gr, double w, double time){
-	//ω is the angular velocity, which is a 'scalar' value in 2D,
-	//where a positive value corresponds to counter-clockwise rotation and negative clockwise.
-	//the linear velocity is spatially dependent
-	//vb = 2πω (r_rot × x)
-	//INCOMPLETE
-	double pi = atan(1.0)*4;
-	double frequency = w/(2*pi); //sign of w determines the direction
+vector2 Particle::center_of_mass(const Particle& gr, const Domain2D& domain){
+	//For a mass with density rho(r) within the solid, the integral of the weighted (density) position
+	//coordinates relative to its center of mass is 0
+	double c_x = 0;
+	double c_y = 0;
+
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			vector2 position(domain.X(i, j).x, domain.X(i, j).y);
-			vector2 c = center_of_mass(ls, domain, gr); //position vector of the center of mass, aka point to be rotated about
-			vector2 v = Rotor2::rotate_reverse(position, c, frequency, time); 
-			Coordinates originalpos(v(0), v(1));
-			//by reversing the rotation at point i, j, the "original position" of the level set is retrieved
-			ls_t.phi(i+1, j+1) = interpolation_value(ls, domain, originalpos);
+			c_x += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1)*(domain.X(i, j).x);
+			c_y += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1)*(domain.X(i, j).y);
 		}
 	}
+	double m = mass(gr, domain);
+	c_x = (gr.density*domain.dx*domain.dy/m)*c_x;
+	c_y = (gr.density*domain.dx*domain.dy/m)*c_y;
+	vector2 c(c_x, c_y);
+	return c;
 }
-*/
 
+double Particle::moment_of_inertia(const Particle& gr, const Domain2D& domain){
+	//for rotation confined to a plane, the mass moment of inertia reduces to a scalar value.
+	vector2 c = center_of_mass(gr, domain);
+	//in 2d, moment of inertia is a 1x1 tensor given by J = sum(m_i * (x_i^2 + y_i^2))
+	double inertia = 0;
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			inertia += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
+		}
+	}
+	inertia = -gr.density*domain.dx*domain.dy*inertia;
+	return inertia;
+}
 
+vector2 Particle::velocity(const Coordinates& p, const Particle& gr){
+	vector2 v(0, 0);
+	vector2 r(p.x-gr.centroid(0), p.y-gr.centroid(1));
+	v(0) = gr.vc(0) - r(1)*gr.w;
+	v(1) = gr.vc(1) + r(0)*gr.w;
+	return v;
+}
+
+///////
+void Moving_RB::add_particles(const Polygon& poly, const Domain2D& domain){
+	Particle new_particle(poly, domain);
+	particles.push_back(new_particle);
+}
 
 

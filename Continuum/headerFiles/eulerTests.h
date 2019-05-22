@@ -92,7 +92,7 @@ struct rigidTests : public virtual standardTests
 {
 	//polygon based
 	Domain2D domain;
-	RB_2D var; // n-levelsets, fluid variable and rigidbody variable.
+	Stationary_RB var; // n-levelsets, fluid variable and rigidbody variable.
 
 	Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
 	
@@ -109,6 +109,27 @@ struct rigidTests : public virtual standardTests
 	void test4();
 
 	//potentially read from an object file to obtain polygon data as lists.
+};
+
+struct demTests : public virtual standardTests
+{
+	//DEM based particles 
+	Domain2D domain;
+	Moving_RB var; // n-particles, fluid variable and rigidbody variable.
+
+	Eigen::Array<bool,Eigen::Dynamic,Eigen::Dynamic> interface;
+	
+	//Eigen::Array<int,Eigen::Dynamic,Eigen::Dynamic> interface; //might be superseeded by the levelset
+	//Eigen::Array<Eigen::Array<double,1,2>,1,Eigen::Dynamic> interfacelist; //list of interface coordinates, sets of 2 points
+
+	demTests(int N) : standardTests(), domain(N), var(), interface(0, 0) {}//interface(N, 1), interfacelist(1) {}
+	demTests(int Nx, int Ny) : standardTests(), domain(Nx, Ny), var(), interface(0, 0) {}
+	virtual ~demTests() {}
+
+	void test1(); 
+	void test2();
+	void test3();
+	void test4();
 };
 
 

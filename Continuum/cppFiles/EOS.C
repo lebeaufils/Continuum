@@ -81,18 +81,33 @@ vector4 StateFunctions::fluxes(vector4 U){
 	Ideal Gas EOS
 ----------------------------------------------------------------------------------*/
 double IdealGas::Pressure(matrix U, int i){
-	double Pressure = (y-1)*(U(i, 2) - 0.5*U(i, 0)*pow((U(i, 1)/U(i, 0)),2.0));
-	return Pressure;
+	if (U(i, 0) != 0){
+		double Pressure = (y-1)*(U(i, 2) - 0.5*U(i, 0)*pow((U(i, 1)/U(i, 0)),2.0));
+		return Pressure;
+	}
+	else {
+		return 0;
+	}
 }
 
 double IdealGas::Pressure(vector U){
-	double Pressure = (y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
-	return Pressure;
+	if (U(0) != 0){
+		double Pressure = (y-1)*(U(2) - 0.5*U(0)*pow((U(1)/U(0)),2.0));
+		return Pressure;
+	}
+	else {
+		return 0;
+	}
 }
 
 double IdealGas::Pressure(vector4 U){
-	double Pressure = (y-1)*(U(2) - 0.5*U(0)*(pow(U(1)/U(0),2.0) + pow(U(3)/U(0), 2)));
-	return Pressure;
+	if (U(0) != 0){
+		double Pressure = (y-1)*(U(2) - 0.5*U(0)*(pow(U(1)/U(0),2.0) + pow(U(3)/U(0), 2)));
+		return Pressure;
+	}
+	else {
+		return 0;
+	}
 }
 
 /*double IdealGas::soundspeed(matrix U, int i){

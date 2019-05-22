@@ -12,7 +12,7 @@ void Coordinates::move(Coordinates point){
 	y = y + point.y;
 }
 
-void Coordinates::display(){
+void Coordinates::display() const{
 	std::cout << '(' << x << ", " << y << ')' << '\t';
 }
 
@@ -34,11 +34,11 @@ Coordinates Coordinates::operator /(const double &scalefactor){
 
 
 
-double Coordinates::length(){
+double Coordinates::length() const{
 	return sqrt(x*x + y*y);
 }
 
-void Domain2D::display_grid(){
+void Domain2D::display_grid() const{
 	{
 		for (int j=0; j<Ny; j++){
 			for (int i=0; i<Nx; i++){
@@ -336,17 +336,17 @@ void Polygon::create_from_file(Domain2D domain){
 	output(domain);
 }
 
-int Polygon::point_in_polygon(Coordinates p){
+int Polygon::point_in_polygon(Coordinates p) const{
 	//PNPOLY Algorithm from Copyright (c) 1970-2003, Wm. Randolph Franklin
 	//https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html#The%20Method
 	
 	//Bounding box
-	double xmin = 1e6;
-	double xmax = 0;
-	double ymin = 1e6;
-	double ymax = 0;
+	//double xmin = 1e6;
+	//double xmax = 0;
+	//double ymin = 1e6;
+	//double ymax = 0;
 
-	for (std::vector<Vertex>::iterator it = vertices.begin(); it < vertices.end(); it++){
+	/*for (std::vector<Vertex>::iterator it = vertices.begin(); it < vertices.end(); it++){
 		if (it->x > xmax) xmax = it->x;
 		if (it->x < xmin) xmin = it->x;
 		if (it->y > ymax) ymax = it->y;
@@ -356,7 +356,7 @@ int Polygon::point_in_polygon(Coordinates p){
 	//Out of polygon boundaries
 	if (p.x < xmin || p.x > xmax || p.y < ymin || p.y > ymax) {
     	return 0;
-	}
+	}*/
 
 	//Crossings test using the jordan curve
 	int c = 0;
@@ -370,7 +370,7 @@ int Polygon::point_in_polygon(Coordinates p){
 	//if p lies to the left of the line, this imaginary ray will cross the line
 	//the line equation is given by x - x0 = (x1 - x0)/(y1 - y0) * (y - y0)
 	///////
-	Edge* current_edge = edges.begin()->second;
+	const Edge* current_edge = edges.begin()->second;
 	do{
 		if ( ((current_edge->tail.y > p.y) != (current_edge->head.y > p.y)) &&
 			(p.x < (current_edge->tail.x - current_edge->head.x) * (p.y - current_edge->head.y) / (current_edge->tail.y - current_edge->head.y) + current_edge->head.x) ){
@@ -625,12 +625,12 @@ void LevelSet::display_grid(){
 	}
 }
 
-void RB_2D::add_levelset(){
+void Stationary_RB::add_levelset(){
 	LevelSet ls;
 	levelsets.push_back(ls);
 }
 
-void RB_2D::zeroes(int N, int M){
+void Stationary_RB::zeroes(int N, int M){
 	fluid.U.resize(N, M);
 	fluid.F.resize(N, M);
 	fluid.G.resize(N, M);

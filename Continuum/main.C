@@ -14,10 +14,10 @@ int main(void){
 	//LevelSetMethods::initialise(ls, Tests.domain, poly);
 	//LevelSetMethods::initialise_circle(ls, Tests.domain, 0.5, 0.5, 0.3);
 
-	//RigidBodies::initial_conditions(Tests);
-	//RigidBodies::rigid_body_solver(Tests, 0.7);
+	RigidBodies::initial_conditions(Tests);
+	RigidBodies::rigid_body_solver(Tests, 0.7);
 
-	Polygon poly;
+/*	Polygon poly;
 	Coordinates center(0.5,0.5);
 	try{
 		poly.create_square(Tests.domain, 0.3, center);
@@ -25,7 +25,12 @@ int main(void){
 	catch (const char c){
 		std::cout << c << std::endl;
 	}
-	//Particle grain;
+	Particle gr(poly, Tests.domain);
+
+	RigidBodies::newton_euler(Tests.var.fluid, gr, Tests.domain, 0.1);
+	std::cout << gr.vc.transpose() << std::endl;
+	std::cout << gr.w << std::endl;
+*/
 
 	/*vector2 c =  LevelSetMethods::center_of_mass(Tests.var.levelsets[0], Tests.domain, poly);
 	std::cout << "Center of mass = " << c.transpose() << std::endl;

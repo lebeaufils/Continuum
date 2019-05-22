@@ -574,7 +574,7 @@ void rigidTests::test4(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	Grain poly(1.0);
+	Polygon poly(1.0);
 	try{
 		poly.create_from_file(domain);
 	}
@@ -585,11 +585,14 @@ void rigidTests::test4(){
 	var.add_levelset();
 	//generating the level set as a circle
 	LevelSetMethods::initialise(var.levelsets[0], domain, poly);
-	std::cout << "mass = " << LevelSetMethods::mass(var.levelsets[0], domain, poly) << std::endl;
-	std::cout << "Xc = " << LevelSetMethods::center_of_mass(var.levelsets[0], domain, poly).transpose() << std::endl;
-	std::cout << "moment of inertia = " << LevelSetMethods::moment_of_inertia(var.levelsets[0], domain, poly) << std::endl;
+	//std::cout << "mass = " << LevelSetMethods::mass(var.levelsets[0], domain, poly) << std::endl;
+	//std::cout << "Xc = " << LevelSetMethods::center_of_mass(var.levelsets[0], domain, poly).transpose() << std::endl;
+	//std::cout << "moment of inertia = " << LevelSetMethods::moment_of_inertia(var.levelsets[0], domain, poly) << std::endl;
 }
 
+//--------------------------------------------------------------------------------------------
+//	Moving Particles (DEM) Tests
+//--------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------
 //	Ghost Fluid Tests

@@ -44,8 +44,8 @@ struct Coordinates
 	Coordinates operator *(const double&);
 	Coordinates operator /(const double&);
 
-	double length();
-	void display();
+	double length() const;
+	void display() const;
 };
 
 struct Pos_Index{
@@ -88,7 +88,7 @@ struct Domain2D
 	Domain2D(int N) : Nx(N), Ny(N), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
 	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
 
-	void display_grid();
+	void display_grid() const;
 };
 
 struct Euler1D
@@ -152,18 +152,21 @@ struct LevelSet
 	matrix phi;
 
 	LevelSet() : phi(0, 0) {}
+	LevelSet(int x, int y) : phi(x, y) {}
 
 	void display_grid();
 };
 
-struct RB_2D
+struct Stationary_RB
 {
 	//collection of level sets, one for each object
 	//Eigen::Array<matrix, 1, Eigen::Dynamic> levelset_array;
 	std::vector<LevelSet> levelsets; //list of n-levelset
 	Euler2D fluid;
+	LevelSet combinedls;
+	Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal;
 
-	RB_2D() : levelsets(0), fluid() {}
+	Stationary_RB() : levelsets(0), fluid(), combinedls(), normal(0, 0) {}
 
 	void add_levelset();
 	void zeroes(int Nx, int Ny); //resize and set zeroes
@@ -223,29 +226,11 @@ struct Polygon
 	void create(Domain2D, double,int);
 	void create_from_file(Domain2D);
 
-	int point_in_polygon(Coordinates);
+	int point_in_polygon(Coordinates) const;
 
 	static int orientation(Coordinates, Coordinates, Coordinates);
 	static std::vector<Coordinates> random_points(double, double, int);
 
-};
-
-struct Particle //NEEDS WORK
-{
-	//RB_2D should store particles rather than levelsets.
-	//each particle can have its reference levelset and nodes
-	double density = 1;
-
-	LevelSet ls;
-	vector2 centroid;
-	//std::vector<Coordinates> nodes;
-	//If the mass of the Particle is nott important..
-
-	Particle(Polygon poly);// : centroid(0, 0) {}
-	//Particle(double d); //no real need to specify density for rigid bodies
-
-	double diameter(); //estimated particle diameter, equidiv?
-	//void check_contact(); //?
 };
 
 
