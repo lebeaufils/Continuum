@@ -29,39 +29,39 @@ struct MUSCL
 {
 
 	//-----Slope limiters-----
-	static vector superBee(matrix, int);
-	static matrix vanLeer(matrix, int);
-	static vector minBee(matrix, int);
+	static vector superBee(const matrix&, int);
+	static matrix vanLeer(const matrix&, int);
+	static vector minBee(const matrix&, int);
 	//------------------------
 	//-----Data Reconstruction-----
 	static slopeLimiter getLimiter();
-	static void data_reconstruction(matrix, slopeLimiter, matrix&, matrix&, int);
+	static void data_reconstruction(const matrix&, slopeLimiter, matrix&, matrix&, int);
 	//-----------------------------
 
 	//-----------------------------
 	//1-Dimensional
 	//-----------------------------
-	static void boundary_conditions(Euler1D&, Domain1D);
+	static void boundary_conditions(Euler1D&, const Domain1D&);
 	static void initial_conditions(eulerTests&);
 
-	static void compute_fluxes(Euler1D&, Domain1D&, int, matrix, matrix, double&);
-	static void conservative_update_formula(Euler1D&, Domain1D, int);
+	static void compute_fluxes(Euler1D&, const Domain1D&, int, const matrix&, const matrix&, double&);
+	static void conservative_update_formula(Euler1D&, const Domain1D&, int);
 	//static void conservative_update_formula(vector&, vector, vector, double, double); //dosent work
 
 	static void solver(Euler1D&, Domain1D&, double);
-	static void output(Euler1D&, Domain1D);
+	static void output(const Euler1D&, const Domain1D&);
 	static void muscl_solver(eulerTests&, double);
 	
 	//-----------------------------
 	//2-Dimensional
 	//-----------------------------
-	static void boundary_conditions(Euler2D&, Domain2D);
-	static void boundary_conditions_reflective(Euler2D&, Domain2D);
+	static void boundary_conditions(Euler2D&, const Domain2D&);
+	static void boundary_conditions_reflective(Euler2D&, const Domain2D&);
 	static void initial_conditions(eulerTests2D&);
 
 	static void compute_fluxes(const Euler2D&, const matrix&, vector4&, int);
 	static void compute_fluxes(const Euler2D&, const Domain2D&, const matrix&, vector4&, int, const matrix&, const matrix&, double);
-	static void conservative_update_formula_2D(vector4&, vector4, vector4, double, double);
+	static void conservative_update_formula_2D(vector4&, const vector4&, const vector4&, double, double);
 
 	static void solver(Euler2D&, Domain2D&, double);
 	//static void dimensional_splitting(Euler2D&); //to be altered

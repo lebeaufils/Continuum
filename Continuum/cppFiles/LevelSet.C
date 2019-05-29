@@ -220,6 +220,9 @@ vector2 LevelSetMethods::normal(const LevelSet &ls, const Domain2D &domain, int 
 }
 
 double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& domain, const Coordinates& p){
+	if (p.x > domain.Lx || p.x < 0 || p.y > domain.Ly || p.y < 0){
+		return 1e6; //returns a large positive value if domain is out of bounds
+	}
 	//finding the 4 grid points surrounding point p
 	int i = floor(p.x/domain.dx);
 	int j = floor(p.y/domain.dy);
@@ -236,7 +239,7 @@ double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& 
 			//if a is 0, contribution is (1-x), else if a is 1, contribution is x
 
 			//additionally, to translate the interpolation square into the 
-			phi_xy += ls.phi(a+i, b+j) * ((1-a)*(1-x) + a*x) * ((1-b)*(1-y) + b*y);
+			phi_xy += ls.phi(a+i+1, b+j+1) * ((1-a)*(1-x) + a*x) * ((1-b)*(1-y) + b*y);
 			//where phi(i, j) = c00, phi(i+1, j) = c10, phi(i, j+1) = c01 and phi(i+1, j+1) = c11
 		}
 	}
@@ -270,17 +273,18 @@ vector2 LevelSetMethods::interpolation_gradient(const LevelSet& ls, const Domain
 // Utility functions
 //--------------------------------------------------------------------------------
 double LevelSetMethods::smoothed_heaviside(const LevelSet &ls, const Domain2D &domain, int i, int j){
-	const double e = 1.5*(domain.dx*domain.dy); //smoothness parameter
+	const double e = 1.5*domain.dx; //smoothness parameter
 	const double pi = 3.14159265358979323846; //pi
+	double phi_tmp = -ls.phi(i, j);
 
-	if (ls.phi(i, j) < -e){ //inside rigid body
-		return 1;
-	}
-	else if (ls.phi(i, j) > e){ //outside rigid body
+	if (phi_tmp < -e){ //inside rigid body
 		return 0;
 	}
+	else if (phi_tmp > e){ //outside rigid body
+		return 1;
+	}
 	else { //within smoohed region
-		return 0.5*(1 + ls.phi(i, j)/e + sin(pi*ls.phi(i, j)/e)/pi);
+		return 0.5*(1 + phi_tmp/e + sin(pi*phi_tmp/e)/pi);
 	}
 }
 
@@ -300,7 +304,7 @@ LevelSet LevelSetMethods::merge(const std::vector<LevelSet>& levelsets, const Do
 	LevelSet ls(domain.Nx+4, domain.Ny+4);
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			double min_phi = 0;
+			double min_phi = 1e6;
 			for (int a=0; a<static_cast<int>(levelsets.size()); a++){
 				if (levelsets[a].phi(i+1, j+1) < min_phi) min_phi = levelsets[a].phi(i+1, j+1);
 			}
@@ -394,13 +398,14 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 			Coordinates originalpos = domain.X(i, j);
 			originalpos = translation(originalpos, v_c, time); //translate the point
 			originalpos = rotation(originalpos, centroid, frequency, time); //rotate the point
-			double phi_tmp = interpolation_value(ls, domain, originalpos);
-			if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
-				ls_t.phi(i+1, j+1) = phi_tmp;
-			}
-			else {
-				ls_t.phi(i+1, j+1) = 1e6;
-			}
+			//double phi_tmp = interpolation_value(ls, domain, originalpos);
+			ls_t.phi(i+1, j+1) = interpolation_value(ls, domain, originalpos);
+			//if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
+			//	ls_t.phi(i+1, j+1) = phi_tmp;
+			//}
+			//else {
+			//	ls_t.phi(i+1, j+1) = 1e6;
+			//}
 		}
 	}
 
@@ -412,10 +417,27 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 //--------------------------------------------------------------
 //Particles
 //--------------------------------------------------------------
-Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), vc(0, 0), w(0) {
+Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), vc(0, 0), w(0), nodes(0) {
+	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
+	centroid = center_of_mass(*this, domain);
+	//std::cout << centroid.transpose() << std::endl;
+}
+
+Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), vc(0, 0), w(0), nodes(0) {
 	LevelSetMethods::initialise(ls, domain, poly);
 	centroid = center_of_mass(*this, domain);
-	std::cout << centroid.transpose() << std::endl;
+	for (int a=0; a < static_cast<int>(poly.surfacepoints.size()); a+=3) {
+		Coordinates tmp = domain.X(poly.surfacepoints[a].i, poly.surfacepoints[a].j);
+		nodes.push_back(vector2(tmp.x, tmp.y));
+	}
+	for (int a=0; a < static_cast<int>(nodes.size()); a++) {
+		//nodes[a].display();
+	}
+}
+
+void Particle::set_velocity(const vector2& trans_velocity, double angular_velocity){
+	vc = trans_velocity;
+	w = angular_velocity;
 }
 
 double Particle::mass(const Particle& gr, const Domain2D& domain){
@@ -470,15 +492,75 @@ double Particle::moment_of_inertia(const Particle& gr, const Domain2D& domain){
 vector2 Particle::velocity(const Coordinates& p, const Particle& gr){
 	vector2 v(0, 0);
 	vector2 r(p.x-gr.centroid(0), p.y-gr.centroid(1));
+	//v = vc + w cross r
 	v(0) = gr.vc(0) - r(1)*gr.w;
 	v(1) = gr.vc(1) + r(0)*gr.w;
 	return v;
 }
 
+LevelSet Particle::merge(const std::vector<Particle>& particles, const Domain2D& domain){
+	LevelSet ls(domain.Nx+4, domain.Ny+4);
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			double min_phi = 1e6;
+			for (int a=0; a<static_cast<int>(particles.size()); a++){
+				if (particles[a].ls.phi(i+1, j+1) < min_phi) min_phi = particles[a].ls.phi(i+1, j+1);
+			}
+			ls.phi(i+1, j+1) = min_phi;
+		}
+	}
+	LevelSetMethods::boundary_conditions(ls, domain);
+
+	return ls;
+}
+
+LevelSet Particle::motion(const Domain2D& domain, double time){
+	//Temporary storage for levelset values at time t
+	//The levelset can be updated using its initial values and current position
+	LevelSet ls_t; //ls at time t
+	ls_t.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+
+	//simultaneous translation and rotation
+	double pi = atan(1.0)*4;
+	double frequency = w/(2*pi);
+	//std::cout << "frequency = " << frequency << std::endl;
+
+	for(int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates originalpos = domain.X(i, j);
+			//originalpos.display();
+			originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point
+			//originalpos.display();
+			originalpos = LevelSetMethods::translation(originalpos, vc, time); //translate the point
+			//double phi_tmp = interpolation_value(ls, domain, originalpos);
+			ls_t.phi(i+1, j+1) = LevelSetMethods::interpolation_value(ls, domain, originalpos);
+			//std::cout << "level set diff = " << ls_t.phi(i+1, j+1) << '\t' << ls.phi(i+1, j+1) << std::endl;
+			//if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
+			//	ls_t.phi(i+1, j+1) = phi_tmp;
+			//}
+			//else {
+			//	ls_t.phi(i+1, j+1) = 1e6;
+			//}
+			//std::cout << std::endl;
+		}
+		//std::cout << std::endl;
+	}
+
+	LevelSetMethods::fast_sweep(ls_t, domain);
+	LevelSetMethods::boundary_conditions(ls_t, domain);
+	return ls_t;
+}
+
 ///////
-void Moving_RB::add_particles(const Polygon& poly, const Domain2D& domain){
+void Moving_RB::add_particle(const Polygon& poly, const Domain2D& domain){
 	Particle new_particle(poly, domain);
 	particles.push_back(new_particle);
 }
+
+void Moving_RB::add_sphere(const Domain2D& domain, const Coordinates& center , double r){
+	Particle new_particle(domain, center, r);
+	particles.push_back(new_particle);
+}
+
 
 

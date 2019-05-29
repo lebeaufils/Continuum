@@ -7,14 +7,10 @@
 int main(void){
 
 
-	rigidTests Tests(101);
+	demTests Tests(101);
 	Tests.test2();
 
-	//LevelSet ls;
-	//LevelSetMethods::initialise(ls, Tests.domain, poly);
-	//LevelSetMethods::initialise_circle(ls, Tests.domain, 0.5, 0.5, 0.3);
-
-	RigidBodies::initial_conditions(Tests);
+	//RigidBodies::initial_conditions(Tests);
 	RigidBodies::rigid_body_solver(Tests, 0.7);
 
 /*	Polygon poly;

@@ -4,7 +4,7 @@
  * MUSCL
  --------------------------------------------------------------------------------*/
 
-void MUSCL::boundary_conditions(Euler1D &var, Domain1D domain){
+void MUSCL::boundary_conditions(Euler1D &var, const Domain1D& domain){
 	var.U.row(1) = var.U.row(2); //muscl requires extra ghost cells on either boundary.
 	var.U.row(0) = var.U.row(1);
 	var.U.row(domain.N+2) = var.U.row(domain.N+1);
@@ -36,7 +36,7 @@ void MUSCL::initial_conditions(eulerTests &Test){
 //----------------------------------------------------------------------------
 //	Slope Limiters
 //----------------------------------------------------------------------------
-vector MUSCL::superBee(matrix U, int i){
+vector MUSCL::superBee(const matrix& U, int i){
 	//Calculating slope
 	vector diMinus = U.row(i) - U.row(i-1);
 	vector diPlus = U.row(i+1) - U.row(i);
@@ -79,7 +79,7 @@ vector MUSCL::superBee(matrix U, int i){
 	return diBar;
 }
 
-/*vector MUSCL::vanLeer(matrix U, int i){
+/*vector MUSCL::vanLeer(const matrix& U, int i){
 
 	vector diMinus = U.row(i) - U.row(i-1);
 	vector diPlus = U.row(i+1) - U.row(i);
@@ -117,7 +117,7 @@ vector MUSCL::superBee(matrix U, int i){
 	//make r = 0 to test first order
 }*/
 
-matrix MUSCL::vanLeer(matrix U, int i){
+matrix MUSCL::vanLeer(const matrix& U, int i){
 
 	/*-----------------------------------------------
 	 * Slope limiter -- Van Leer
@@ -194,7 +194,7 @@ matrix MUSCL::vanLeer(matrix U, int i){
 	}
 }
 
-vector MUSCL::minBee(matrix U, int i){
+vector MUSCL::minBee(const matrix& U, int i){
 
 
 	vector diMinus = U.row(i) - U.row(i-1);
@@ -278,7 +278,7 @@ slopeLimiter MUSCL::getLimiter(){
 	return theMap[str];
 }
 
-void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &URi, int N){
+void MUSCL::data_reconstruction(const matrix& U, slopeLimiter a, matrix &ULi, matrix &URi, int N){
 	matrix Utmp(0, 0);
 
 	if (ULi.cols() == 3) {
@@ -319,7 +319,7 @@ void MUSCL::data_reconstruction(matrix U, slopeLimiter a, matrix &ULi, matrix &U
 }
 
 
-void MUSCL::conservative_update_formula(Euler1D &var, Domain1D domain, int i){
+void MUSCL::conservative_update_formula(Euler1D &var, const Domain1D& domain, int i){
 	var.U.row(i) = var.U.row(i) - (domain.dt/domain.dx)*(var.F.row(i) - var.F.row(i-1));
 }
 //F_1 represents F[i-1]
@@ -327,7 +327,7 @@ void MUSCL::conservative_update_formula(Euler1D &var, Domain1D domain, int i){
 //	U = U - (dt/dx)*(F - F_1);
 //}
 
-void MUSCL::conservative_update_formula_2D(vector4& U, vector4 F, vector4 F_1, double dt, double dx){
+void MUSCL::conservative_update_formula_2D(vector4& U, const vector4& F, const vector4& F_1, double dt, double dx){
 	U = U - (dt/dx)*(F - F_1);
 }
 
@@ -335,7 +335,7 @@ void MUSCL::conservative_update_formula_2D(vector4& U, vector4 F, vector4 F_1, d
 
 //-----------------------------------------------------------------------------------
 
-void MUSCL::compute_fluxes(Euler1D &var, Domain1D &domain, int i, matrix ULi, matrix URi, double &Smax){
+void MUSCL::compute_fluxes(Euler1D &var, const Domain1D &domain, int i, const matrix& ULi, const matrix& URi, double &Smax){
 
 	double al, ar;
 
@@ -512,7 +512,7 @@ void MUSCL::solver(Euler1D &var, Domain1D &domain, double CFL){
 	std::cout << count << std::endl;
 }
 
-void MUSCL::output(Euler1D &var, Domain1D domain){
+void MUSCL::output(const Euler1D &var, const Domain1D& domain){
 
 	std::ofstream outfile;
 	outfile.open("dataeuler.txt");
@@ -546,7 +546,7 @@ void MUSCL::muscl_solver(eulerTests& Test, double CFL){
 //--------------------------------------------------------------------------------
 
 
-void MUSCL::boundary_conditions(Euler2D &var, Domain2D domain){
+void MUSCL::boundary_conditions(Euler2D &var, const Domain2D& domain){
 
 	if (var.U.cols() == 0 || var.U.rows() == 0){
 		throw "Array is empty.";
@@ -568,7 +568,7 @@ void MUSCL::boundary_conditions(Euler2D &var, Domain2D domain){
 	} 
 }
 
-void MUSCL::boundary_conditions_reflective(Euler2D &var, Domain2D domain){
+void MUSCL::boundary_conditions_reflective(Euler2D &var, const Domain2D& domain){
 
 	if (var.U.cols() == 0 || var.U.rows() == 0){
 		throw "Array is empty.";

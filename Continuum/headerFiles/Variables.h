@@ -277,6 +277,7 @@ struct Rotor2
 	//Given angle and normalised plane(axis)
 	Rotor2(double); //plane is bounded to xy in 2D
 	Rotor2(double, const Bivector2&);
+	~Rotor2() {};
 
 	//rotate a vector
 	vector2 rotate(const vector2& v) const;

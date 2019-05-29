@@ -10,6 +10,8 @@
 
 struct RigidBodies
 {
+
+	static void boundary_conditions(vecarray&, const Domain2D&);
 	//---------------------------------------------------------------
 	// Stationary rigidbody
 	//---------------------------------------------------------------
@@ -26,12 +28,14 @@ struct RigidBodies
 	//---------------------------------------------------------------
 	//static void boundary_conditions(Stationary_RB&, const Domain2D&);
 	//treat collision with domain boundaries as collisions?
-	static void fast_sweep(const Particle&, Moving_RB&, const Domain2D&, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic>&);
+	static void fast_sweep(const LevelSet&, const Particle&, Moving_RB&, const Domain2D&, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic>&);
 	static void reflected_state(Moving_RB&, const vecarray&, int i, int j, const vector2&, const vector2&);
 	static void wall_collision(const vector2&, Particle&);
-	static void newton_euler(const Euler2D&, Particle&, const Domain2D&, double);
+	static void newton_euler(Particle&, const Domain2D&, const vector2& torque, double force, double);
 	static void initial_conditions(demTests&);
 	static void solver(Moving_RB&, Domain2D&, double);
+	static void output(const Moving_RB&, const Domain2D&);
+	static void rigid_body_solver(demTests&, double);
 	
 
 };

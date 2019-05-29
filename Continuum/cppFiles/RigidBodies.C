@@ -1,5 +1,27 @@
 #include "../headerFiles/RigidBodies.h"
 
+void RigidBodies::boundary_conditions(vecarray &U, const Domain2D& domain){
+
+	if (U.cols() == 0 || U.rows() == 0){
+		throw "Array is empty.";
+	}
+
+	//assigning ghost values in the x-direction 
+	for (int j=0; j<domain.Ny; j++){
+		U(1, j+2) = U(2, j+2);
+		U(0, j+2) = U(1, j+2);
+		U(domain.Nx+2, j+2) = U(domain.Nx+1, j+2);
+		U(domain.Nx+3, j+2) = U(domain.Nx+2, j+2);
+	} 
+	//assigning ghost values in the y-direction
+	for (int i=0; i<domain.Nx; i++){
+		U(i+2, 1) = U(i+2, 2);
+		U(i+2, 0) = U(i+2, 1);
+		U(i+2, domain.Ny+2) = U(i+2, domain.Ny+1);
+		U(i+2, domain.Ny+3) = U(i+2, domain.Nx+2);
+	} 
+}
+
 void RigidBodies::reflected_state(Stationary_RB &var, const vecarray &primV, int i, int j, const vector2 &n_i){
 	vector2 velocity(primV(i,j)(1), primV(i,j)(2));
 	vector2 v_ghost = velocity - 2*(n_i.dot(velocity))*(n_i);
@@ -399,11 +421,11 @@ void RigidBodies::reflected_state(Moving_RB &var, const vecarray &primV, int i, 
 	var.fluid.U(i, j) = reflected_cons;
 }
 
-void RigidBodies::fast_sweep(const Particle& gr, Moving_RB &rb, const Domain2D &domain, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> &normal){
+void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &rb, const Domain2D &domain, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> &normal){
 
 	//Multi dimensional extrapolation using fast sweeping
-	auto heaviside = [gr](int i, int j){
-		if (gr.ls.phi(i, j) < 0) return 1;
+	auto heaviside = [ls, gr](int i, int j){
+		if (ls.phi(i, j) < 0) return 1;
 		else return 0;
 	};
 
@@ -483,6 +505,7 @@ void RigidBodies::fast_sweep(const Particle& gr, Moving_RB &rb, const Domain2D &
 		}
 	}
 
+	//boundary_conditions(primitive, domain);
 
 	//Gauss Seidel iteration for alternate directions.
 	//A total of four sweeps is performed over the entire computational domain
@@ -492,7 +515,7 @@ void RigidBodies::fast_sweep(const Particle& gr, Moving_RB &rb, const Domain2D &
 	//4) i = 1:I, j = J:1
 
 	// a narrowband of abs(phi) < cellwidth is imposed
-	auto gauss_seidel = [heaviside, ghost_fluid, domain, gr, normal](vecarray &primitive){
+	auto gauss_seidel = [heaviside, ghost_fluid, domain, ls, gr, normal](vecarray &primitive){
 		//1) i = 1:I, j = 1:J
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=0; j<domain.Ny; j++){
@@ -535,38 +558,43 @@ void RigidBodies::fast_sweep(const Particle& gr, Moving_RB &rb, const Domain2D &
 	};
 
 	gauss_seidel(primitive);
-	//gauss_seidel(primitive);
 
 //////Implement narrow band here
 	//reflect the ghostfluid states
 	for (int i=0; i<domain.Nx; i++){
 		for(int j=0; j<domain.Ny; j++){
-			if (gr.ls.phi(i+1, j+1) < 0) //&& ls.phi(i, j) > -(domain.dx + domain.dy)) //&& ls.phi(i+1, j+1) >= -(Test.domain.dx))
-				//vector2 velocity_rb = Particle::velocity(domain.X(i, j), gr);
-				reflected_state(rb, primitive, i+2, j+2, normal(i, j), Particle::velocity(domain.X(i, j), gr));
+			if (ls.phi(i+1, j+1) < 0){//&& ls.phi(i, j) > -(domain.dx + domain.dy)) //&& ls.phi(i+1, j+1) >= -(Test.domain.dx))
+				vector2 velocity = Particle::velocity(domain.X(i, j), gr);
+				//std::cout << velocity << std::endl;
+				reflected_state(rb, primitive, i+2, j+2, normal(i, j), velocity);
 			}
+		}
 	}
-}
 
-void RigidBodies::wall_collision(const vector2& position, Particle& gr){
+}
+//if position.x > domain.Lx or < 0, ls = position.x - domain.lx
+/*void RigidBodies::wall_collision(const vector2& position, const Domain2D& domain, Particle& gr, const vector2& boundary_normal){
 	//after calculating position future position, check that it is not at the boundaries.
 	//if it crosses boundary, calvulate the extent of overlap and reflect the normal velocity?
 	//if (position())
-}
 
-void RigidBodies::newton_euler(const Euler2D& var, Particle& gr, const Domain2D& domain, double dt){
+}*/
+
+void RigidBodies::newton_euler(Particle& gr, const Domain2D& domain, const vector2& force, double torque, double dt){
 //updates the velocities which are passed as arguments
 
 //translational velocity, angular velocity, start and stop time. 
 //the velocities provided need to be 'initial' values at tstart.
-	const vector2 force = LevelSetMethods::force(var, gr.ls, domain);
-	const double torque = LevelSetMethods::torque(var, gr.ls, domain, gr.centroid);
+	//const vector2 force = LevelSetMethods::force(var, gr.ls, domain);
+	//const double torque = LevelSetMethods::torque(var, gr.ls, domain, gr.centroid);
 
 	double m = Particle::mass(gr, domain); //mass
 	double J = Particle::moment_of_inertia(gr, domain); //moment of inertia
 
 	gr.vc += dt/m*force;
 	gr.w += dt/J*torque;
+
+	std::cout << m << '\t' << gr.w << std::endl; 
 }
 
 void RigidBodies::initial_conditions(demTests& Test){
@@ -610,16 +638,17 @@ void RigidBodies::initial_conditions(demTests& Test){
 		}
 		normal.push_back(n);
 	}
+
 	//populate the rigid body with ghost values
 	//note that these values need to be reflected before use
 	//values are currently reflected in the fast sweep function
 	//note: because each particle has its own unique velocity, the fast sweeping needs to be done independantly?
 	for (int a=0; a<static_cast<int>(Test.var.particles.size()); a++){
-		fast_sweep(Test.var.particles[a], Test.var, Test.domain, Test.var.normal);
+		fast_sweep(Test.var.particles[a].ls, Test.var.particles[a], Test.var, Test.domain, normal[a]);
 	}
 }
 
-/*void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
+void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 	//In addition to the fluid solver of the stationary rigid body problem,
 	//Forces on the rigid body are to be calculated at everytime step
 	//This is an ODE problem which is solved to obtain the velocity (translational and rotational) of the rigid body
@@ -640,17 +669,8 @@ void RigidBodies::initial_conditions(demTests& Test){
 
 	slopeLimiter a = VanLeer;//getLimiter();
 
-
 	//When solving for the fluid values, we can consider all the levelsets at once by taking their union
-	Test.var.combinedls = LevelSetMethods::merge(Test.var.levelsets, Test.domain);
-
-	//compute the normal vector using the levelset function. only valid for non moving levelsets
-	Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			normal(i, j) = LevelSetMethods::normal(var.levelsets[0], domain, i+1, j+1);
-		}
-	}
+	var.combinedls = Particle::merge(var.particles, domain);
 
 	double t = 0.0;
 	int count = 0;
@@ -694,10 +714,10 @@ void RigidBodies::initial_conditions(demTests& Test){
 
 			//sweeping in the x-direction for each y row
 			for (int i=1; i<domain.Nx+2; i++){
-				if (var.levelsets[0].phi(i, j+1) >= 0 || var.levelsets[0].phi(i+1, j+1) >= 0 || var.levelsets[0].phi(i-1, j+1) >= 0){
+				if (var.combinedls.phi(i, j+1) >= 0 || var.combinedls.phi(i+1, j+1) >= 0 || var.combinedls.phi(i-1, j+1) >= 0){
 					vector4 Fx(0, 0, 0, 0);
 					//edge case where there is only one ghost cell
-					if (var.levelsets[0].phi(i+1, j+1) < 0 && var.levelsets[0].phi(i+2, j+1) >= 0){
+					if (var.combinedls.phi(i+1, j+1) < 0 && var.combinedls.phi(i+2, j+1) >= 0){
 						MUSCL::compute_fluxes(var.fluid, Uxn, Fx, i);
 						//std::cout << i-1 << '\t' << j << '\t' << var.levelsets[0].phi(i+1, j+1) << std::endl;
 					}
@@ -722,9 +742,9 @@ void RigidBodies::initial_conditions(demTests& Test){
 			MUSCL::data_reconstruction(Uyn, a, ULiy, URiy, domain.Ny);
 
 			for (int j=1; j<domain.Ny+2; j++){
-				if (var.levelsets[0].phi(i+1, j) >= 0 || var.levelsets[0].phi(i+1, j+1) >= 0 || var.levelsets[0].phi(i+1, j-1) >=0){
+				if (var.combinedls.phi(i+1, j) >= 0 || var.combinedls.phi(i+1, j+1) >= 0 || var.combinedls.phi(i+1, j-1) >=0){
 					vector4 Fy(0, 0, 0, 0);
-					if (var.levelsets[0].phi(i+1, j+1) < 0 && var.levelsets[0].phi(i+1, j+2) >= 0){
+					if (var.combinedls.phi(i+1, j+1) < 0 && var.combinedls.phi(i+1, j+2) >= 0){
 						MUSCL::compute_fluxes(var.fluid, Uyn, Fy, j);
 						//std::cout << i << '\t' << j-1 << '\t' << var.levelsets[0].phi(i+1, j+1) << std::endl;
 					}	
@@ -739,7 +759,7 @@ void RigidBodies::initial_conditions(demTests& Test){
 		//updating U with Strand splitting -- X(0.5dt)Y(dt)X(0.5dt)
 		for (int j=0; j<domain.Ny; j++){
 			for (int i=2; i<domain.Nx+2; i++){
-				if (var.levelsets[0].phi(i-1, j+1) >= 0){
+				if (var.combinedls.phi(i-1, j+1) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i, j+2), var.fluid.F(i, j+1), var.fluid.F(i-1, j+1), domain.dt/2, domain.dx);
 					//std::cout << var.fluid.F(i, j+1).transpose()  << '\t'  << '\t' << var.fluid.F(i-1, j+1).transpose() << std::endl;
 				}
@@ -747,30 +767,131 @@ void RigidBodies::initial_conditions(demTests& Test){
 		}
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=2; j<domain.Ny+2; j++){
-				if (var.levelsets[0].phi(i+1, j-1) >= 0){
+				if (var.combinedls.phi(i+1, j-1) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i+2, j), var.fluid.swap_xy(var.fluid.G(i+1, j)), var.fluid.swap_xy(var.fluid.G(i+1, j-1)), domain.dt, domain.dy);
 				}
 			}
 		}		
 		for (int j=0; j<domain.Ny; j++){
 			for (int i=2; i<domain.Nx+2; i++){
-				if (var.levelsets[0].phi(i-1, j+1) >= 0){
+				if (var.combinedls.phi(i-1, j+1) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i, j+2), var.fluid.F(i, j+1), var.fluid.F(i-1, j+1), domain.dt/2, domain.dx);
 				}
 			}
 		}
 		MUSCL::boundary_conditions(var.fluid, domain);
 
-		//Extrapolate new ghost values
-		fast_sweep(var.levelsets[0], var, domain, normal);
+		for (int i=0; i<domain.Nx; i++){
+			for (int j=0; j<domain.Ny; j++){
+				//std::cout << var.fluid.U(i+2, j+2).transpose() << std::endl;
+			}
+		}
 
+		//---------------------------------------------
+		//	Forces and Torque on the Particle, DEM
+		//---------------------------------------------
+		//calculate individually for each particle
+		std::vector<LevelSet> levelset_collection;
+		for (int a=0; a<static_cast<int>(var.particles.size()); a++){
+			//compute the normal vector using the levelset function
+			Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
+			for (int i=0; i<domain.Nx; i++){
+				for (int j=0; j<domain.Ny; j++){
+					normal(i, j) = LevelSetMethods::normal(var.particles[a].ls, domain, i+1, j+1);
+				}
+			}
+			//vector2 force = LevelSetMethods::force(var.fluid, var.particles[a].ls, domain);
+			//double torque = LevelSetMethods::torque (var.fluid, var.particles[a].ls, domain, var.particles[a].centroid);
+			//calculate and update particle velocities
+			////newton_euler(var.particles[a], domain, force, torque, domain.dt);
+			//move the particles
+			//var.particles[a].centroid = vector2(0.5, 0.5);
+			levelset_collection.push_back(var.particles[a].motion(domain, t));
+			//std::cout << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			//update particle with new centre of gravity
+			var.particles[a].centroid = Particle::center_of_mass(var.particles[a], domain);
+			//extrapolate ghost values
+			
+			/*	double pi = atan(1.0)*4;
+				double frequency = var.particles[a].w/(2*pi);
+				std::vector<vector2> testnodes;
+				for (int b=0; b<static_cast<int>(var.particles[a].nodes.size()); b++){
+					vector2 test = Rotor2::rotate_about(var.particles[a].nodes[b], vector2(0.5, 0.5), frequency, t); 
+					std::cout << test[0] << '\t' << test[1] << std::endl;
+					testnodes.push_back(test);
+				}
+
+				std::ofstream outfile;
+				outfile.open("edgepoints.txt");
+
+				for (int i=0; i<static_cast<int>(testnodes.size()); i++){
+					outfile << testnodes[i](0) <<
+					'\t' << testnodes[i](1) << std::endl;
+				}
+				outfile.close();
+			*/
+
+			fast_sweep(levelset_collection[a], var.particles[a], var, domain, normal);
+		}
+
+		//Merge the new level sets
+		var.combinedls = LevelSetMethods::merge(levelset_collection, domain);
+		
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
-		//std::cout << Smax_x << '\t' << Smax_y << std::endl;
-		//if (count == 1) t = domain.tstop;
+		//std::cout << domain.dt << std::endl;
+		if (count == 100) t = domain.tstop;
+		//if (count == 10) std::cout << t << std::endl;
 	}while (t < domain.tstop);
 	std::cout << "count = "  << count << std::endl;
-}*/
+}
+
+void RigidBodies::output(const Moving_RB &var, const Domain2D &domain){
+
+	std::ofstream outfile;
+	outfile.open("dataeuler.txt");
+
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			//std::cout << var.combinedls.phi(i+1, j+1) << '\t';
+		}
+		//std::cout << std::endl;
+	}
+
+	for (int i=2; i<domain.Nx+2; i++){
+		for (int j=2; j<domain.Ny+2; j++){
+			if (var.combinedls.phi(i-1, j-1) >= 0){
+				vector4 Ux = var.fluid.U(i, j);
+				double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
+				double P = var.fluid.state_function->Pressure(Ux);
+				double e = var.fluid.state_function->internalE(Ux);
+
+				//central difference to calculate partial derivatives in x, y for density
+				double grad_density_x = (var.fluid.U(i+1, j)(0) - var.fluid.U(i-1, j)(0))/(2*domain.dx);
+				double grad_density_y = (var.fluid.U(i, j+1)(0) - var.fluid.U(i, j-1)(0))/(2*domain.dy);
+				//calculating the numerical schlieren
+				double schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
+
+				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
+				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << var.combinedls.phi(i-1, j-1) << std::endl;
+			}
+			/*else {
+				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << 0 << '\t' << 0
+				<< '\t' << 0 << '\t' << 0 << '\t' << 0 << std::endl;
+			}*/
+		}
+		outfile << std::endl;
+	}
+
+	outfile.close();
+	std::cout << "done: Rigid Body" << std::endl;
+}
+
+void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
+	initial_conditions(Test);
+	solver(Test.var, Test.domain, CFL);
+	output(Test.var, Test.domain);
+}
 
 
 

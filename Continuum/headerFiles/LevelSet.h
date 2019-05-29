@@ -93,16 +93,20 @@ struct Particle //NEEDS WORK
 
 	vector2 vc; //translational velocity
 	double w; //angular velocity
-	//std::vector<Coordinates> nodes;
+	std::vector<vector2> nodes;
 	//If the mass of the Particle is nott important..
 
-	Particle() : ls(), centroid(0), vc(0, 0), w(0) {}
+	Particle() : ls(), centroid(0), vc(0, 0), w(0), nodes(0) {}
+	Particle(const Domain2D&, const Coordinates&, double);
 	Particle(const Polygon&, const Domain2D&);
+	~Particle() {};
 
 	//void initialise(const Polygon&, const Domain2D&);
 	//Particle(double d); //no real need to specify density for rigid bodies
 	double diameter(); //estimated particle diameter, equidiv?
 	//void check_contact(); //?
+	void set_velocity(const vector2&, double);
+	LevelSet motion(const Domain2D&, double);
 
 	//-----------------------------------------------------
 	//Inertial properties
@@ -111,6 +115,8 @@ struct Particle //NEEDS WORK
 	static vector2 center_of_mass(const Particle&, const Domain2D&);
 	static double moment_of_inertia(const Particle&, const Domain2D&);
 	static vector2 velocity(const Coordinates&, const Particle&); //vb
+
+	static LevelSet merge(const std::vector<Particle>&, const Domain2D&);
 
 };
 
@@ -121,11 +127,13 @@ struct Moving_RB
 	Euler2D fluid;
 
 	LevelSet combinedls;
-	Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal;
+	//Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal;
 
-	Moving_RB() : particles(0), fluid(), combinedls(), normal(0, 0) {}
+	Moving_RB() : particles(0), fluid(), combinedls() {} //, normal(0, 0) {}
+	~Moving_RB() {};
 
-	void add_particles(const Polygon&, const Domain2D&);
+	void add_sphere(const Domain2D&, const Coordinates&, double); //center and radius
+	void add_particle(const Polygon&, const Domain2D&);
 };
 
 #endif /* LEVELSET_H_ */
