@@ -756,6 +756,14 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 			}
 		}
 
+		/*if (count == 100){
+			for (int i=0; i<domain.Nx; i++){
+				for (int j=0; j<domain.Nx; j++){
+					std::cout << var.fluid.U(i+2, j+2).transpose() << " ( " << i << ", " << j << " ) " << std::endl;
+				}
+			}
+		}*/
+
 		//updating U with Strand splitting -- X(0.5dt)Y(dt)X(0.5dt)
 		for (int j=0; j<domain.Ny; j++){
 			for (int i=2; i<domain.Nx+2; i++){
@@ -781,25 +789,12 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		}
 		MUSCL::boundary_conditions(var.fluid, domain);
 
-		for (int i=0; i<domain.Nx; i++){
-			for (int j=0; j<domain.Ny; j++){
-				//std::cout << var.fluid.U(i+2, j+2).transpose() << std::endl;
-			}
-		}
-
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
 		//calculate individually for each particle
 		std::vector<LevelSet> levelset_collection;
 		for (int a=0; a<static_cast<int>(var.particles.size()); a++){
-			//compute the normal vector using the levelset function
-			Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
-			for (int i=0; i<domain.Nx; i++){
-				for (int j=0; j<domain.Ny; j++){
-					normal(i, j) = LevelSetMethods::normal(var.particles[a].ls, domain, i+1, j+1);
-				}
-			}
 			//vector2 force = LevelSetMethods::force(var.fluid, var.particles[a].ls, domain);
 			//double torque = LevelSetMethods::torque (var.fluid, var.particles[a].ls, domain, var.particles[a].centroid);
 			//calculate and update particle velocities
@@ -811,36 +806,23 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 			//update particle with new centre of gravity
 			var.particles[a].centroid = Particle::center_of_mass(var.particles[a], domain);
 			//extrapolate ghost values
-			
-			/*	double pi = atan(1.0)*4;
-				double frequency = var.particles[a].w/(2*pi);
-				std::vector<vector2> testnodes;
-				for (int b=0; b<static_cast<int>(var.particles[a].nodes.size()); b++){
-					vector2 test = Rotor2::rotate_about(var.particles[a].nodes[b], vector2(0.5, 0.5), frequency, t); 
-					std::cout << test[0] << '\t' << test[1] << std::endl;
-					testnodes.push_back(test);
+				//compute the normal vector using the levelset function
+				Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
+				for (int i=0; i<domain.Nx; i++){
+					for (int j=0; j<domain.Ny; j++){
+						normal(i, j) = LevelSetMethods::normal(levelset_collection[a], domain, i+1, j+1);
+					}
 				}
-
-				std::ofstream outfile;
-				outfile.open("edgepoints.txt");
-
-				for (int i=0; i<static_cast<int>(testnodes.size()); i++){
-					outfile << testnodes[i](0) <<
-					'\t' << testnodes[i](1) << std::endl;
-				}
-				outfile.close();
-			*/
-
 			fast_sweep(levelset_collection[a], var.particles[a], var, domain, normal);
 		}
 
 		//Merge the new level sets
-		var.combinedls = LevelSetMethods::merge(levelset_collection, domain);
+		var.combinedls = levelset_collection[0];//LevelSetMethods::merge(levelset_collection, domain);
 		
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		if (count == 100) t = domain.tstop;
+		//if (count == 100) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 	}while (t < domain.tstop);
 	std::cout << "count = "  << count << std::endl;

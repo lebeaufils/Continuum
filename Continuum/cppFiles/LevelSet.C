@@ -377,7 +377,7 @@ Coordinates LevelSetMethods::rotation(const Coordinates& p, const vector2& centr
 	//the linear velocity is spatially dependent
 	//vb = 2πω (r_rot × x)
 
-	vector2 v = Rotor2::rotate_reverse(vector2(p.x, p.y), centroid, f, time); 
+	vector2 v = Rotor2::rotate_about(vector2(p.x, p.y), centroid, -f, time); 
 	//by reversing the rotation at point i, j, the "original position" of the level set is retrieved
 	Coordinates originalpos(v(0), v(1)); //original position of the levelset
 	return originalpos;
@@ -529,18 +529,14 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 		for (int j=0; j<domain.Ny; j++){
 			Coordinates originalpos = domain.X(i, j);
 			//originalpos.display();
+			//originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point			
 			originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point
-			//originalpos.display();
 			originalpos = LevelSetMethods::translation(originalpos, vc, time); //translate the point
+			//originalpos.display();
+			//originalpos.display();
 			//double phi_tmp = interpolation_value(ls, domain, originalpos);
 			ls_t.phi(i+1, j+1) = LevelSetMethods::interpolation_value(ls, domain, originalpos);
 			//std::cout << "level set diff = " << ls_t.phi(i+1, j+1) << '\t' << ls.phi(i+1, j+1) << std::endl;
-			//if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
-			//	ls_t.phi(i+1, j+1) = phi_tmp;
-			//}
-			//else {
-			//	ls_t.phi(i+1, j+1) = 1e6;
-			//}
 			//std::cout << std::endl;
 		}
 		//std::cout << std::endl;

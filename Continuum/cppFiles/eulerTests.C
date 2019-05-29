@@ -700,7 +700,7 @@ void demTests::test2(){
 		std::cout << c << std::endl;
 	}
 	var.add_particle(poly, domain);
-	var.particles[0].set_velocity(vector2(0.5, 0.5), 0.5);
+	var.particles[0].set_velocity(vector2(0.2, 0), 2);
 
 	//domain.display_grid();
 	//var.particles[0].ls.display_grid();
