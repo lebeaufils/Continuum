@@ -5,4 +5,4 @@ set terminal png
 set view map
 unset title
 
-splot 'dataeuler.txt' using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31
+splot 'dataeuler.txt' using 1:2:5 notitle with points palette pointsize 0.5 pointtype 31

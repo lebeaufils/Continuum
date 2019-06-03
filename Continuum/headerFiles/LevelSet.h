@@ -86,19 +86,29 @@ struct Particle //NEEDS WORK
 {
 	//RB_2D should store particles rather than levelsets.
 	//each particle can have its reference levelset and nodes
-	double density = 1;
+	double density = 3000;
 
 	LevelSet ls;
-	vector2 centroid;
+	vector2 centroid; //initial, fixed
+	vector2 centre;
 
 	vector2 vc; //translational velocity
 	double w; //angular velocity
 	std::vector<vector2> nodes;
-	//If the mass of the Particle is nott important..
+	//???If the mass of the Particle is nott important
 
-	Particle() : ls(), centroid(0), vc(0, 0), w(0), nodes(0) {}
+	//Stiffness
+	double miu; //interparticle friction coefficient
+	double k_n; //normal contact stiffness
+	double k_s; //shear contact stiffness
+	//Forces
+	vector2 force; //Accumulator for linear force
+	double torque; //Accumuluator for torque
+
+	Particle() : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), miu(1), k_n(1e9), k_s(1e9), force(0, 0), torque(0) {}
 	Particle(const Domain2D&, const Coordinates&, double);
 	Particle(const Polygon&, const Domain2D&);
+	//Particle(const Particle&) //copy constructor
 	~Particle() {};
 
 	//void initialise(const Polygon&, const Domain2D&);
@@ -112,16 +122,19 @@ struct Particle //NEEDS WORK
 	//Inertial properties
 	//-----------------------------------------------------
 	static double mass(const Particle&, const Domain2D&);
-	static vector2 center_of_mass(const Particle&, const Domain2D&);
-	static double moment_of_inertia(const Particle&, const Domain2D&);
+	static vector2 center_of_mass(const LevelSet&, const Particle&, const Domain2D&);
+	static double moment_of_inertia(const LevelSet&, const Particle&, const Domain2D&);
 	static vector2 velocity(const Coordinates&, const Particle&); //vb
 
+	static vector2 cross(double, const vector2&);
+	static double cross(const vector2&, const vector2&);
 	static LevelSet merge(const std::vector<Particle>&, const Domain2D&);
 
 };
 
 struct Moving_RB
 {
+	//Rigid body system of moving particles
 	//collection of "particles" which contain their own levelset and discretised nodes
 	std::vector<Particle> particles;
 	Euler2D fluid;
@@ -134,6 +147,11 @@ struct Moving_RB
 
 	void add_sphere(const Domain2D&, const Coordinates&, double); //center and radius
 	void add_particle(const Polygon&, const Domain2D&);
+
+	int getNBodies(); //returns number of rigid body particles
+
+private:
+	Moving_RB(const Moving_RB& rbsystem) : particles(rbsystem.particles), fluid(rbsystem.fluid), combinedls(rbsystem.combinedls) {}
 };
 
 #endif /* LEVELSET_H_ */

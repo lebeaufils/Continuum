@@ -8,10 +8,10 @@ int main(void){
 
 
 	demTests Tests(101);
-	Tests.test2();
+	Tests.test1();
 
 	//RigidBodies::initial_conditions(Tests);
-	RigidBodies::rigid_body_solver(Tests, 0.7);
+	RigidBodies::rigid_body_solver(Tests, 0.3);
 
 /*	Polygon poly;
 	Coordinates center(0.5,0.5);

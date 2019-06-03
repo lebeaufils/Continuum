@@ -110,13 +110,21 @@ void RigidBodies::fast_sweep(const LevelSet &ls, Stationary_RB &rb, const Domain
 	};
 
 	//Convert the conserved variables into primitive form
+	//vecarray primitive(domain.Nx+4, domain.Ny+4);
+	//for (int i=0; i<domain.Nx+4; i++){
+	//	for (int j=0; j<domain.Ny+4; j++){
+	//		primitive(i, j) = rb.fluid.state_function->primitiveVar(rb.fluid.U(i, j));
+	//	}
+	//}
+	//Convert the conserved variables into primitive form
 	vecarray primitive(domain.Nx+4, domain.Ny+4);
-	for (int i=0; i<domain.Nx+4; i++){
-		for (int j=0; j<domain.Ny+4; j++){
-			primitive(i, j) = rb.fluid.state_function->primitiveVar(rb.fluid.U(i, j));
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			primitive(i+2, j+2) = rb.fluid.state_function->primitiveVar(rb.fluid.U(i+2, j+2));
 		}
 	}
 
+	boundary_conditions(primitive, domain);
 
 	//Gauss Seidel iteration for alternate directions.
 	//A total of four sweeps is performed over the entire computational domain
@@ -499,13 +507,13 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 
 	//Convert the conserved variables into primitive form
 	vecarray primitive(domain.Nx+4, domain.Ny+4);
-	for (int i=0; i<domain.Nx+4; i++){
-		for (int j=0; j<domain.Ny+4; j++){
-			primitive(i, j) = rb.fluid.state_function->primitiveVar(rb.fluid.U(i, j));
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			primitive(i+2, j+2) = rb.fluid.state_function->primitiveVar(rb.fluid.U(i+2, j+2));
 		}
 	}
 
-	//boundary_conditions(primitive, domain);
+	boundary_conditions(primitive, domain);
 
 	//Gauss Seidel iteration for alternate directions.
 	//A total of four sweeps is performed over the entire computational domain
@@ -572,15 +580,137 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 	}
 
 }
+
+//-------------------
+//Collision
+//-------------------
+//INCOMPLETE//
+void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle>& particles, const std::vector<LevelSet>& levelset_collection, double dt){
+// TO BE IMPROVED ON, made parallel
+	int number_of_particles = static_cast<int>(particles.size());
+	//for each particle in the system
+	for (int i=0; i<number_of_particles; i++){ //master grain
+	//Loop through every other particle
+	//For each node of the particle
+		for (int a=0; a<static_cast<int>(particles[i].nodes.size()); a++){
+			Coordinates node_a(particles[i].nodes[a]);
+		//remember to rotate/translate the nodes in the main solver
+		//interpolate coordinates of nodes with slave levelset
+		//if this value is < 0, contact is determined.
+		//return a set of contact values // OR // calculate contact forces here?
+			for (int j=0; j<number_of_particles; j++){ //slave grain
+			//check for contact between grain i and slaves j
+				if (i!=j){
+					double dist = LevelSetMethods::interpolation_value(levelset_collection[j], domain, node_a);
+					if (dist < 0){
+						vector2 grad_phi = LevelSetMethods::interpolation_gradient(levelset_collection[j], domain, node_a);
+						vector2 normal = grad_phi/(sqrt(grad_phi(0)*grad_phi(0) + grad_phi(1)*grad_phi(1)));
+						particle_collision(particles[i], particles[j], particles[i].nodes[a], dist, normal, dt);
+					}
+				}
+			}
+
+		//after calculating position future position, check that it is not at the boundaries.
+		//if it crosses boundary, calvulate the extent of overlap and reflect the normal velocity?
+		//check if any nodes exceed domain boundary. Assumes domain origin at 0, 0
+			if ((node_a.x < 0) != (node_a.x > domain.Lx)){
+				//if node is less than neither less than 0 nor greater than Lx, it will return false
+				vector2 normal(1, 0);
+				//since dist must always be negative,
+				double dist = (node_a.x < 0)*(node_a.x) + (node_a.x > domain.Lx)*(node_a.x - domain.Lx);
+					//On the right boundary, the normal points in the wrong direction but distance is positive	
+				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
+			}
+			//vertical boundaries
+			if ((node_a.y < 0) != (node_a.y > domain.Ly)){
+				//if node is less than neither less than 0 nor greater than Lx, it will return false
+				vector2 normal(0, 1);
+				//since dist must always be negative,
+				double dist = (node_a.y < 0)*(node_a.y) + (node_a.y > domain.Ly)*(node_a.y - domain.Ly);
+					//On the right boundary, the normal points in the wrong direction but distance is positive	
+				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
+			}
+		}
+	}
+
+	//note that the first optimisation is to prevent double checking of collisions
+}
+
+void RigidBodies::particle_collision(Particle& gr_i, Particle& gr_j, const vector2& node, double dist, const vector2& normal, double dt){
+	//Kawamoto, Level Set DEM for 3d computations
+	//normal force contribution from contact of node m_a on grain i
+	vector2 Fn_i = -gr_i.k_n*dist*normal;
+	//vector2 Fn_j = - Fn_i; 
+	//note that he force contribution on grain j is equal and opposite Fn_j = -Fn_i
+
+	//moment contribution on grain i and grain j respectively
+	//in 2d, this moment contribution lies in the z axis 
+	double Mn_i = Particle::cross(node-gr_i.centre, Fn_i);
+	//double Mn_j = Particle::cross(node-gr_j.centre, Fn_j);
+
+	//frictional forces (shear) are based on the Coulomb model of friction
+	//for kinetic friction, 
+	//relative velocity v_a of node m_a to grain j is
+	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre) - gr_j.vc - Particle::cross(gr_j.w, node-gr_j.centre);
+	//the incremental shear displacement s = vt*t
+		//tanmgential velocity vt is given by vt = v - vn*normal i.e. total velocity - normal velocity
+		//where vn = normal dot v //therefore vt = v_a - (va dot normal)normal
+	//incremental shear displacement is given by relative tangential velocity*time
+	vector2 shear = (v_a - v_a.dot(normal)*normal)*dt;
+	//shear force on grain i due to node m_a is then updated using
+	//double Fs = gr_i.Fs + shear*gr_i.k_s; //use of previous timestep?
+	vector2 dFs = shear*gr_i.k_s; 
+
+	//since the tangential force is limited by coulomb's law, where the shear force is capped by the normal force (static friction),
+	vector2 Fs_i = dFs/sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1))*fmin(sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1)), gr_i.miu*sqrt(Fn_i(0)*Fn_i(0) + Fn_i(1)*Fn_i(1)));
+	//vector2 Fs_j = -Fs_i;
+	//The moment contributed by the shear force of node m_a onto grain i is
+	double Ms_i = Particle::cross(node-gr_i.centre, Fs_i);
+	//double Ms_j = Particle::cross(node-gr_j.centre, Fs_j);
+
+	//Total contact force on grain i can be obtained by summing all nodal contact forces
+	//since the collision calculation is performed for each node of i in contact,
+	//this is done by "accumulating" the forces by each node in the particle class
+	//likewise for moments/torque
+	gr_i.force += Fn_i + Fs_i;
+	gr_i.torque += Mn_i + Ms_i;
+
+	//Updating the slave grain too??? 
+	//if so, we must make sure not to duplicate the calculation for grain j
+	//gr_j.force += Fn_j + Fs_j;
+	//gr_j.torque += Mn_j + Ms_j;
+}
+
 //if position.x > domain.Lx or < 0, ls = position.x - domain.lx
-/*void RigidBodies::wall_collision(const vector2& position, const Domain2D& domain, Particle& gr, const vector2& boundary_normal){
-	//after calculating position future position, check that it is not at the boundaries.
-	//if it crosses boundary, calvulate the extent of overlap and reflect the normal velocity?
-	//if (position())
+void RigidBodies::wall_collision(Particle& gr_i, const vector2& node, double dist, const vector2& normal, double dt){
+//Using the same linear elastic model as with particle collisions
+//"penetration" distance and unit normal are specified
+//////
+	vector2 Fn_i = -gr_i.k_n*dist*normal;
 
-}*/
+	//moment contribution on grain i and grain j respectively
+	//in 2d, this moment contribution lies in the z axis 
+	double Mn_i = Particle::cross(node-gr_i.centre, Fn_i);
 
-void RigidBodies::newton_euler(Particle& gr, const Domain2D& domain, const vector2& force, double torque, double dt){
+	//relative velocity v_a of node m_a to grain j is
+	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre);
+	//incremental shear displacement is given by relative tangential velocity*time
+	vector2 shear = (v_a - v_a.dot(normal)*normal)*dt;
+	//shear force on grain i due to node m_a is then updated using
+	vector2 dFs = shear*gr_i.k_s; 
+	//since the tangential force is limited by coulomb's law, where the shear force is capped by the normal force (static friction),
+	vector2 Fs_i = dFs/sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1))*fmin(sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1)), gr_i.miu*sqrt(Fn_i(0)*Fn_i(0) + Fn_i(1)*Fn_i(1)));
+	//vector2 Fs_j = -Fs_i;
+	//The moment contributed by the shear force of node m_a onto grain i is
+	double Ms_i = Particle::cross(node-gr_i.centre, Fs_i);
+
+	//Total contact force on grain i can be obtained by summing all nodal contact forces
+	gr_i.force += Fn_i + Fs_i;
+	gr_i.torque += Mn_i + Ms_i;
+
+}
+
+void RigidBodies::newton_euler(const LevelSet& ls, Particle& gr, const Domain2D& domain, const vector2& force, double torque, double dt){
 //updates the velocities which are passed as arguments
 
 //translational velocity, angular velocity, start and stop time. 
@@ -589,12 +719,15 @@ void RigidBodies::newton_euler(Particle& gr, const Domain2D& domain, const vecto
 	//const double torque = LevelSetMethods::torque(var, gr.ls, domain, gr.centroid);
 
 	double m = Particle::mass(gr, domain); //mass
-	double J = Particle::moment_of_inertia(gr, domain); //moment of inertia
+	double J = Particle::moment_of_inertia(ls, gr, domain); //moment of inertia
 
 	gr.vc += dt/m*force;
 	gr.w += dt/J*torque;
 
-	std::cout << m << '\t' << gr.w << std::endl; 
+	//std::cout << (dt/m*force).transpose() << '\t' << dt/J*torque << std::endl; 
+//----------------
+//NOTE this is wrong, need to use a leapfrog method for stability by considering half timestep
+//----------------
 }
 
 void RigidBodies::initial_conditions(demTests& Test){
@@ -625,7 +758,7 @@ void RigidBodies::initial_conditions(demTests& Test){
 		}
 	}
 
-	MUSCL::boundary_conditions(Test.var.fluid, Test.domain);
+	MUSCL::boundary_conditions_reflective(Test.var.fluid, Test.domain);
 
 	//compute the normal vector using the levelset function
 	std::vector<Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> > normal;
@@ -755,14 +888,28 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 				}		
 			}
 		}
-
-		/*if (count == 100){
+/*
+		if (count >= 100){
 			for (int i=0; i<domain.Nx; i++){
 				for (int j=0; j<domain.Nx; j++){
-					std::cout << var.fluid.U(i+2, j+2).transpose() << " ( " << i << ", " << j << " ) " << std::endl;
+					//std::cout << var.fluid.F(i+1, j+1).transpose() << '\t' << '(' << i << ", " << j << ')' << std::endl;
+					if (i==35 && j==55) {
+						std::cout << "count = " << count << std::endl;
+						std::cout << var.fluid.U(i+2, j+2).transpose() << " ( " << i << ", " << j << " ) " << var.combinedls.phi(i+1, j+1) << std::endl;
+						std::cout << var.fluid.U(i+1, j+2).transpose() << " ( " << i-1 << ", " << j << " ) " << var.combinedls.phi(i, j+1) << std::endl;
+						std::cout << var.fluid.U(i+3, j+2).transpose() << " ( " << i+1 << ", " << j << " ) " << var.combinedls.phi(i+2, j+1) << std::endl;
+						std::cout << var.fluid.U(i+2, j+1).transpose() << " ( " << i << ", " << j-1 << " ) " << var.combinedls.phi(i+1, j) << std::endl;
+						std::cout << var.fluid.U(i+2, j+3).transpose() << " ( " << i << ", " << j+1 << " ) " << var.combinedls.phi(i+1, j+2) << std::endl;
+						std::cout << var.fluid.F(i+1, j+1).transpose() << '\t' << '(' << i << ", " << j << ')' << std::endl;
+					}
+					//std::cout << var.fluid.state_function->primitiveVar(var.fluid.U(i+2, j+2)).transpose() << " ( " << i << ", " << j << " ) " << std::endl;
+					//if (var.fluid.state_function->primitiveVar(var.fluid.U(i+2, j+2))(3) < 0 || var.fluid.state_function->primitiveVar(var.fluid.U(i+2, j+2))(3) > 5) {
+					//	std::cout << var.fluid.state_function->primitiveVar(var.fluid.U(i+2, j+2)).transpose() << " ( " << i << ", " << j << " ) " << std::endl;
+					//}
 				}
 			}
-		}*/
+		}
+*/
 
 		//updating U with Strand splitting -- X(0.5dt)Y(dt)X(0.5dt)
 		for (int j=0; j<domain.Ny; j++){
@@ -787,7 +934,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 				}
 			}
 		}
-		MUSCL::boundary_conditions(var.fluid, domain);
+		MUSCL::boundary_conditions_reflective(var.fluid, domain);
 
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
@@ -795,16 +942,22 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		//calculate individually for each particle
 		std::vector<LevelSet> levelset_collection;
 		for (int a=0; a<static_cast<int>(var.particles.size()); a++){
-			//vector2 force = LevelSetMethods::force(var.fluid, var.particles[a].ls, domain);
-			//double torque = LevelSetMethods::torque (var.fluid, var.particles[a].ls, domain, var.particles[a].centroid);
-			//calculate and update particle velocities
-			////newton_euler(var.particles[a], domain, force, torque, domain.dt);
 			//move the particles
-			//var.particles[a].centroid = vector2(0.5, 0.5);
 			levelset_collection.push_back(var.particles[a].motion(domain, t));
-			//std::cout << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			//calculate forces
+			//vector2 force = LevelSetMethods::force(var.fluid, levelset_collection[a], domain);
+			//double torque = LevelSetMethods::torque (var.fluid, levelset_collection[a], domain, var.particles[a].centre);
+			//if (count%10==0) {
+			//	std::cout << force.transpose() << '\t' << torque << std::endl;
+			//}
+			//calculate and update particle velocities
+//////////////ERROR///
+//unstable unless low cfl is used.. tiomestep issues
+			//newton_euler(levelset_collection[a], var.particles[a], domain, force, 0, domain.dt);
+			//if (count%10==0) std::cout << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+//////////////ERROR///
 			//update particle with new centre of gravity
-			var.particles[a].centroid = Particle::center_of_mass(var.particles[a], domain);
+			var.particles[a].centre = Particle::center_of_mass(levelset_collection[a], var.particles[a], domain);
 			//extrapolate ghost values
 				//compute the normal vector using the levelset function
 				Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
@@ -817,12 +970,12 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		}
 
 		//Merge the new level sets
-		var.combinedls = levelset_collection[0];//LevelSetMethods::merge(levelset_collection, domain);
+		var.combinedls = LevelSetMethods::merge(levelset_collection, domain);
 		
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		//if (count == 100) t = domain.tstop;
+		//if (count == 50) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 	}while (t < domain.tstop);
 	std::cout << "count = "  << count << std::endl;

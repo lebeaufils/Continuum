@@ -34,6 +34,10 @@ struct Coordinates
    		x = obj.x;
    		y = obj.y;
 	}
+	Coordinates(const vector2 &obj) {
+   		x = obj(0);
+   		y = obj(1);
+	}
 
 	void scale(double, double);
 	void move(Coordinates);

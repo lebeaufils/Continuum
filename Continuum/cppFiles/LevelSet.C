@@ -104,7 +104,7 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, const Pol
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, const Domain2D &domain, double x0, double y0, double r){
 	//This provides an exact levelset function
-	ls.phi.resize(domain.Nx+4, domain.Ny+4);
+	ls.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
@@ -318,6 +318,7 @@ LevelSet LevelSetMethods::merge(const std::vector<LevelSet>& levelsets, const Do
 
 //LevelSet LevelSetMethods::intersection(const std::vector<LevelSet>&, const Domain2D& domain);
 //LevelSet LevelSetMethods::difference(const std::vector<LevelSet>&, const Domain2D& domain);
+
 //--------------------------------------------------------
 // Forces
 //--------------------------------------------------------
@@ -417,23 +418,55 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 //--------------------------------------------------------------
 //Particles
 //--------------------------------------------------------------
-Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), vc(0, 0), w(0), nodes(0) {
+Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), miu(1), k_n(1e9), k_s(1e9), force(0, 0), torque(0) {
 	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
-	centroid = center_of_mass(*this, domain);
+	centroid = center_of_mass(ls, *this, domain);
+	centre = centroid;
 	//std::cout << centroid.transpose() << std::endl;
+
+	//seeding nodes for the circle
+	//double circumference = 2*r*atan(1.0)*4;
+	//double spacing = 2*r/10.;
+	vector2 surface_p(0, 0);
+	//find the first point on the zeroth levelset contour
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			if (ls.phi(i+1, j+1) == 0){
+				surface_p(0) = domain.X(i, j).x;
+				surface_p(1) = domain.X(i, j).y;
+				break;
+			}
+		}
+	}
+	nodes.push_back(surface_p);
+	//find the frequency of rotation
+	int nodesize = 32; //circumference/spacing = 10pi
+	double t = 0;
+	for (int dt=1; dt<nodesize; dt++){
+		vector2 v = Rotor2::rotate_about(surface_p, vector2(center.x, center.y), 1./static_cast<double>(nodesize), t+dt); 
+		nodes.push_back(v);
+	}			
 }
 
-Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), vc(0, 0), w(0), nodes(0) {
+Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), miu(1), k_n(1e9), k_s(1e9), force(0, 0), torque(0) {
 	LevelSetMethods::initialise(ls, domain, poly);
-	centroid = center_of_mass(*this, domain);
-	for (int a=0; a < static_cast<int>(poly.surfacepoints.size()); a+=3) {
+	centroid = center_of_mass(ls, *this, domain);
+	centre = centroid;
+
+	double circumference = static_cast<int>(poly.surfacepoints.size())*domain.dx;
+	double diameter = circumference/3.2;
+	int spacing = floor(diameter/(10*domain.dx));
+	for (int a=0; a < static_cast<int>(poly.surfacepoints.size()); a+=spacing) {
 		Coordinates tmp = domain.X(poly.surfacepoints[a].i, poly.surfacepoints[a].j);
 		nodes.push_back(vector2(tmp.x, tmp.y));
 	}
-	for (int a=0; a < static_cast<int>(nodes.size()); a++) {
+	//for (int a=0; a < static_cast<int>(nodes.size()); a++) {
 		//nodes[a].display();
-	}
+	//}
 }
+
+//Particle::Particle(const Particle& gr){//copy constructor
+//}
 
 void Particle::set_velocity(const vector2& trans_velocity, double angular_velocity){
 	vc = trans_velocity;
@@ -456,7 +489,7 @@ double Particle::mass(const Particle& gr, const Domain2D& domain){
 	return m;
 }
 
-vector2 Particle::center_of_mass(const Particle& gr, const Domain2D& domain){
+vector2 Particle::center_of_mass(const LevelSet& ls, const Particle& gr, const Domain2D& domain){
 	//For a mass with density rho(r) within the solid, the integral of the weighted (density) position
 	//coordinates relative to its center of mass is 0
 	double c_x = 0;
@@ -464,8 +497,8 @@ vector2 Particle::center_of_mass(const Particle& gr, const Domain2D& domain){
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			c_x += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1)*(domain.X(i, j).x);
-			c_y += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1)*(domain.X(i, j).y);
+			c_x += LevelSetMethods::smoothed_heaviside(ls, domain, i+1, j+1)*(domain.X(i, j).x);
+			c_y += LevelSetMethods::smoothed_heaviside(ls, domain, i+1, j+1)*(domain.X(i, j).y);
 		}
 	}
 	double m = mass(gr, domain);
@@ -475,14 +508,14 @@ vector2 Particle::center_of_mass(const Particle& gr, const Domain2D& domain){
 	return c;
 }
 
-double Particle::moment_of_inertia(const Particle& gr, const Domain2D& domain){
+double Particle::moment_of_inertia(const LevelSet& ls, const Particle& gr, const Domain2D& domain){
 	//for rotation confined to a plane, the mass moment of inertia reduces to a scalar value.
-	vector2 c = center_of_mass(gr, domain);
+	vector2 c = center_of_mass(ls, gr, domain);
 	//in 2d, moment of inertia is a 1x1 tensor given by J = sum(m_i * (x_i^2 + y_i^2))
 	double inertia = 0;
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			inertia += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
+			inertia += LevelSetMethods::smoothed_heaviside(ls, domain, i+1, j+1)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
 		}
 	}
 	inertia = -gr.density*domain.dx*domain.dy*inertia;
@@ -545,6 +578,14 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 	LevelSetMethods::fast_sweep(ls_t, domain);
 	LevelSetMethods::boundary_conditions(ls_t, domain);
 	return ls_t;
+}
+
+vector2 Particle::cross(double w, const vector2& pos){
+ 	return vector2(-w*pos(1), w*pos(0));
+}
+
+double Particle::cross(const vector2& m, const vector2& n){
+	return m(0)*n(1) - m(1)*n(0);
 }
 
 ///////

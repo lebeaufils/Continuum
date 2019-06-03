@@ -9,7 +9,8 @@ set pm3d map
 set palette grey
 set size ratio -1
 
-splot "dataeuler.txt" using 1:2:7 notitle
+splot "dataeuler.txt" using 1:2:7 notitle with points palette pointsize 0.5 pointtype 31
+
 set yrange [GPVAL_DATA_Y_MIN:GPVAL_DATA_Y_MAX]
 set xrange [GPVAL_DATA_X_MIN:GPVAL_DATA_X_MAX]
 
