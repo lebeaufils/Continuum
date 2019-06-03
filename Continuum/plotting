@@ -1,6 +1,6 @@
 #!/bin/bash
 
-gnuplot plot2d
+gnuplot plotfinal2d
 open Plots/2Dplot.png
 #gnuplot ploteuler
 #ps2pdf Plots/eulerTests.ps Plots/eulerTests.pdf

@@ -664,7 +664,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 
 	//note that the first optimisation is to prevent double checking of collisions
 }
-
+//i am cheating by counting forces twice
 void RigidBodies::particle_collision(Particle& gr_i, Particle& gr_j, const vector2& node, double dist, const vector2& normal, double dt){
 	//Kawamoto, Level Set DEM for 3d computations
 	//normal force contribution from contact of node m_a on grain i
@@ -715,7 +715,7 @@ void RigidBodies::wall_collision(Particle& gr_i, const vector2& node, double dis
 //Using the same linear elastic model as with particle collisions
 //"penetration" distance and unit normal are specified
 //////
-	vector2 Fn_i = -gr_i.k_n*dist*normal;
+	vector2 Fn_i = -2*gr_i.k_n*dist*normal; //testing this
 	//std::cout << "wall collision" << Fn_i.transpose() << '\t' << '\t' << normal.transpose() << std::endl;
 	//std::cout << "wall collision" << node.transpose() << std::endl;
 	
@@ -767,7 +767,9 @@ void RigidBodies::initial_conditions(demTests& Test){
 	Test.var.fluid.F.resize(Test.domain.Nx+2, Test.domain.Ny+2);
 	Test.var.fluid.G.resize(Test.domain.Nx+2, Test.domain.Ny+2);
 
+
 //////////////needs optimising/////////////
+	Test.var.combinedls = Particle::merge(Test.var.particles, Test.domain);
 	for(int i=0; i<Test.domain.Nx; i++){
 		for(int j=0; j<Test.domain.Ny; j++){
 			for (int a=0; a<static_cast<int>(Test.var.particles.size()); a++){ 
@@ -810,8 +812,6 @@ void RigidBodies::initial_conditions(demTests& Test){
 	for (int a=0; a<static_cast<int>(Test.var.particles.size()); a++){
 		fast_sweep(Test.var.particles[a].ls, Test.var.particles[a], Test.var, Test.domain, normal[a]);
 	}
-
-	Test.var.combinedls = Particle::merge(Test.var.particles, Test.domain);
 }
 
 void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
@@ -846,6 +846,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 	}
 
 	double t = 0.0;
+	double plot_time = 0.1;
 	int count = 0;
 	do{
 		//set timestep, taking maximum wavespeed in x or y directions
@@ -854,6 +855,11 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		//double Smax_y=0;
 		for (int i=2; i<domain.Nx+2; i++){
 			for (int j=2; j<domain.Ny+2; j++){
+				//checks if density is broken
+				if (var.fluid.U(i, j)(0) != var.fluid.U(i, j)(0) || var.fluid.U(i, j)(0) < 0){
+					std::cout << "Density value is not physical - NaN, terminating" << std::endl;
+					throw "Density value is not physical";
+				}
 				vector4 Utmp = var.fluid.U(i, j);
 				double a_ij = var.fluid.state_function->soundspeed(Utmp);
 				double d_ij_x = Utmp(1)/Utmp(0); //velocity in x direction
@@ -870,9 +876,15 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		else {
 				domain.dt = CFL*fmin((domain.dx/Smax), (domain.dy/Smax));
 		}
-		if (t + domain.dt > domain.tstop) domain.dt = domain.tstop - t;
-
-		t += domain.dt;
+		if (t + domain.dt > plot_time) {
+			domain.dt = plot_time - t;
+			t = plot_time;
+			//std::cout << t << "s plotting" << std::endl;
+		}
+		//if (t + domain.dt > domain.tstop) domain.dt = domain.tstop - t;
+		else{
+			t += domain.dt;
+		}
 		count += 1;
 
 		//sweeping in the x-direction for each y row
@@ -993,7 +1005,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 //////////////ERROR///
 //unstable unless low cfl is used.. tiomestep issues
 			newton_euler(levelset_collection[a], var.particles[a], domain, var.particles[a].force, var.particles[a].torque, domain.dt);
-			if (count%10==0) std::cout << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			if (count%50==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << var.particles[a].force.transpose() << '\t' << var.particles[a].torque << std::endl;
 //////////////ERROR///
 			//move the particles
@@ -1017,25 +1029,33 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		//if (count == 300) t = domain.tstop;
+		//if (count == 400) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
+		if (t == plot_time) {
+			std::cout << "plotting " << t << std::endl;
+			std::string file = "Data/dataeuler_" + std::to_string(t) + ".txt";
+			std::string file2 = "Data/datapoints_" + std::to_string(t) + ".txt";
+			output(var, domain, file, file2);
+			plot_time += 0.1;
+		}
+
 	}while (t < domain.tstop);
 	std::cout << "count = "  << count << std::endl;
 }
 
-void RigidBodies::output(const Moving_RB &var, const Domain2D &domain){
+void RigidBodies::output(const Moving_RB &var, const Domain2D &domain, std::string filename, std::string filename2){
 
 	std::ofstream outfile;
 	std::ofstream outfile2;
-	outfile.open("dataeuler.txt");
-	outfile2.open("datapoints.txt");
 
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			//std::cout << var.combinedls.phi(i+1, j+1) << '\t';
-		}
-		//std::cout << std::endl;
+	outfile.open(filename);
+	outfile2.open(filename2);
+
+	for (int z=0; z<static_cast<int>(var.particles[0].nodes.size()); z++){
+		//std::cout << var.particles[0].nodes[z].transpose() << std::endl;
+		outfile2 << var.particles[0].nodes[z].transpose() << std::endl<< std::endl;
 	}
+
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
@@ -1062,14 +1082,33 @@ void RigidBodies::output(const Moving_RB &var, const Domain2D &domain){
 		outfile << std::endl;
 	}
 
+	outfile.close();
+	outfile2.close();
+}
+
+void RigidBodies::output_levelset(const Moving_RB &var, const Domain2D &domain, std::string filename, std::string filename2){
+
+	std::ofstream outfile;
+	std::ofstream outfile2;
+
+	outfile.open(filename);
+	outfile2.open(filename2);
+
 	for (int z=0; z<static_cast<int>(var.particles[0].nodes.size()); z++){
 		//std::cout << var.particles[0].nodes[z].transpose() << std::endl;
 		outfile2 << var.particles[0].nodes[z].transpose() << std::endl<< std::endl;
 	}
 
+
+	for (int i=2; i<domain.Nx+2; i++){
+		for (int j=2; j<domain.Ny+2; j++){
+			outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << var.combinedls.phi(i-1, j-1) << '\t' << std::endl;
+		}
+		outfile << std::endl;
+	}
+
 	outfile.close();
 	outfile2.close();
-	std::cout << "done: Rigid Body" << std::endl;
 }
 
 void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
@@ -1078,8 +1117,9 @@ void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
 	//	std::cout << var.particles[a].nodes[b].transpose() << std::endl;
 	//}
 	//std::cout << Test.var.particles[0].nodes.size() << std::endl;
-	solver(Test.var, Test.domain, CFL);
-	output(Test.var, Test.domain);
+	//solver(Test.var, Test.domain, CFL);
+	output_levelset(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
+	std::cout << "done: Rigid Body" << std::endl;
 }
 
 

@@ -232,6 +232,8 @@ struct Polygon
 
 	int point_in_polygon(Coordinates) const;
 
+	//void translate(double, double);
+
 	static int orientation(Coordinates, Coordinates, Coordinates);
 	static std::vector<Coordinates> random_points(double, double, int);
 

@@ -7,11 +7,11 @@
 int main(void){
 
 
-	demTests Tests(101);
-	Tests.test1();
+	demTests Tests(201);
+	Tests.test5();
 
 	//RigidBodies::initial_conditions(Tests);
-	RigidBodies::rigid_body_solver(Tests, 0.3);
+	RigidBodies::rigid_body_solver(Tests, 0.5);
 
 /*	Polygon poly;
 	Coordinates center(0.5,0.5);

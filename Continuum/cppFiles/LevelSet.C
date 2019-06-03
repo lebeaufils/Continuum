@@ -438,7 +438,7 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 //--------------------------------------------------------------
 //Particles
 //--------------------------------------------------------------
-Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(1), k_n(1e6), k_s(1e6), force(0, 0), torque(0) {
+Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(0.26), k_n(10), k_s(10), force(0, 0), torque(0) {
 	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
 	centroid = center_of_mass(ls, *this, domain);
 	centre = centroid;
@@ -470,7 +470,7 @@ Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) 
 	}			
 }
 
-Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(1), k_n(1000), k_s(1000), force(0, 0), torque(0) {
+Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(0.26), k_n(10), k_s(10), force(0, 0), torque(0) {
 	LevelSetMethods::initialise(ls, domain, poly);
 	centroid = center_of_mass(ls, *this, domain);
 	centre = centroid;
@@ -589,8 +589,8 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 			Coordinates originalpos = domain.X(i, j);
 			//originalpos.display();
 			//originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point			
-			originalpos = LevelSetMethods::rotation_reverse(originalpos, centroid, frequency, time); //rotate the point
 			originalpos = LevelSetMethods::translation_reverse(originalpos, vc, time); //translate the point
+			originalpos = LevelSetMethods::rotation_reverse(originalpos, centroid, frequency, time); //rotate the point
 			//originalpos.display();
 			//originalpos.display();
 			//double phi_tmp = interpolation_value(ls, domain, originalpos);
