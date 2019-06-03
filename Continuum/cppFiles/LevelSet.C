@@ -362,8 +362,28 @@ double LevelSetMethods::torque (const Euler2D& var, const LevelSet& ls, const Do
 //--------------------------------------------------------
 // Discrete equations of motion (assumes forces are provided (eg surface forces from fluid))
 // NOTE: in the paper by kawamoto, the levelset does not need to be updated as there is no evolution of surrounding fluid (GFM)
-
 Coordinates LevelSetMethods::translation(const Coordinates& p, const vector2& v_c, double time){
+	//x(n+1) = x(n) + v(t)*t
+	//phi(x, t) = phi(x - vt, 0)
+
+	Coordinates originalpos(p.x + v_c(0)*time, p.y + v_c(1)*time); //original position of the levelset
+	return originalpos;
+}
+
+Coordinates LevelSetMethods::rotation(const Coordinates& p, const vector2& centroid, double f, double time){
+	//ω is the angular velocity, which is a 'scalar' value in 2D,
+	//f is the frequency of rotation, given by w/2pi
+	//where a positive value corresponds to counter-clockwise rotation and negative clockwise.
+	//the linear velocity is spatially dependent
+	//vb = 2πω (r_rot × x)
+
+	vector2 v = Rotor2::rotate_about(vector2(p.x, p.y), centroid, f, time); 
+	//by reversing the rotation at point i, j, the "original position" of the level set is retrieved
+	Coordinates originalpos(v(0), v(1)); //original position of the levelset
+	return originalpos;
+}
+
+Coordinates LevelSetMethods::translation_reverse(const Coordinates& p, const vector2& v_c, double time){
 	//x(n+1) = x(n) + v(t)*t
 	//phi(x, t) = phi(x - vt, 0)
 
@@ -371,7 +391,7 @@ Coordinates LevelSetMethods::translation(const Coordinates& p, const vector2& v_
 	return originalpos;
 }
 
-Coordinates LevelSetMethods::rotation(const Coordinates& p, const vector2& centroid, double f, double time){
+Coordinates LevelSetMethods::rotation_reverse(const Coordinates& p, const vector2& centroid, double f, double time){
 	//ω is the angular velocity, which is a 'scalar' value in 2D,
 	//f is the frequency of rotation, given by w/2pi
 	//where a positive value corresponds to counter-clockwise rotation and negative clockwise.
@@ -397,8 +417,8 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 	for(int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			Coordinates originalpos = domain.X(i, j);
-			originalpos = translation(originalpos, v_c, time); //translate the point
-			originalpos = rotation(originalpos, centroid, frequency, time); //rotate the point
+			originalpos = translation_reverse(originalpos, v_c, time); //translate the point
+			originalpos = rotation_reverse(originalpos, centroid, frequency, time); //rotate the point
 			//double phi_tmp = interpolation_value(ls, domain, originalpos);
 			ls_t.phi(i+1, j+1) = interpolation_value(ls, domain, originalpos);
 			//if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
@@ -418,7 +438,7 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 //--------------------------------------------------------------
 //Particles
 //--------------------------------------------------------------
-Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), miu(1), k_n(1e9), k_s(1e9), force(0, 0), torque(0) {
+Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(1), k_n(1e6), k_s(1e6), force(0, 0), torque(0) {
 	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
 	centroid = center_of_mass(ls, *this, domain);
 	centre = centroid;
@@ -438,17 +458,19 @@ Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) 
 			}
 		}
 	}
+	ref_nodes.push_back(surface_p);
 	nodes.push_back(surface_p);
 	//find the frequency of rotation
 	int nodesize = 32; //circumference/spacing = 10pi
 	double t = 0;
 	for (int dt=1; dt<nodesize; dt++){
-		vector2 v = Rotor2::rotate_about(surface_p, vector2(center.x, center.y), 1./static_cast<double>(nodesize), t+dt); 
+		vector2 v = Rotor2::rotate_about(surface_p, vector2(center.x, center.y), 2*3.14159/nodesize, t+dt); 
+		ref_nodes.push_back(v);
 		nodes.push_back(v);
 	}			
 }
 
-Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), miu(1), k_n(1e9), k_s(1e9), force(0, 0), torque(0) {
+Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(1), k_n(1000), k_s(1000), force(0, 0), torque(0) {
 	LevelSetMethods::initialise(ls, domain, poly);
 	centroid = center_of_mass(ls, *this, domain);
 	centre = centroid;
@@ -458,6 +480,7 @@ Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid
 	int spacing = floor(diameter/(10*domain.dx));
 	for (int a=0; a < static_cast<int>(poly.surfacepoints.size()); a+=spacing) {
 		Coordinates tmp = domain.X(poly.surfacepoints[a].i, poly.surfacepoints[a].j);
+		ref_nodes.push_back(vector2(tmp.x, tmp.y));
 		nodes.push_back(vector2(tmp.x, tmp.y));
 	}
 	//for (int a=0; a < static_cast<int>(nodes.size()); a++) {
@@ -465,9 +488,12 @@ Particle::Particle(const Polygon& poly, const Domain2D& domain) : ls(), centroid
 	//}
 }
 
-//Particle::Particle(const Particle& gr){//copy constructor
-//}
-
+Particle::Particle(const Particle& gr) : ls(gr.ls), centroid(gr.centroid), centre(gr.centre), vc(gr.vc), w(gr.w), nodes(0), ref_nodes(0), miu(gr.miu), k_n(gr.k_n), k_s(gr.k_s), force(gr.force), torque(gr.torque) {
+	 for (int a=0; a<static_cast<int>(gr.nodes.size()); a++){
+	 	nodes.push_back(gr.nodes[a]);
+	 	ref_nodes.push_back(gr.ref_nodes[a]);
+	 }
+}
 void Particle::set_velocity(const vector2& trans_velocity, double angular_velocity){
 	vc = trans_velocity;
 	w = angular_velocity;
@@ -563,8 +589,8 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 			Coordinates originalpos = domain.X(i, j);
 			//originalpos.display();
 			//originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point			
-			originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point
-			originalpos = LevelSetMethods::translation(originalpos, vc, time); //translate the point
+			originalpos = LevelSetMethods::rotation_reverse(originalpos, centroid, frequency, time); //rotate the point
+			originalpos = LevelSetMethods::translation_reverse(originalpos, vc, time); //translate the point
 			//originalpos.display();
 			//originalpos.display();
 			//double phi_tmp = interpolation_value(ls, domain, originalpos);
@@ -574,7 +600,15 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 		}
 		//std::cout << std::endl;
 	}
-
+	//move the nodes from ref, store a seperate node list
+	for (int a=0; a<static_cast<int>(nodes.size()); a++){
+		//std::cout << nodes[a].transpose() << std::endl;
+		Coordinates node_a(ref_nodes[a]); //always start from reference nodes
+		node_a = LevelSetMethods::rotation(node_a, centroid, frequency, time);
+		node_a = LevelSetMethods::translation(node_a, vc, time); 
+		nodes[a] = vector2(node_a.x, node_a.y);
+	}
+////////
 	LevelSetMethods::fast_sweep(ls_t, domain);
 	LevelSetMethods::boundary_conditions(ls_t, domain);
 	return ls_t;
@@ -590,13 +624,13 @@ double Particle::cross(const vector2& m, const vector2& n){
 
 ///////
 void Moving_RB::add_particle(const Polygon& poly, const Domain2D& domain){
-	Particle new_particle(poly, domain);
-	particles.push_back(new_particle);
+	//Particle new_particle(poly, domain);
+	particles.push_back(Particle(poly, domain));
 }
 
 void Moving_RB::add_sphere(const Domain2D& domain, const Coordinates& center , double r){
-	Particle new_particle(domain, center, r);
-	particles.push_back(new_particle);
+	//Particle new_particle(domain, center, r);
+	particles.push_back(Particle(domain, center, r));
 }
 
 

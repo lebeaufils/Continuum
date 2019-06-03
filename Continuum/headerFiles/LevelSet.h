@@ -74,6 +74,8 @@ public:
 	//-----------------------------------------------------
 	static Coordinates translation(const Coordinates&, const vector2&, double);
 	static Coordinates rotation(const Coordinates&, const vector2&, double, double);
+	static Coordinates translation_reverse(const Coordinates&, const vector2&, double);
+	static Coordinates rotation_reverse(const Coordinates&, const vector2&, double, double);
 	static LevelSet motion(const LevelSet&, const Domain2D&, const vector2&, const vector2&, double, double);
 
 };
@@ -95,6 +97,7 @@ struct Particle //NEEDS WORK
 	vector2 vc; //translational velocity
 	double w; //angular velocity
 	std::vector<vector2> nodes;
+	std::vector<vector2> ref_nodes;
 	//???If the mass of the Particle is nott important
 
 	//Stiffness
@@ -105,10 +108,11 @@ struct Particle //NEEDS WORK
 	vector2 force; //Accumulator for linear force
 	double torque; //Accumuluator for torque
 
-	Particle() : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), miu(1), k_n(1e9), k_s(1e9), force(0, 0), torque(0) {}
+	Particle() : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(1), k_n(1000), k_s(1000), force(0, 0), torque(0) {}
 	Particle(const Domain2D&, const Coordinates&, double);
 	Particle(const Polygon&, const Domain2D&);
 	//Particle(const Particle&) //copy constructor
+	Particle(const Particle& gr);
 	~Particle() {};
 
 	//void initialise(const Polygon&, const Domain2D&);
@@ -129,7 +133,6 @@ struct Particle //NEEDS WORK
 	static vector2 cross(double, const vector2&);
 	static double cross(const vector2&, const vector2&);
 	static LevelSet merge(const std::vector<Particle>&, const Domain2D&);
-
 };
 
 struct Moving_RB
@@ -152,6 +155,7 @@ struct Moving_RB
 
 private:
 	Moving_RB(const Moving_RB& rbsystem) : particles(rbsystem.particles), fluid(rbsystem.fluid), combinedls(rbsystem.combinedls) {}
+
 };
 
 #endif /* LEVELSET_H_ */

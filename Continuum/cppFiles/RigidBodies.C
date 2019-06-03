@@ -613,7 +613,9 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 		//after calculating position future position, check that it is not at the boundaries.
 		//if it crosses boundary, calvulate the extent of overlap and reflect the normal velocity?
 		//check if any nodes exceed domain boundary. Assumes domain origin at 0, 0
+		/*
 			if ((node_a.x < 0) != (node_a.x > domain.Lx)){
+				//std::cout << "contact with wall" << std::endl;
 				//if node is less than neither less than 0 nor greater than Lx, it will return false
 				vector2 normal(1, 0);
 				//since dist must always be negative,
@@ -623,6 +625,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 			}
 			//vertical boundaries
 			if ((node_a.y < 0) != (node_a.y > domain.Ly)){
+				//std::cout << "contact with wall" << std::endl;
 				//if node is less than neither less than 0 nor greater than Lx, it will return false
 				vector2 normal(0, 1);
 				//since dist must always be negative,
@@ -630,6 +633,32 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 					//On the right boundary, the normal points in the wrong direction but distance is positive	
 				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
 			}
+		*/
+			//std::cout << "node = " << node_a.x << '\t' << node_a.y << std::endl;
+			if (node_a.x < 0){
+				vector2 normal(1, 0);
+				double dist = node_a.x;	
+				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
+			}
+
+			if (node_a.x > domain.Lx){
+				vector2 normal(-1, 0);
+				double dist = domain.Lx - node_a.x;	
+				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
+			}
+
+			if (node_a.y < 0){
+				vector2 normal(0, 1);
+				double dist = node_a.y;
+				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
+			}
+
+			if (node_a.y > domain.Ly){
+				vector2 normal(0, -1);
+				double dist = domain.Ly - node_a.y;	
+				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
+			}
+
 		}
 	}
 
@@ -687,7 +716,9 @@ void RigidBodies::wall_collision(Particle& gr_i, const vector2& node, double dis
 //"penetration" distance and unit normal are specified
 //////
 	vector2 Fn_i = -gr_i.k_n*dist*normal;
-
+	//std::cout << "wall collision" << Fn_i.transpose() << '\t' << '\t' << normal.transpose() << std::endl;
+	//std::cout << "wall collision" << node.transpose() << std::endl;
+	
 	//moment contribution on grain i and grain j respectively
 	//in 2d, this moment contribution lies in the z axis 
 	double Mn_i = Particle::cross(node-gr_i.centre, Fn_i);
@@ -779,6 +810,8 @@ void RigidBodies::initial_conditions(demTests& Test){
 	for (int a=0; a<static_cast<int>(Test.var.particles.size()); a++){
 		fast_sweep(Test.var.particles[a].ls, Test.var.particles[a], Test.var, Test.domain, normal[a]);
 	}
+
+	Test.var.combinedls = Particle::merge(Test.var.particles, Test.domain);
 }
 
 void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
@@ -801,9 +834,16 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 
 
 	slopeLimiter a = VanLeer;//getLimiter();
-
+	/////-----
+	//LevelSets//
+	//---------------------
 	//When solving for the fluid values, we can consider all the levelsets at once by taking their union
 	var.combinedls = Particle::merge(var.particles, domain);
+	//storing the initial collection of levelsets
+	std::vector<LevelSet> levelset_collection;
+	for (int a=0; a<static_cast<int>(var.particles.size()); a++){
+		levelset_collection.push_back(var.particles[a].ls);
+	}
 
 	double t = 0.0;
 	int count = 0;
@@ -939,23 +979,25 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
-		//calculate individually for each particle
-		std::vector<LevelSet> levelset_collection;
+		//Perform contact detection, accumulating contact forces on the particles
+		RigidBodies::contact_detection(domain, var.particles, levelset_collection, domain.dt);
+		//reset the levelset collection 
+		
+		//Forces from fluids
 		for (int a=0; a<static_cast<int>(var.particles.size()); a++){
-			//move the particles
-			levelset_collection.push_back(var.particles[a].motion(domain, t));
-			//calculate forces
+			//calculate forces from fluid pressure
 			//vector2 force = LevelSetMethods::force(var.fluid, levelset_collection[a], domain);
 			//double torque = LevelSetMethods::torque (var.fluid, levelset_collection[a], domain, var.particles[a].centre);
-			//if (count%10==0) {
-			//	std::cout << force.transpose() << '\t' << torque << std::endl;
-			//}
+			//if (count%10==0) {std::cout << force.transpose() << '\t' << torque << std::endl;}
 			//calculate and update particle velocities
 //////////////ERROR///
 //unstable unless low cfl is used.. tiomestep issues
-			//newton_euler(levelset_collection[a], var.particles[a], domain, force, 0, domain.dt);
-			//if (count%10==0) std::cout << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			newton_euler(levelset_collection[a], var.particles[a], domain, var.particles[a].force, var.particles[a].torque, domain.dt);
+			if (count%10==0) std::cout << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			//if (count%10==0) std::cout << var.particles[a].force.transpose() << '\t' << var.particles[a].torque << std::endl;
 //////////////ERROR///
+			//move the particles
+			levelset_collection[a] = var.particles[a].motion(domain, t);
 			//update particle with new centre of gravity
 			var.particles[a].centre = Particle::center_of_mass(levelset_collection[a], var.particles[a], domain);
 			//extrapolate ghost values
@@ -975,7 +1017,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		//if (count == 50) t = domain.tstop;
+		//if (count == 300) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 	}while (t < domain.tstop);
 	std::cout << "count = "  << count << std::endl;
@@ -984,7 +1026,9 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 void RigidBodies::output(const Moving_RB &var, const Domain2D &domain){
 
 	std::ofstream outfile;
+	std::ofstream outfile2;
 	outfile.open("dataeuler.txt");
+	outfile2.open("datapoints.txt");
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
@@ -1008,7 +1052,7 @@ void RigidBodies::output(const Moving_RB &var, const Domain2D &domain){
 				double schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
 
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
-				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << var.combinedls.phi(i-1, j-1) << std::endl;
+				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << var.combinedls.phi(i-1, j-1) << '\t' << std::endl;
 			}
 			/*else {
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << 0 << '\t' << 0
@@ -1018,12 +1062,22 @@ void RigidBodies::output(const Moving_RB &var, const Domain2D &domain){
 		outfile << std::endl;
 	}
 
+	for (int z=0; z<static_cast<int>(var.particles[0].nodes.size()); z++){
+		//std::cout << var.particles[0].nodes[z].transpose() << std::endl;
+		outfile2 << var.particles[0].nodes[z].transpose() << std::endl<< std::endl;
+	}
+
 	outfile.close();
+	outfile2.close();
 	std::cout << "done: Rigid Body" << std::endl;
 }
 
 void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
 	initial_conditions(Test);
+	//for (int b=0; b<static_cast<int>(var.particles[a].nodes.size()); b++){
+	//	std::cout << var.particles[a].nodes[b].transpose() << std::endl;
+	//}
+	//std::cout << Test.var.particles[0].nodes.size() << std::endl;
 	solver(Test.var, Test.domain, CFL);
 	output(Test.var, Test.domain);
 }

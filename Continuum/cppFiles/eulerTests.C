@@ -638,7 +638,7 @@ void demTests::test1(){
 	//------------------------------------------------------------
 	Coordinates center(0.5,0.5);
 	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0, 0), 0);
+	var.particles[0].set_velocity(vector2(0, 2), 1);
 
 	//domain.display_grid();
 	//var.particles[0].ls.display_grid();
