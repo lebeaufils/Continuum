@@ -167,7 +167,8 @@ matrix MUSCL::vanLeer(const matrix& U, int i){
 		vector4 ri(0, 0, 0, 0);
 
 		for (int j=0; j<4; j++){
-			ri(j) = diMinus(j)/diPlus(j);
+			if (diPlus(j)!=0) ri(j) = diMinus(j)/diPlus(j);
+			else ri(j) = 0;
 		}
 
 		for (int j=0; j<4; j++){
@@ -363,7 +364,6 @@ void MUSCL::compute_fluxes(Euler1D &var, const Domain1D &domain, int i, const ma
 	vector ULbar = ULtmp1 + 0.5*(domain.dt/domain.dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
 	vector URbar = URtmp + 0.5*(domain.dt/domain.dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
 
-
 	/*-------------------------------------------------------
 	 * Solution of the piecewise constant Riemann problem pg 180
 	 -------------------------------------------------------*/
@@ -391,8 +391,15 @@ void MUSCL::compute_fluxes(Euler1D &var, const Domain1D &domain, int i, const ma
 		Pr = var.state_function->Pressure(hllcUR);
 
 		//velocity
-		ul = hllcUL(1)/hllcUL(0);
-		ur = hllcUR(1)/hllcUR(0);
+		if (hllcUL(0)!=0 && hllcUR(0)!=0){
+			ul = hllcUL(1)/hllcUL(0);
+			ur = hllcUR(1)/hllcUR(0);
+
+		}
+		else {
+			ul = 0;
+			ur = 0;
+		}
 
 		//soundspeed
 		al = var.state_function->soundspeed(hllcUL);
@@ -670,11 +677,22 @@ void MUSCL::compute_fluxes(const Euler2D &var, const matrix &U, vector4 &F, int 
 		Pr = var.state_function->Pressure(hllcUR);
 
 		//velocity
-		ul = hllcUL(1)/hllcUL(0);
-		ur = hllcUR(1)/hllcUR(0);
-
-		vl = hllcUL(3)/hllcUL(0);
-		vr = hllcUR(3)/hllcUR(0);
+		if (dl!=0) {
+			ul = hllcUL(1)/hllcUL(0);
+			vl = hllcUL(3)/hllcUL(0);
+		}
+		else {
+			ul = 0;
+			vl = 0;
+		}
+		if (dr!=0) {
+			ur = hllcUR(1)/hllcUR(0);
+			vr = hllcUR(3)/hllcUR(0);
+		}
+		else {
+			ur = 0;
+			vr = 0;
+		}
 
 		//soundspeed
 		al = var.state_function->soundspeed(hllcUL);
@@ -691,10 +709,12 @@ void MUSCL::compute_fluxes(const Euler2D &var, const matrix &U, vector4 &F, int 
 		SR = fmax(0, fmax(ur + ar, uspecial + aspecial));
 
 		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
+		if (dl == 0 && dr == 0) Sstar = 0;
+
 		//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
 		//initialize FL and FR for each timestep
 		vector4 FL(mvl, mvl*ul + Pl, ul*(El + Pl), mvl*vl);
-		vector4 FR(mvr, mvr*ur + Pr, ur*(Er + Pr), mvr*vr);		
+		vector4 FR(mvr, mvr*ur + Pr, ur*(Er + Pr), mvr*vr);	
 
 		if (0 <= SL){
 			F = FL;
@@ -754,7 +774,6 @@ void MUSCL::compute_fluxes(const Euler2D &var, const Domain2D &domain, const mat
 	vector4 ULbar = ULtmp1 + 0.5*(domain.dt/dx)*(var.state_function->fluxes(ULtmp1) - var.state_function->fluxes(URtmp1)); //UL(i+1)
 	vector4 URbar = URtmp + 0.5*(domain.dt/dx)*(var.state_function->fluxes(ULtmp) - var.state_function->fluxes(URtmp));
 
-
 	/*-------------------------------------------------------
 	 * Solution of the piecewise constant Riemann problem pg 180
 	 -------------------------------------------------------*/
@@ -782,11 +801,22 @@ void MUSCL::compute_fluxes(const Euler2D &var, const Domain2D &domain, const mat
 		Pr = var.state_function->Pressure(hllcUR);
 
 		//velocity
-		ul = hllcUL(1)/hllcUL(0);
-		ur = hllcUR(1)/hllcUR(0);
-
-		vl = hllcUL(3)/hllcUL(0);
-		vr = hllcUR(3)/hllcUR(0);
+		if (dl!=0) {
+			ul = hllcUL(1)/hllcUL(0);
+			vl = hllcUL(3)/hllcUL(0);
+		}
+		else {
+			ul = 0;
+			vl = 0;
+		}
+		if (dr!=0) {
+			ur = hllcUR(1)/hllcUR(0);
+			vr = hllcUR(3)/hllcUR(0);
+		}
+		else {
+			ur = 0;
+			vr = 0;
+		}
 
 		//soundspeed
 		al = var.state_function->soundspeed(hllcUL);
@@ -797,15 +827,15 @@ void MUSCL::compute_fluxes(const Euler2D &var, const Domain2D &domain, const mat
 		//double Splus = fmax(abs(ul) + al, abs(ur) + ar);
 		//SL = -Splus; SR = Splus;
 		
-		double uspecial = (ul + ur)/2. + (al - ar)/(var.state_function->y - 1);
-		double aspecial = (al + ar)/2. + (ul - ur)*(var.state_function->y - 1)/4.;
-		SL = fmin(0, fmin(ul - al, uspecial - aspecial));
-		SR = fmax(0, fmax(ur + ar, uspecial + aspecial));
-
-				
+		//double uspecial = (ul + ur)/2. + (al - ar)/(var.state_function->y - 1);
+		//double aspecial = (al + ar)/2. + (ul - ur)*(var.state_function->y - 1)/4.;
+		//SL = fmin(0, fmin(ul - al, uspecial - aspecial));
+		//SR = fmax(0, fmax(ur + ar, uspecial + aspecial));
+		
 				//---------------------------------------
 				// pressure based wave speed estimate
 				//---------------------------------------
+		//implement 2shock/2rarefraction/ppvrs
 				/*
 				//Pressure-based wave speed estimate
 				double Ppvrs;
@@ -840,9 +870,70 @@ void MUSCL::compute_fluxes(const Euler2D &var, const Domain2D &domain, const mat
 				SL = ul - al*ql;
 				*/
 
+				//Pressure based wave speed estimate, ppvrs works if there are both shock and rarefraction waves
+				//otherwise, two shock or two rarefraction estimates must be used.
+				double Ppvrs, Pstar;
+				double rhoavg, aavg;
+				double ql, qr;
+				double TOL = 1e-6;
+
+				rhoavg = 0.5*(dl + dr);
+				aavg = 0.5*(al + ar);
+
+				Ppvrs = 0.5*(Pl + Pr) - 0.5*(ur - ul)*rhoavg*aavg;
+				Ppvrs = fmax(TOL, Ppvrs);
+				double Pmax = fmax(Pl, Pr);
+				double Pmin = fmin(Pl, Pr);
+				double Quser = 2.0;
+				double gamma = var.state_function->y;
+
+				//if the pressure difference is small and the guess is within the initial pressure range
+				if (Pmax/Pmin < Quser && Ppvrs > Pmin && Ppvrs < Pmax){
+					//Select the linearised pressure guess
+					Pstar = Ppvrs;
+				}
+			//	//If the guess is less than the initial pressure, two rarefraction wves have been formed
+				else if (Ppvrs < Pmin){
+					double pTR = pow((al + ar - 0.5*(gamma - 1)*(ur - ul))/((al/pow(Pl, (gamma - 1)/(2*gamma))) + (ar/pow(Pr, (gamma - 1)/(2*gamma)))), 2*gamma/(gamma-1));
+					Pstar = pTR;
+				}
+				//If the pressure difference is large or if the guess is larger than Pmax
+				else {
+					//Select the two shock initial guess using ppvrs as estimate
+					double AL = 2/((gamma + 1)*dl);	double AR = 2/((gamma + 1)*dr);
+					double BL = Pl*(gamma - 1)/(gamma + 1);	double BR = Pr*(gamma - 1)/(gamma + 1);
+					double QL = sqrt(AL/(Ppvrs + BL));
+					double QR = sqrt(AR/(Ppvrs + BR));
+					double pTS = (QL*Pl + QR*Pr - (ur - ul))/(QL + QR);
+					Pstar = pTS;
+				}
+
+				//end of pressure estimate. Computing wave speeds
+				if (Pstar <= Pl){
+					ql = 1.0;
+				}
+
+				else {
+					ql = sqrt(1 + ((var.state_function->y+1)/(2*var.state_function->y))*((Pstar/Pl) - 1));
+				}
+
+				if (Pstar <= Pr){
+					qr = 1.0;
+				}
+
+				else {
+					qr = sqrt(1 + ((var.state_function->y+1)/(2*var.state_function->y))*((Pstar/Pr) - 1));
+				}
+
+				SR = ur + ar*qr;
+				SL = ul - al*ql;
+
+
 		//if (std::max(abs(SR), abs(SL)) > Smax) Smax = std::max(abs(SR), abs(SL));
 
 		Sstar = (Pr - Pl + dl*ul*(SL - ul) - dr*ur*(SR - ur))/(dl*(SL - ul) - dr*(SR - ur));
+		if (dl==0 && dr==0) Sstar = 0;
+
 		//if (count == 1) std::cout << Pr << '\t' << Pl  << '\t' << dr << '\t' << dl<< std::endl;
 		//initialize FL and FR for each timestep
 		vector4 FL(mvl, mvl*ul + Pl, ul*(El + Pl), mvl*vl);

@@ -845,6 +845,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		levelset_collection.push_back(var.particles[a].ls);
 	}
 
+
 	double t = 0.0;
 	double plot_time = 0.1;
 	int count = 0;
@@ -869,6 +870,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 				if (lambda > Smax) Smax = lambda;
 			}
 		}
+
 		if (count <= 5){
 				//using a CFL number of 0,.2 for the first 5 timesteps
 				domain.dt = 0.2*fmin((domain.dx/Smax), (domain.dy/Smax));
@@ -917,6 +919,11 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 			}
 		}
 
+	//for (int i=0; i<domain.Nx; i++){
+	//	for (int j=0; j<domain.Ny; j++){
+			//std::cout << var.fluid.F(i+1, j+1).transpose() << std::endl;
+	//	}
+	//}
 
 		//sweeping in the y-direction for each x row
 		for (int i=0; i<domain.Nx; i++){
@@ -1005,7 +1012,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 //////////////ERROR///
 //unstable unless low cfl is used.. tiomestep issues
 			newton_euler(levelset_collection[a], var.particles[a], domain, var.particles[a].force, var.particles[a].torque, domain.dt);
-			if (count%50==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			if (count%10==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << var.particles[a].force.transpose() << '\t' << var.particles[a].torque << std::endl;
 //////////////ERROR///
 			//move the particles
@@ -1029,7 +1036,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		//if (count == 400) t = domain.tstop;
+		//if (count == 1) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 		if (t == plot_time) {
 			std::cout << "plotting " << t << std::endl;
@@ -1056,20 +1063,26 @@ void RigidBodies::output(const Moving_RB &var, const Domain2D &domain, std::stri
 		outfile2 << var.particles[0].nodes[z].transpose() << std::endl<< std::endl;
 	}
 
+	double u=0;
+	double P=0;
+	double e=0;
+	double schlieren=0;
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
 			if (var.combinedls.phi(i-1, j-1) >= 0){
 				vector4 Ux = var.fluid.U(i, j);
-				double u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
-				double P = var.fluid.state_function->Pressure(Ux);
-				double e = var.fluid.state_function->internalE(Ux);
+				if (Ux(0)!=0){
+					u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
+					P = var.fluid.state_function->Pressure(Ux);
+					e = var.fluid.state_function->internalE(Ux);
 
-				//central difference to calculate partial derivatives in x, y for density
-				double grad_density_x = (var.fluid.U(i+1, j)(0) - var.fluid.U(i-1, j)(0))/(2*domain.dx);
-				double grad_density_y = (var.fluid.U(i, j+1)(0) - var.fluid.U(i, j-1)(0))/(2*domain.dy);
-				//calculating the numerical schlieren
-				double schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
+					//central difference to calculate partial derivatives in x, y for density
+					double grad_density_x = (var.fluid.U(i+1, j)(0) - var.fluid.U(i-1, j)(0))/(2*domain.dx);
+					double grad_density_y = (var.fluid.U(i, j+1)(0) - var.fluid.U(i, j-1)(0))/(2*domain.dy);
+					//calculating the numerical schlieren
+					schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
+				}
 
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << var.combinedls.phi(i-1, j-1) << '\t' << std::endl;
@@ -1117,8 +1130,8 @@ void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
 	//	std::cout << var.particles[a].nodes[b].transpose() << std::endl;
 	//}
 	//std::cout << Test.var.particles[0].nodes.size() << std::endl;
-	//solver(Test.var, Test.domain, CFL);
-	output_levelset(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
+	solver(Test.var, Test.domain, CFL);
+	output(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
 	std::cout << "done: Rigid Body" << std::endl;
 }
 

@@ -108,7 +108,7 @@ struct Particle //NEEDS WORK
 	vector2 force; //Accumulator for linear force
 	double torque; //Accumuluator for torque
 
-	Particle() : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(0.26), k_n(10), k_s(10), force(0, 0), torque(0) {}
+	Particle() : ls(), centroid(0, 0), centre(0, 0), vc(0, 0), w(0), nodes(0), ref_nodes(0), miu(0.26), k_n(1000), k_s(1000), force(0, 0), torque(0) {}
 	Particle(const Domain2D&, const Coordinates&, double);
 	Particle(const Polygon&, const Domain2D&);
 	//Particle(const Particle&) //copy constructor

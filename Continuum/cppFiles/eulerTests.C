@@ -718,7 +718,7 @@ void demTests::test3(){
 	//------------------------------------------------------------
 	//initial conditions for shock and unshocked fluid
 	//vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
-	vector4 unshocked(1.0, 0.0, 0.0, 1.0);
+	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
 
 	initialL = unshocked;
 	initialR = unshocked;

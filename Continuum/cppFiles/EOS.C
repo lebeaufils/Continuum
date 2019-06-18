@@ -40,7 +40,8 @@ double StateFunctions::internalE(matrix U, int i){
 double StateFunctions::internalE(vector4 U){
 	//E = ρ ( 0.5*V2 + e)
 	//note: this internalE is actually ρe 
-	double e = U(2)/U(0) - 0.5*(pow(U(1)/U(0), 2.0) + pow(U(3)/U(0), 2));
+	double e=0;
+	if (U(0)!=0) e = U(2)/U(0) - 0.5*(pow(U(1)/U(0), 2.0) + pow(U(3)/U(0), 2));
 	return e;
 }
 
@@ -55,7 +56,8 @@ double StateFunctions::soundspeed(vector U){
 }
 
 double StateFunctions::soundspeed(vector4 U){
-	double a = sqrt(y*(Pressure(U)/U(0)));
+	double a=0;
+	if (U(0)!=0) a = (U(0)!=0)*sqrt(y*(Pressure(U)/U(0)));
 	return a;
 }
 
@@ -71,9 +73,16 @@ vector4 StateFunctions::fluxes(vector4 U){
 	//Here, U is either Ux or Uy
 	vector4 flux;
 	flux(0) = U(1); //momentum in sweep direction
-	flux(1) = U(1)*(U(1)/U(0)) + Pressure(U);
-	flux(2) = (U(1)/U(0))*(U(2) + Pressure(U));
-	flux(3) = U(3)*U(1)/U(0);
+	if (U(0)!=0){
+		flux(1) = U(1)*(U(1)/U(0)) + Pressure(U);
+		flux(2) = (U(1)/U(0))*(U(2) + Pressure(U));
+		flux(3) = U(3)*U(1)/U(0);
+	}
+	else {
+		flux(1) = 0;
+		flux(2) = 0;
+		flux(3) = 0;
+	}
 	return flux;
 }
 
@@ -151,9 +160,15 @@ vector4 IdealGas::primitiveVar(vector4 U){
 	//U is assumed to have the structure of conservedVar2Dx 
 	vector4 primV;
 	primV(0) = U(0);
-	primV(1) = fmax(U(1)/U(0), 0);
-	primV(2) = fmax(U(3)/U(0), 0);
-	primV(3) = fmax(Pressure(U), 0);
+	if (U(0)!=0){
+		primV(1) = U(1)/U(0);
+		primV(2) = U(3)/U(0);
+	}
+	else {
+		primV(1) = 0;
+		primV(2) = 0;
+	}
+	primV(3) = Pressure(U);
 	return primV;
 }
 
