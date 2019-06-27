@@ -138,7 +138,7 @@ void RigidBodies::fast_sweep(const LevelSet &ls, Stationary_RB &rb, const Domain
 		//1) i = 1:I, j = 1:J
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=0; j<domain.Ny; j++){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -148,7 +148,7 @@ void RigidBodies::fast_sweep(const LevelSet &ls, Stationary_RB &rb, const Domain
 		//2) i = I:1, j = 1:J
 		for (int i=domain.Nx-1; i>=0; i--){
 			for (int j=0; j<domain.Ny; j++){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -158,7 +158,7 @@ void RigidBodies::fast_sweep(const LevelSet &ls, Stationary_RB &rb, const Domain
 		//3) i = I:1, J = J:1
 		for (int i=domain.Nx-1; i>=0; i--){
 			for (int j=domain.Ny-1; j>=0; j--){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -168,7 +168,7 @@ void RigidBodies::fast_sweep(const LevelSet &ls, Stationary_RB &rb, const Domain
 		//1) i = 1:I, j = 1:J
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=domain.Ny-1; j>=0; j--){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -527,7 +527,7 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 		//1) i = 1:I, j = 1:J
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=0; j<domain.Ny; j++){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (gr.ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -537,7 +537,7 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 		//2) i = I:1, j = 1:J
 		for (int i=domain.Nx-1; i>=0; i--){
 			for (int j=0; j<domain.Ny; j++){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (gr.ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -547,7 +547,7 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 		//3) i = I:1, J = J:1
 		for (int i=domain.Nx-1; i>=0; i--){
 			for (int j=domain.Ny-1; j>=0; j--){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (gr.ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -557,7 +557,7 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 		//1) i = 1:I, j = 1:J
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=domain.Ny-1; j>=0; j--){
-				if (heaviside(i+1, j+1)){
+				if (heaviside(i+domain.buffer, j+domain.buffer)){
 					ghost_fluid(primitive, i+2, j+2, normal(i, j));
 					//if (gr.ls.phi(i+1, j+1) < -(domain.dx + domain.dy)) break;
 				}
@@ -571,7 +571,7 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 	//reflect the ghostfluid states
 	for (int i=0; i<domain.Nx; i++){
 		for(int j=0; j<domain.Ny; j++){
-			if (ls.phi(i+1, j+1) < 0){//&& ls.phi(i, j) > -(domain.dx + domain.dy)) //&& ls.phi(i+1, j+1) >= -(Test.domain.dx))
+			if (ls.phi(i+domain.buffer, j+domain.buffer) < 0){//&& ls.phi(i, j) > -(domain.dx + domain.dy)) //&& ls.phi(i+1, j+1) >= -(Test.domain.dx))
 				vector2 velocity = Particle::velocity(domain.X(i, j), gr);
 				//std::cout << velocity << std::endl;
 				reflected_state(rb, primitive, i+2, j+2, normal(i, j), velocity);
@@ -779,7 +779,7 @@ void RigidBodies::initial_conditions(demTests& Test){
 	for(int i=0; i<Test.domain.Nx; i++){
 		for(int j=0; j<Test.domain.Ny; j++){
 			for (int a=0; a<static_cast<int>(Test.var.particles.size()); a++){ 
-				if (Test.var.particles[a].ls.phi(i+1, j+1) >= 0){
+				if (Test.var.particles[a].ls.phi(i+Test.domain.buffer, j+Test.domain.buffer) >= 0){
 					if (Test.interface(i, j) == false){
 						Test.var.fluid.U(i+2, j+2) = Test.var.fluid.state_function->conservedVar2Dx(Test.initialL);
 					}
@@ -805,7 +805,7 @@ void RigidBodies::initial_conditions(demTests& Test){
 		Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> n(Test.domain.Nx, Test.domain.Ny);
 		for (int i=0; i<Test.domain.Nx; i++){
 			for (int j=0; j<Test.domain.Ny; j++){
-				n(i, j) = LevelSetMethods::normal(Test.var.particles[a].ls, Test.domain, i+1, j+1);
+				n(i, j) = LevelSetMethods::normal(Test.var.particles[a].ls, Test.domain, i+Test.domain.buffer, j+Test.domain.buffer);
 			}
 		}
 		normal.push_back(n);
@@ -818,6 +818,8 @@ void RigidBodies::initial_conditions(demTests& Test){
 	for (int a=0; a<static_cast<int>(Test.var.particles.size()); a++){
 		fast_sweep(Test.var.particles[a].ls, Test.var.particles[a], Test.var, Test.domain, normal[a]);
 	}
+
+	Test.var.combinedls = Particle::merge(Test.var.particles, Test.domain);
 }
 
 //can subcycling work? what of the fluid forces on particles during the contact phase?
@@ -953,10 +955,10 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 
 			//sweeping in the x-direction for each y row
 			for (int i=1; i<domain.Nx+2; i++){
-				if (var.combinedls.phi(i, j+1) >= 0 || var.combinedls.phi(i+1, j+1) >= 0 || var.combinedls.phi(i-1, j+1) >= 0){
+				if (var.combinedls.phi(i+domain.buffer-1, j+domain.buffer) >= 0 || var.combinedls.phi(i+domain.buffer, j+domain.buffer) >= 0 || var.combinedls.phi(i+domain.buffer-2, j+domain.buffer) >= 0){
 					vector4 Fx(0, 0, 0, 0);
 					//edge case where there is only one ghost cell
-					if (var.combinedls.phi(i+1, j+1) < 0 && var.combinedls.phi(i+2, j+1) >= 0){
+					if (var.combinedls.phi(i+domain.buffer, j+domain.buffer) < 0 && var.combinedls.phi(i+domain.buffer+1, j+domain.buffer) >= 0){
 						MUSCL::compute_fluxes(var.fluid, Uxn, Fx, i);
 						//std::cout << i-1 << '\t' << j << '\t' << var.levelsets[0].phi(i+1, j+1) << std::endl;
 					}
@@ -986,9 +988,9 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 			MUSCL::data_reconstruction(Uyn, a, ULiy, URiy, domain.Ny);
 
 			for (int j=1; j<domain.Ny+2; j++){
-				if (var.combinedls.phi(i+1, j) >= 0 || var.combinedls.phi(i+1, j+1) >= 0 || var.combinedls.phi(i+1, j-1) >=0){
+				if (var.combinedls.phi(i+domain.buffer, j+domain.buffer-1) >= 0 || var.combinedls.phi(i+domain.buffer, j+domain.buffer+1) >= 0 || var.combinedls.phi(i+domain.buffer, j+domain.buffer-2) >=0){
 					vector4 Fy(0, 0, 0, 0);
-					if (var.combinedls.phi(i+1, j+1) < 0 && var.combinedls.phi(i+1, j+2) >= 0){
+					if (var.combinedls.phi(i+domain.buffer, j+domain.buffer) < 0 && var.combinedls.phi(i+domain.buffer, j+domain.buffer+1) >= 0){
 						MUSCL::compute_fluxes(var.fluid, Uyn, Fy, j);
 						//std::cout << i << '\t' << j-1 << '\t' << var.levelsets[0].phi(i+1, j+1) << std::endl;
 					}	
@@ -1025,7 +1027,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		//updating U with Strand splitting -- X(0.5dt)Y(dt)X(0.5dt)
 		for (int j=0; j<domain.Ny; j++){
 			for (int i=2; i<domain.Nx+2; i++){
-				if (var.combinedls.phi(i-1, j+1) >= 0){
+				if (var.combinedls.phi(i+domain.buffer-2, j+domain.buffer) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i, j+2), var.fluid.F(i, j+1), var.fluid.F(i-1, j+1), domain.dt/2, domain.dx);
 					//std::cout << var.fluid.F(i, j+1).transpose()  << '\t'  << '\t' << var.fluid.F(i-1, j+1).transpose() << std::endl;
 				}
@@ -1033,14 +1035,14 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		}
 		for (int i=0; i<domain.Nx; i++){
 			for (int j=2; j<domain.Ny+2; j++){
-				if (var.combinedls.phi(i+1, j-1) >= 0){
+				if (var.combinedls.phi(i+domain.buffer, j+domain.buffer-2) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i+2, j), var.fluid.swap_xy(var.fluid.G(i+1, j)), var.fluid.swap_xy(var.fluid.G(i+1, j-1)), domain.dt, domain.dy);
 				}
 			}
 		}		
 		for (int j=0; j<domain.Ny; j++){
 			for (int i=2; i<domain.Nx+2; i++){
-				if (var.combinedls.phi(i-1, j+1) >= 0){
+				if (var.combinedls.phi(i+domain.buffer-2, j+domain.buffer) >= 0){
 					MUSCL::conservative_update_formula_2D(var.fluid.U(i, j+2), var.fluid.F(i, j+1), var.fluid.F(i-1, j+1), domain.dt/2, domain.dx);
 				}
 			}
@@ -1091,7 +1093,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		if (count == 61) t = domain.tstop;
+		if (count == 1) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 		if (t == plot_time) {
 			std::cout << "plotting " << t << std::endl;
@@ -1128,7 +1130,7 @@ void RigidBodies::output(const Moving_RB &var, const Domain2D &domain, std::stri
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
-			if (var.combinedls.phi(i-1, j-1) >= 0){
+			if (var.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) >= 0){
 				vector4 Ux = var.fluid.U(i, j);
 				if (Ux(0)!=0){
 					u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
@@ -1143,7 +1145,7 @@ void RigidBodies::output(const Moving_RB &var, const Domain2D &domain, std::stri
 				}
 
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
-				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << var.combinedls.phi(i-1, j-1) << '\t' << std::endl;
+				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << var.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) << '\t' << std::endl;
 			}
 			/*else {
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << 0 << '\t' << 0
@@ -1188,7 +1190,7 @@ void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
 	//	std::cout << var.particles[a].nodes[b].transpose() << std::endl;
 	//}
 	//std::cout << Test.var.particles[0].nodes.size() << std::endl;
-	solver(Test.var, Test.domain, CFL);
+	//solver(Test.var, Test.domain, CFL);
 	output(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
 	std::cout << "done: Rigid Body" << std::endl;
 }

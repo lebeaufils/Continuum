@@ -79,6 +79,7 @@ struct Domain2D
 {
 	int Nx;
 	int Ny;
+	int buffer;//number of cells for extended domain to allow for overlap with boundaries during contact
 	double Lx;
 	double Ly;
 	double dt;
@@ -88,24 +89,15 @@ struct Domain2D
 
 	Eigen::Array<Coordinates, Eigen::Dynamic, Eigen::Dynamic> X; //coordinate pairs (x,y)
 
-	Domain2D() : Nx(0), Ny(0), Lx(0), Ly(0), dt(0), dx(0), tstop(0), X(0, 0) {}
-	Domain2D(int N) : Nx(N), Ny(N), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
-	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
+	Domain2D() : Nx(0), Ny(0), buffer(0), Lx(0), Ly(0), dt(0), dx(0), tstop(0), X(0, 0) {}
+	Domain2D(int N) : Nx(N), Ny(N), buffer(1+floor(N/40)), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
+	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), buffer(1+floor((Nx+Ny)/40)), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
 
 	void display_grid() const;
 };
 
 struct Euler1D
 {
-	//domain parameters
-	//int N;
-	//double dt;
-	//double dx;
-	//double x0;
-	//double tstop;
-
-	//Variable Matrix
-	//matrix X; //Domain
 	matrix U; //conserved variables
 	matrix F; //flux
 
@@ -119,17 +111,6 @@ struct Euler1D
 
 struct Euler2D
 {
-	//domain parameters
-	//int Nx;
-	//int Ny;
-	//double dt;
-	//double dx;
-	//double dy;
-	//double x0;
-	//double tstop;
-
-	//Variable Matrix
-	//matrix X; //Domain
 	vecarray U; //conserved variables
 	vecarray F; //flux for the x derivative
 	vecarray G; // "" y derivative

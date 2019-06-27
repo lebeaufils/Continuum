@@ -58,38 +58,30 @@ void LevelSetMethods::boundary_conditions(LevelSet &ls, const Domain2D &domain){
 }
 
 void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, const Polygon &poly){
-	ls.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+	ls.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
+
+	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			ls.phi(i, j) = 1e6;
+		}
+	}
 
 	//Finding if the points are inside or outside the polygon
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			if (poly.point_in_polygon(domain.X(i, j))) ls.phi(i+1, j+1) = -1e6;
-			else ls.phi(i+1, j+1) = 1e6;
+			if (poly.point_in_polygon(domain.X(i, j))) ls.phi(i+domain.buffer, j+domain.buffer) = -1e6;
+			//else ls.phi(i+domain.buffer, j+domain.buffer) = 1e6;
 		}
 	}
-	boundary_conditions(ls, domain);
+	//boundary_conditions(ls, domain);
 
 
 	//The initial levelset has all points on the boundary set as 0
 	for (int i=0; i<static_cast<int>(poly.surfacepoints.size()); i++){
-		ls.phi(poly.surfacepoints[i].i+1, poly.surfacepoints[i].j+1) = 0;
+		ls.phi(poly.surfacepoints[i].i+domain.buffer, poly.surfacepoints[i].j+domain.buffer) = 0;
 	}
 
-	/*for(int i=0; i<domain.Nx; i++){
-		for(int j=0; j<domain.Ny; j++){
-			std::cout << ls.phi(i+1, j+1) << '\t';
-		}
-		std::cout << std::endl;
-	}*/
-
 	fast_sweep(ls, domain);
-
-	/*for(int i=0; i<domain.Nx; i++){
-		for(int j=0; j<domain.Ny; j++){
-			std::cout << ls.phi(i+1, j+1) << '\t';
-		}
-		std::cout << std::endl;
-	}*/
 
 	std::ofstream outfile;
 	outfile.open("extrapolation.txt");
@@ -104,15 +96,24 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, const Pol
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, const Domain2D &domain, double x0, double y0, double r){
 	//This provides an exact levelset function
-	ls.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+	ls.phi = matrix::Zero(domain.Nx + 2*domain.buffer, domain.Ny + 2*domain.buffer);
+
+	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			ls.phi(i, j) = 1e6;
+		}
+	}
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			//ls.phi(i, j) = pow(domain.X[i + j*domain.Nx][0] - x0, 2) + pow(domain.X[i + j*domain.Nx][1] - y0, 2) - pow(r, 2);
-			ls.phi(i+1, j+1) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
+			ls.phi(i+domain.buffer, j+domain.buffer) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
 		}
 	}
-	boundary_conditions(ls, domain);
+
+	fast_sweep(ls, domain);
+
+	//boundary_conditions(ls, domain);
 	//ls.display_grid();
 
 }
@@ -165,32 +166,61 @@ void LevelSetMethods::fast_sweep(LevelSet &ls, const Domain2D &domain){
 	//2) i = I:1, j = 1:J
 	//3) i = I:1, J = J:1
 	//4) i = 1:I, j = J:1
-
+/*
 	//1) i = 1:I, j = 1:J
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			eikonal(i+1, j+1);
+			eikonal(i+domain.buffer, j+domain.buffer);
 		}
 	}
 
 	//2) i = I:1, j = 1:J
 	for (int i=domain.Nx-1; i>=0; i--){
 		for (int j=0; j<domain.Ny; j++){
-			eikonal(i+1, j+1);
+			eikonal(i+domain.buffer, j+domain.buffer);
 		}
 	}
 
 	//3) i = I:1, J = J:1
 	for (int i=domain.Nx-1; i>=0; i--){
 		for (int j=domain.Ny-1; j>=0; j--){
-			eikonal(i+1, j+1);
+			eikonal(i+domain.buffer, j+domain.buffer);
 		}
 	}
 
 	//1) i = 1:I, j = 1:J
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=domain.Ny-1; j>=0; j--){
-			eikonal(i+1, j+1);
+			eikonal(i+domain.buffer, j+domain.buffer);
+		}
+	}
+*/
+
+	//1) i = 1:I, j = 1:J
+	for (int i=1; i<domain.Nx+2*domain.buffer-1; i++){
+		for (int j=1; j<domain.Ny+2*domain.buffer-1; j++){
+			eikonal(i, j);
+		}
+	}
+
+	//2) i = I:1, j = 1:J
+	for (int i=domain.Nx+2*domain.buffer-2; i>=1; i--){
+		for (int j=1; j<domain.Ny+2*domain.buffer-1; j++){
+			eikonal(i, j);
+		}
+	}
+
+	//3) i = I:1, J = J:1
+	for (int i=domain.Nx+2*domain.buffer-2; i>=1; i--){
+		for (int j=domain.Ny+2*domain.buffer-2; j>=1; j--){
+			eikonal(i, j);
+		}
+	}
+
+	//1) i = 1:I, j = 1:J
+	for (int i=1; i<domain.Nx+2*domain.buffer-1; i++){
+		for (int j=domain.Ny+2*domain.buffer-2; j>=1; j--){
+			eikonal(i, j);
 		}
 	}
 
@@ -218,18 +248,25 @@ vector2 LevelSetMethods::normal(const LevelSet &ls, const Domain2D &domain, int 
 	//}
 	return n_i;
 }
-
+///
 double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& domain, const Coordinates& p){
+	//if (p.x > domain.Lx+domain.buffer*domain.dx || p.x < -domain.buffer*domain.dx || p.y > domain.Ly+domain.buffer*domain.dy || p.y < -domain.buffer*domain.dy){
+	//	return 1e6; //returns a large positive value if domain is out of bounds
+	//}
+
 	if (p.x > domain.Lx || p.x < 0 || p.y > domain.Ly || p.y < 0){
 		return 1e6; //returns a large positive value if domain is out of bounds
 	}
+
 	//finding the 4 grid points surrounding point p
 	int i = floor(p.x/domain.dx);
 	int j = floor(p.y/domain.dy);
 
 	//translation
-	double x = p.x - domain.X(i, j).x;
-	double y = p.y - domain.X(i, j).y;
+	//double x = p.x - domain.X(i, j).x;
+	//double y = p.y - domain.X(i, j).y;
+	double x = p.x - i*domain.dx;
+	double y = p.y - j*domain.dy;
 
 	//bilinear interpolation
 	double phi_xy = 0;
@@ -237,9 +274,8 @@ double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& 
 		for (int b=0; b<=1; b++){
 			//from the bilinear interpolation formnula,
 			//if a is 0, contribution is (1-x), else if a is 1, contribution is x
-
 			//additionally, to translate the interpolation square into the 
-			phi_xy += ls.phi(a+i+1, b+j+1) * ((1-a)*(1-x) + a*x) * ((1-b)*(1-y) + b*y);
+			phi_xy += ls.phi(a+i+domain.buffer, b+j+domain.buffer) * ((1-a)*(1-x) + a*x) * ((1-b)*(1-y) + b*y);
 			//where phi(i, j) = c00, phi(i+1, j) = c10, phi(i, j+1) = c01 and phi(i+1, j+1) = c11
 		}
 	}
@@ -253,16 +289,18 @@ vector2 LevelSetMethods::interpolation_gradient(const LevelSet& ls, const Domain
 	int i = floor(p.x/domain.dx);
 	int j = floor(p.y/domain.dy);
 
-	double x = p.x - domain.X(i, j).x;
-	double y = p.y - domain.X(i, j).y;
+	//double x = p.x - domain.X(i, j).x;
+	//double y = p.y - domain.X(i, j).y;
+	double x = p.x - i*domain.dx;
+	double y = p.y - j*domain.dy;
 
 	//using bilinear interpolation, taking the x and y derivatives
 	double grad_x = 0;
 	double grad_y = 0;
 	for (int a=0; a<=1; a++){
 		for (int b=0; b<=1; b++){
-			grad_x += ls.phi(a+i, b+j) * (2*a-1) * ((1-b)*(1-y) + b*y);
-			grad_y += ls.phi(a+i, b+j) * ((1-a)*(1-x) + a*x) * (2*b-1);
+			grad_x += ls.phi(a+i+domain.buffer, b+j+domain.buffer) * (2*a-1) * ((1-b)*(1-y) + b*y);
+			grad_y += ls.phi(a+i+domain.buffer, b+j+domain.buffer) * ((1-a)*(1-x) + a*x) * (2*b-1);
 		}
 	}
 	return vector2(grad_x, grad_y);
@@ -301,17 +339,24 @@ double LevelSetMethods::smoothed_delta(const LevelSet &ls, const Domain2D &domai
 }
 
 LevelSet LevelSetMethods::merge(const std::vector<LevelSet>& levelsets, const Domain2D& domain){
-	LevelSet ls(domain.Nx+4, domain.Ny+4);
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			double min_phi = 1e6;
-			for (int a=0; a<static_cast<int>(levelsets.size()); a++){
-				if (levelsets[a].phi(i+1, j+1) < min_phi) min_phi = levelsets[a].phi(i+1, j+1);
-			}
-			ls.phi(i+1, j+1) = min_phi;
+	LevelSet ls(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
+
+	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			ls.phi(i, j) = 1e6;
 		}
 	}
-	boundary_conditions(ls, domain);
+
+	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			double min_phi = 1e6;
+			for (int a=0; a<static_cast<int>(levelsets.size()); a++){
+				if (levelsets[a].phi(i, j) < min_phi) min_phi = levelsets[a].phi(i, j);
+			}
+			ls.phi(i, j) = min_phi;
+		}
+	}
+	//boundary_conditions(ls, domain);
 
 	return ls;
 }
@@ -328,8 +373,8 @@ vector2 LevelSetMethods::force(const Euler2D& var, const LevelSet& ls, const Dom
 	vector2 f(0,0);
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			vector2 n_i = LevelSetMethods::normal(ls, domain, i+1, j+1);
-			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+1, j+1);
+			vector2 n_i = LevelSetMethods::normal(ls, domain, i+domain.buffer, j+domain.buffer);
+			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+domain.buffer, j+domain.buffer);
 			double p = var.state_function->Pressure(var.U(i+2, j+2)); //fluid pressure in cell i, j
 			f += -(delta * p * n_i); //the normal direction is out of the rigid body
 		}
@@ -345,8 +390,8 @@ double LevelSetMethods::torque (const Euler2D& var, const LevelSet& ls, const Do
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			vector2 r_i(domain.X(i, j).x - c(0), domain.X(i, j).y - c(1));
-			vector2 n_i = LevelSetMethods::normal(ls, domain, i+1, j+1);
-			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+1, j+1);
+			vector2 n_i = LevelSetMethods::normal(ls, domain, i+domain.buffer, j+domain.buffer);
+			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+domain.buffer, j+domain.buffer);
 			double p = var.state_function->Pressure(var.U(i+2, j+2)); //fluid pressure in cell i, j
 			
 			//(x-c) x pn
@@ -408,19 +453,19 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 	//Temporary storage for levelset values at time t
 	//The levelset can be updated using its initial values and current position
 	LevelSet ls_t; //ls at time t
-	ls_t.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+	ls_t.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
 
 	//simultaneous translation and rotation
 	double pi = atan(1.0)*4;
 	double frequency = w/(2*pi);
 
-	for(int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			Coordinates originalpos = domain.X(i, j);
+	for(int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			Coordinates originalpos(i*domain.dx - domain.buffer*domain.dx, j*domain.dy - domain.buffer*domain.dy);
 			originalpos = translation_reverse(originalpos, v_c, time); //translate the point
 			originalpos = rotation_reverse(originalpos, centroid, frequency, time); //rotate the point
 			//double phi_tmp = interpolation_value(ls, domain, originalpos);
-			ls_t.phi(i+1, j+1) = interpolation_value(ls, domain, originalpos);
+			ls_t.phi(i, j) = interpolation_value(ls, domain, originalpos);
 			//if (phi_tmp < 1.5*domain.dx*domain.dy){ //within the rigidbody
 			//	ls_t.phi(i+1, j+1) = phi_tmp;
 			//}
@@ -431,7 +476,7 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 	}
 
 	fast_sweep(ls_t, domain);
-	boundary_conditions(ls_t, domain);
+	//boundary_conditions(ls_t, domain);
 	return ls_t;
 }
 
@@ -451,7 +496,7 @@ Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) 
 	//find the first point on the zeroth levelset contour
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			if (ls.phi(i+1, j+1) == 0){
+			if (ls.phi(i+domain.buffer, j+domain.buffer) == 0){
 				surface_p(0) = domain.X(i, j).x;
 				surface_p(1) = domain.X(i, j).y;
 				break;
@@ -505,7 +550,7 @@ double Particle::mass(const Particle& gr, const Domain2D& domain){
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			m += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+1, j+1);
+			m += LevelSetMethods::smoothed_heaviside(gr.ls, domain, i+domain.buffer, j+domain.buffer);
 			//sums the number of cells within the rigid body, including the
 			//transition zone
 		}
@@ -523,8 +568,8 @@ vector2 Particle::center_of_mass(const LevelSet& ls, const Particle& gr, const D
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			c_x += LevelSetMethods::smoothed_heaviside(ls, domain, i+1, j+1)*(domain.X(i, j).x);
-			c_y += LevelSetMethods::smoothed_heaviside(ls, domain, i+1, j+1)*(domain.X(i, j).y);
+			c_x += LevelSetMethods::smoothed_heaviside(ls, domain, i+domain.buffer, j+domain.buffer)*(domain.X(i, j).x);
+			c_y += LevelSetMethods::smoothed_heaviside(ls, domain, i+domain.buffer, j+domain.buffer)*(domain.X(i, j).y);
 		}
 	}
 	double m = mass(gr, domain);
@@ -541,7 +586,7 @@ double Particle::moment_of_inertia(const LevelSet& ls, const Particle& gr, const
 	double inertia = 0;
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
-			inertia += LevelSetMethods::smoothed_heaviside(ls, domain, i+1, j+1)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
+			inertia += LevelSetMethods::smoothed_heaviside(ls, domain, i+domain.buffer, j+domain.buffer)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
 		}
 	}
 	inertia = -gr.density*domain.dx*domain.dy*inertia;
@@ -558,17 +603,26 @@ vector2 Particle::velocity(const Coordinates& p, const Particle& gr){
 }
 
 LevelSet Particle::merge(const std::vector<Particle>& particles, const Domain2D& domain){
-	LevelSet ls(domain.Nx+4, domain.Ny+4);
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			double min_phi = 1e6;
-			for (int a=0; a<static_cast<int>(particles.size()); a++){
-				if (particles[a].ls.phi(i+1, j+1) < min_phi) min_phi = particles[a].ls.phi(i+1, j+1);
-			}
-			ls.phi(i+1, j+1) = min_phi;
+	LevelSet ls;
+	ls.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
+
+	//initialise the levelset with a large positive number
+	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			ls.phi(i, j) = 1e6;
 		}
 	}
-	LevelSetMethods::boundary_conditions(ls, domain);
+
+	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			double min_phi = 1e6;
+			for (int a=0; a<static_cast<int>(particles.size()); a++){
+				if (particles[a].ls.phi(i, j) < min_phi) min_phi = particles[a].ls.phi(i, j);
+			}
+			ls.phi(i, j) = min_phi;
+		}
+	}
+	//LevelSetMethods::boundary_conditions(ls, domain);
 
 	return ls;
 }
@@ -577,29 +631,23 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 	//Temporary storage for levelset values at time t
 	//The levelset can be updated using its initial values and current position
 	LevelSet ls_t; //ls at time t
-	ls_t.phi = matrix::Zero(domain.Nx+4, domain.Ny+4);
+	ls_t.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
 
 	//simultaneous translation and rotation
 	double pi = atan(1.0)*4;
 	double frequency = w/(2*pi);
 	//std::cout << "frequency = " << frequency << std::endl;
 
-	for(int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			Coordinates originalpos = domain.X(i, j);
-			//originalpos.display();
-			//originalpos = LevelSetMethods::rotation(originalpos, centroid, frequency, time); //rotate the point			
+	for(int i=0; i<domain.Nx+2*domain.buffer; i++){
+		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
+			Coordinates originalpos(i*domain.dx - domain.buffer*domain.dx, j*domain.dy - domain.buffer*domain.dy);
 			originalpos = LevelSetMethods::translation_reverse(originalpos, vc, time); //translate the point
 			originalpos = LevelSetMethods::rotation_reverse(originalpos, centroid, frequency, time); //rotate the point
-			//originalpos.display();
-			//originalpos.display();
-			//double phi_tmp = interpolation_value(ls, domain, originalpos);
-			ls_t.phi(i+1, j+1) = LevelSetMethods::interpolation_value(ls, domain, originalpos);
-			//std::cout << "level set diff = " << ls_t.phi(i+1, j+1) << '\t' << ls.phi(i+1, j+1) << std::endl;
-			//std::cout << std::endl;
+			ls_t.phi(i, j) = LevelSetMethods::interpolation_value(ls, domain, originalpos);
 		}
 		//std::cout << std::endl;
 	}
+
 	//move the nodes from ref, store a seperate node list
 	for (int a=0; a<static_cast<int>(nodes.size()); a++){
 		//std::cout << nodes[a].transpose() << std::endl;
@@ -610,7 +658,7 @@ LevelSet Particle::motion(const Domain2D& domain, double time){
 	}
 ////////
 	LevelSetMethods::fast_sweep(ls_t, domain);
-	LevelSetMethods::boundary_conditions(ls_t, domain);
+	//LevelSetMethods::boundary_conditions(ls_t, domain);
 	return ls_t;
 }
 
