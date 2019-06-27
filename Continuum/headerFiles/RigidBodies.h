@@ -38,12 +38,11 @@ struct RigidBodies
 	//
 	static void newton_euler(const LevelSet&, Particle&, const Domain2D&, const vector2& torque, double force, double);
 	static void initial_conditions(demTests&);
+	static void subcycling(Moving_RB&, const Domain2D&, std::vector<LevelSet>&, double, double);
 	static void solver(Moving_RB&, Domain2D&, double);
 	static void output(const Moving_RB&, const Domain2D&, std::string, std::string);
 	static void output_levelset(const Moving_RB&, const Domain2D&, std::string, std::string);
 	static void rigid_body_solver(demTests&, double);
-	
-
 };
 
 #endif /* RIGIDBODIES_H_ */

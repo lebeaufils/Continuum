@@ -637,31 +637,35 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 			//std::cout << "node = " << node_a.x << '\t' << node_a.y << std::endl;
 			if (node_a.x < 0){
 				vector2 normal(1, 0);
-				double dist = node_a.x;	
+				double dist = node_a.x;
+				//std::cout << "dist = " << dist << std::endl;
 				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
 			}
 
-			if (node_a.x > domain.Lx){
+			else if (node_a.x > domain.Lx){
 				vector2 normal(-1, 0);
 				double dist = domain.Lx - node_a.x;	
+				//std::cout << "dist = " << dist << std::endl;
 				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
 			}
 
 			if (node_a.y < 0){
 				vector2 normal(0, 1);
 				double dist = node_a.y;
+				//std::cout << "dist = " << dist << std::endl;
 				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
 			}
 
-			if (node_a.y > domain.Ly){
+			else if (node_a.y > domain.Ly){
 				vector2 normal(0, -1);
 				double dist = domain.Ly - node_a.y;	
+				//std::cout << "dist = " << dist << std::endl;
 				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
 			}
 
 		}
 	}
-
+	//std::cout << particles[0].centre.transpose() << '\t' << particles[1].centre.transpose() << std::endl;
 	//note that the first optimisation is to prevent double checking of collisions
 }
 //i am cheating by counting forces twice
@@ -701,8 +705,10 @@ void RigidBodies::particle_collision(Particle& gr_i, Particle& gr_j, const vecto
 	//since the collision calculation is performed for each node of i in contact,
 	//this is done by "accumulating" the forces by each node in the particle class
 	//likewise for moments/torque
-	gr_i.force += Fn_i + Fs_i;
-	gr_i.torque += Mn_i + Ms_i;
+	//gr_i.force += Fn_i + Fs_i;
+	//gr_i.torque += Mn_i + Ms_i;
+	gr_i.force = Fn_i + Fs_i;
+	gr_i.torque = Mn_i + Ms_i;
 
 	//Updating the slave grain too??? 
 	//if so, we must make sure not to duplicate the calculation for grain j
@@ -715,7 +721,7 @@ void RigidBodies::wall_collision(Particle& gr_i, const vector2& node, double dis
 //Using the same linear elastic model as with particle collisions
 //"penetration" distance and unit normal are specified
 //////
-	vector2 Fn_i = -2*gr_i.k_n*dist*normal; //testing this
+	vector2 Fn_i = -gr_i.k_n*dist*normal; //testing this
 	//std::cout << "wall collision" << Fn_i.transpose() << '\t' << '\t' << normal.transpose() << std::endl;
 	//std::cout << "wall collision" << node.transpose() << std::endl;
 	
@@ -814,6 +820,52 @@ void RigidBodies::initial_conditions(demTests& Test){
 	}
 }
 
+//can subcycling work? what of the fluid forces on particles during the contact phase?
+void RigidBodies::subcycling(Moving_RB &var, const Domain2D& domain, std::vector<LevelSet>& levelset_collection, double tstop, double subdt){
+	//t refers to the current timestep, tstop the timestep at the end of subcycling
+	//tstop is the current timestep
+	//start subcycling from the previous timestep t - dt
+	double t = tstop - domain.dt;
+	do{
+		if (t + subdt > tstop) subdt = tstop - t;
+		t += subdt;
+		//update force and torque of each particle
+		RigidBodies::contact_detection(domain, var.particles, levelset_collection, subdt);
+
+		//Forces from fluids
+		//For each particle:
+		//forces from fluid pressure can be incorporated here. calculate before and treat as constant?
+		//or calculate as particle moves along fluid, without moving the fluid?
+		for (int a=0; a<static_cast<int>(var.particles.size()); a++){
+			//calculate forces from fluid pressure
+			//vector2 force = LevelSetMethods::force(var.fluid, levelset_collection[a], domain);
+			//double torque = LevelSetMethods::torque (var.fluid, levelset_collection[a], domain, var.particles[a].centre);
+			//if (count%10==0) {std::cout << force.transpose() << '\t' << torque << std::endl;}
+			//calculate and update particle velocities
+			newton_euler(levelset_collection[a], var.particles[a], domain, var.particles[a].force, var.particles[a].torque, domain.dt);
+			//if (count%10==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			//if (count%10==0) std::cout << var.particles[a].force.transpose() << '\t' << var.particles[a].torque << std::endl;
+//////////////ERROR///
+			//move the particles
+			levelset_collection[a] = var.particles[a].motion(domain, t);
+			//update particle with new centre of gravity
+			var.particles[a].centre = Particle::center_of_mass(levelset_collection[a], var.particles[a], domain);
+			//extrapolate ghost values
+				//compute the normal vector using the levelset function
+				Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
+				for (int i=0; i<domain.Nx; i++){
+					for (int j=0; j<domain.Ny; j++){
+						normal(i, j) = LevelSetMethods::normal(levelset_collection[a], domain, i+1, j+1);
+					}
+				}
+			//update the ghost values in new level set position
+			fast_sweep(levelset_collection[a], var.particles[a], var, domain, normal);
+		}
+
+		//std::cout << var.particles[0].force.transpose() << '\t' << var.particles[1].force.transpose() << std::endl;
+	}while(t < tstop);
+}
+
 void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 	//In addition to the fluid solver of the stationary rigid body problem,
 	//Forces on the rigid body are to be calculated at everytime step
@@ -845,9 +897,9 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		levelset_collection.push_back(var.particles[a].ls);
 	}
 
-
+	double faket = 0.1;
 	double t = 0.0;
-	double plot_time = 0.1;
+	double plot_time = 0.025; //0.05; //0.1;
 	int count = 0;
 	do{
 		//set timestep, taking maximum wavespeed in x or y directions
@@ -998,8 +1050,10 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
+		RigidBodies::subcycling(var, domain, levelset_collection, t, 0.001);
+/*
 		//Perform contact detection, accumulating contact forces on the particles
-		RigidBodies::contact_detection(domain, var.particles, levelset_collection, domain.dt);
+		//RigidBodies::contact_detection(domain, var.particles, levelset_collection, domain.dt);
 		//reset the levelset collection 
 		
 		//Forces from fluids
@@ -1012,7 +1066,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 //////////////ERROR///
 //unstable unless low cfl is used.. tiomestep issues
 			newton_euler(levelset_collection[a], var.particles[a], domain, var.particles[a].force, var.particles[a].torque, domain.dt);
-			if (count%10==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
+			//if (count%10==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << var.particles[a].force.transpose() << '\t' << var.particles[a].torque << std::endl;
 //////////////ERROR///
 			//move the particles
@@ -1029,6 +1083,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 				}
 			fast_sweep(levelset_collection[a], var.particles[a], var, domain, normal);
 		}
+*/
 
 		//Merge the new level sets
 		var.combinedls = LevelSetMethods::merge(levelset_collection, domain);
@@ -1036,14 +1091,17 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		//if (count == 1) t = domain.tstop;
+		if (count == 61) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 		if (t == plot_time) {
 			std::cout << "plotting " << t << std::endl;
-			std::string file = "Data/dataeuler_" + std::to_string(t) + ".txt";
-			std::string file2 = "Data/datapoints_" + std::to_string(t) + ".txt";
+			std::string file = "Data/dataeuler_" + std::to_string(faket) + ".txt";
+			std::string file2 = "Data/datapoints_" + std::to_string(faket) + ".txt";
 			output(var, domain, file, file2);
-			plot_time += 0.1;
+			std::cout << "particle " << 0 << '\t' << var.particles[0].vc.transpose() << '\t' << var.particles[0].w << std::endl;
+			std::cout << "particle " << 1 << '\t' << var.particles[1].vc.transpose() << '\t' << var.particles[1].w << std::endl;
+			plot_time += 0.025;//0.1;
+			faket+=0.1;
 		}
 
 	}while (t < domain.tstop);

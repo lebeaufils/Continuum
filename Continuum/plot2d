@@ -7,7 +7,7 @@ set view map
 set size ratio -1
 #set title "density"
 j = 0.1
-do for [i=1:20]{
+do for [i=1:30]{
 	set output sprintf('Plots/collision_%d.png', i)
 	set title sprintf("time %.2f s", j)
     #splot 'Data/dataeuler_'.i.'00000.txt' using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31
@@ -18,4 +18,4 @@ do for [i=1:20]{
 }
 
 #splot 'dataeuler.txt' using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31,\
-#	'datapoints.txt' using 1:2:(0) notitle w p lc rgb "light-turquoise" ps 1 pt 7
+#	'datapoints.txt' using 1:2:(0) notitle w p lc rgb "light-turquoise" ps 1 pt 30
