@@ -32,11 +32,17 @@ struct RigidBodies
 	static void fast_sweep(const LevelSet&, const Particle&, Moving_RB&, const Domain2D&, const Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic>&);
 	static void reflected_state(Moving_RB&, const vecarray&, int i, int j, const vector2&, const vector2&);
 	//collisions
+	static double compute_normal_force(const Particle&, double, const vector2&);
+	static vector2 compute_tangential_force(int, Particle&, double, double, double, const vector2&, const vector2&);
+	static double compute_torque(const Particle&, const vector2&, const vector2&, const vector2&);
+
 	static void contact_detection(const Domain2D&, std::vector<Particle>&, const std::vector<LevelSet>&, double); //node to levelset contact check
+
 	static void wall_collision(Particle&, const vector2&, double, const vector2&, double);
-	static void particle_collision(Particle&, Particle&, const vector2&, double, const vector2&, double);
+	static void particle_collision(int j, Particle&, Particle&, const vector2&, double, const vector2&, double);
 	//
 	static void newton_euler(const LevelSet&, Particle&, const Domain2D&, const vector2& torque, double force, double);
+	static void update_displacements(Particle&, double);
 	static void initial_conditions(demTests&);
 	static void subcycling(Moving_RB&, const Domain2D&, std::vector<LevelSet>&, double, double);
 	static void solver(Moving_RB&, Domain2D&, double);

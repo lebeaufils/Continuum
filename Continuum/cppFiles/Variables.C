@@ -759,9 +759,25 @@ vector2 Rotor2::rotate_about(const vector2& v, const vector2& c, double w, doubl
 	return ra;
 }
 
+vector2 Rotor2::rotate_about(const vector2& v, const vector2& c, double theta){
+	Rotor2 rotor(theta);
+	rotor.normalise();
+	vector2 ra = c + rotor.rotate(v-c);
+	return ra;
+}
+
 vector2 Rotor2::rotate_reverse(const vector2& v, const vector2& c, double w, double t){
 	//rotating in the reverse direction
 	Rotor2 rotor(w*t);
+	rotor.normalise();
+	Rotor2 inverse = rotor.inverse();
+	vector2 ra = c + inverse.rotate(v-c);
+	return ra;
+}
+
+vector2 Rotor2::rotate_reverse(const vector2& v, const vector2& c, double theta){
+	//rotating in the reverse direction
+	Rotor2 rotor(theta);
 	rotor.normalise();
 	Rotor2 inverse = rotor.inverse();
 	vector2 ra = c + inverse.rotate(v-c);

@@ -766,9 +766,9 @@ void demTests::test3(){
 	var.particles[0].set_velocity(vector2(0.6, 0.0), 2);
 */
 
-	Coordinates center(0.5,1.0);
+	Coordinates center(0.6,1.0);
 	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0.6, 0.0), 2);
+	var.particles[0].set_velocity(vector2(0.1, 0.0), 0.0);
 
 	Polygon poly2;
 	//Coordinates center2(1.0,1.0);

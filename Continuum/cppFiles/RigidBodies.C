@@ -585,6 +585,150 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 //Collision
 //-------------------
 //INCOMPLETE//
+double norm(const vector2& v){
+		return sqrt(pow(v(0), 2) + pow(v(1), 2));
+}
+
+double RigidBodies::compute_normal_force(const Particle& gr_i, double dist, const vector2& v_n){ //v_a is the relative velocity of the particles in contact
+	//Kawamoto, Level Set DEM for 3d computations
+	//normal force contribution from contact of node m_a on grain i
+		//to add a damping factor to account for dissipation and increase timestep, 
+		//fn =kδ+γ0vn 
+	//a damping coefficient must needs be provided, forcontribution = - damping_coefficient*v_n; 
+	double Fn_i = -gr_i.k_n*dist + gr_i.damping_coefficient*norm(v_n); 
+	return Fn_i;
+}
+
+vector2 RigidBodies::compute_tangential_force(int j, Particle& gr_i, double Fn_i, double dist, double dt, const vector2& v_t, const vector2& normal){
+//particle i --> gr_i's tangential force history will be updated
+//particle j is the index of the particle undergoing collision with target i
+
+	//if contact is active, we need to project the tangential spring onto the new tangential plane,
+	//as the frame of reference will have shifted from the previous timestep
+	vector2 spring_old = gr_i.springs.find(j)->second;
+	vector2 spring_new = spring_old - spring_old.dot(normal)*normal;
+	//We then need to enforce that |spring_new| = |spring_old|
+	spring_new = spring_new/norm(spring_new)*norm(spring_old);
+
+	//Alternatively, a better approach is to rotate the old spring into the new plane
+		//...to be implemented
+
+	//Next, we need to compute a test force to determine if there is sliding
+	vector2 test_force_t = -gr_i.k_s*spring_new - gr_i.damping_coefficient*v_t;
+
+	//By Coulomb's law, the static friction is related to normal force by
+	double force_c_s = gr_i.miu*Fn_i;
+	if (force_c_s < 0) {
+		throw "Contact force is less than zero, check?";
+	}
+	double test_force = norm(test_force_t);
+
+	//case: static friction
+	//If the tangential force does not exceed the static Coulomb friction
+	if (test_force <= force_c_s){
+		//The tangential spring is incremented for use in the next timestep
+		gr_i.springs[j] = spring_new + v_t*dt; 
+	}
+
+	//case: dynamic friction - sliding
+	else {
+		//If sliding friction is active, the tangential spring must be adjusted to a length 
+		//that meets Coulomb's conditions
+		//This ensures that in the next iteration, the test force will be equal to the dynamic Coulomb friction
+		//Here, we have made the assumption that the dynamic coefficient of friction miu_d = miu_s.
+		//By Coulomb's law, dynamic friction is <= static friction
+		vector2 t = test_force_t/norm(test_force_t); //tangential unit vector
+		gr_i.springs[j] = -(1./gr_i.k_s)*(force_c_s*t + gr_i.damping_coefficient*v_t);
+	}
+
+	//By limiting the spring length to be consistent with Coulomb's law, we effectively
+	//cap the shear force to be a fraction of the normal force
+	//in short, force_t = +min(f_c, |test_force|).
+
+	return test_force_t; //Accumulated tangential force at current timestep
+}
+/*
+vector2 RigidBodies::compute_tangential_force(Particle& gr_i, const vector2& v_t, double Fn_i, double dist, double dt){
+	//particle i --> gr_i's tangential force history will be updated
+	//dependant on the normal force
+	//the incremental shear displacement s = vt*t
+	//tanmgential velocity vt is given by vt = v - vn*normal i.e. total velocity - normal velocity
+	//where vn = normal dot v //therefore vt = v_a - (va dot normal)normal
+	//incremental shear displacement is given by relative tangential velocity*time
+
+	vector2 shear_rate = (v_a - v_a.dot(normal)*normal);
+	vector2 dFs = gr_i.k_s*(shear_rate*dt + gr_i.damping_coefficient*shear_rate); 
+	//shear force on grain i due to node m_a is then updated using
+	//gr_i.force_t = F_s; //When accumulating, must Fs be reset everytime a new contact occurs?
+
+	double dFs_length = norm(dFs);
+	vector2 F_s = dFs/dFs_length*fmin(dFs_length, gr_i.miu*norm(Fn_i));
+
+	//since the tangential force is limited by coulomb's law, where the shear force is capped by the normal force (static friction),
+	//vector2 Fs_i = gr_i.force_t/sqrt(gr_i.force_t(0)*gr_i.force_t(0) + gr_i.force_t(1)*gr_i.force_t(1))*fmin(sqrt(gr_i.force_t(0)*gr_i.force_t(0) + gr_i.force_t(1)*gr_i.force_t(1)), gr_i.miu*sqrt(Fn_i(0)*Fn_i(0) + Fn_i(1)*Fn_i(1)));
+	
+	return F_s;
+}
+*/
+
+double RigidBodies::compute_torque(const Particle& gr_i, const vector2& node, const vector2& Fn_i, const vector2& Fs_i){
+	//where node is the position vector of the seed on the level set boundary
+
+	//moment contribution on grain i and grain j respectively
+	//in 2d, this moment contribution lies in the z axis 
+	double Mn_i = Particle::cross(node-gr_i.centre, Fn_i);
+	//The moment contributed by the shear force of node m_a onto grain i is
+	double Ms_i = Particle::cross(node-gr_i.centre, Fs_i);
+
+	//The total torque is the sum of tangential and normal moments
+	return Mn_i + Ms_i;
+}
+
+void RigidBodies::particle_collision(int j, Particle& gr_i, Particle& gr_j, const vector2& node, double dist, const vector2& normal, double dt){
+	//relative velocity v_a of node m_a to grain j is
+	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre) - gr_j.vc - Particle::cross(gr_j.w, node-gr_j.centre);
+	vector2 v_n = v_a.dot(normal)*normal; //normal must be a unit vector
+	vector2 v_t = v_a - v_n;
+
+	double force_n = compute_normal_force(gr_i, dist, v_n);
+	vector2 Fn_i = force_n*normal;
+	vector2 Fs_i = compute_tangential_force(j, gr_i, force_n, dist, dt, v_t, normal);
+	gr_i.force = Fn_i + Fs_i;
+	gr_i.torque = compute_torque(gr_i, node, Fn_i, Fs_i);
+}
+
+//if position.x > domain.Lx or < 0, ls = position.x - domain.lx
+void RigidBodies::wall_collision(int k, Particle& gr_i, const vector2& node, double dist, const vector2& normal, double dt){
+//Using the same linear elastic model as with particle collisions
+//"penetration" distance and unit normal are specified
+//////
+	//int k is an index not shared by any other particles.
+	//For this reason, negative integers are used to map k
+	//The index for wall collisions are:
+		//North = -1
+		//East  = -2
+		//South = -3
+		//West  = -4
+
+	//relative velocity v_a of node m_a to the wall is,
+	//taking the wall as a stationary object:
+	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre);
+	vector2 v_n = v_a.dot(normal)*normal; //normal must be a unit vector
+	vector2 v_t = v_a - v_n;
+
+	double force_n = compute_normal_force(gr_i, dist, v_n);
+	vector2 Fn_i = force_n*normal;
+	vector2 Fs_i = compute_tangential_force(k, gr_i, force_n, dist, dt, v_t, normal);
+	gr_i.force = Fn_i + Fs_i;
+	gr_i.torque = compute_torque(gr_i, node, Fn_i, Fs_i);
+}
+
+void RigidBodies::contact_detection(){
+/////WORKING ON THIS//////
+	//std::unordered_map<int, int>;
+}
+
+/*
 void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle>& particles, const std::vector<LevelSet>& levelset_collection, double dt){
 // TO BE IMPROVED ON, made parallel
 	int number_of_particles = static_cast<int>(particles.size());
@@ -609,7 +753,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 					}
 				}
 			}
-
+*/
 		//after calculating position future position, check that it is not at the boundaries.
 		//if it crosses boundary, calvulate the extent of overlap and reflect the normal velocity?
 		//check if any nodes exceed domain boundary. Assumes domain origin at 0, 0
@@ -635,7 +779,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 			}
 		*/
 			//std::cout << "node = " << node_a.x << '\t' << node_a.y << std::endl;
-			if (node_a.x < 0){
+/*			if (node_a.x < 0){
 				vector2 normal(1, 0);
 				double dist = node_a.x;
 				//std::cout << "dist = " << dist << std::endl;
@@ -667,85 +811,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle
 	}
 	//std::cout << particles[0].centre.transpose() << '\t' << particles[1].centre.transpose() << std::endl;
 	//note that the first optimisation is to prevent double checking of collisions
-}
-//i am cheating by counting forces twice
-void RigidBodies::particle_collision(Particle& gr_i, Particle& gr_j, const vector2& node, double dist, const vector2& normal, double dt){
-	//Kawamoto, Level Set DEM for 3d computations
-	//normal force contribution from contact of node m_a on grain i
-	vector2 Fn_i = -gr_i.k_n*dist*normal;
-	//vector2 Fn_j = - Fn_i; 
-	//note that he force contribution on grain j is equal and opposite Fn_j = -Fn_i
-
-	//moment contribution on grain i and grain j respectively
-	//in 2d, this moment contribution lies in the z axis 
-	double Mn_i = Particle::cross(node-gr_i.centre, Fn_i);
-	//double Mn_j = Particle::cross(node-gr_j.centre, Fn_j);
-
-	//frictional forces (shear) are based on the Coulomb model of friction
-	//for kinetic friction, 
-	//relative velocity v_a of node m_a to grain j is
-	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre) - gr_j.vc - Particle::cross(gr_j.w, node-gr_j.centre);
-	//the incremental shear displacement s = vt*t
-		//tanmgential velocity vt is given by vt = v - vn*normal i.e. total velocity - normal velocity
-		//where vn = normal dot v //therefore vt = v_a - (va dot normal)normal
-	//incremental shear displacement is given by relative tangential velocity*time
-	vector2 shear = (v_a - v_a.dot(normal)*normal)*dt;
-	//shear force on grain i due to node m_a is then updated using
-	//double Fs = gr_i.Fs + shear*gr_i.k_s; //use of previous timestep?
-	vector2 dFs = shear*gr_i.k_s; 
-
-	//since the tangential force is limited by coulomb's law, where the shear force is capped by the normal force (static friction),
-	vector2 Fs_i = dFs/sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1))*fmin(sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1)), gr_i.miu*sqrt(Fn_i(0)*Fn_i(0) + Fn_i(1)*Fn_i(1)));
-	//vector2 Fs_j = -Fs_i;
-	//The moment contributed by the shear force of node m_a onto grain i is
-	double Ms_i = Particle::cross(node-gr_i.centre, Fs_i);
-	//double Ms_j = Particle::cross(node-gr_j.centre, Fs_j);
-
-	//Total contact force on grain i can be obtained by summing all nodal contact forces
-	//since the collision calculation is performed for each node of i in contact,
-	//this is done by "accumulating" the forces by each node in the particle class
-	//likewise for moments/torque
-	//gr_i.force += Fn_i + Fs_i;
-	//gr_i.torque += Mn_i + Ms_i;
-	gr_i.force = Fn_i + Fs_i;
-	gr_i.torque = Mn_i + Ms_i;
-
-	//Updating the slave grain too??? 
-	//if so, we must make sure not to duplicate the calculation for grain j
-	//gr_j.force += Fn_j + Fs_j;
-	//gr_j.torque += Mn_j + Ms_j;
-}
-
-//if position.x > domain.Lx or < 0, ls = position.x - domain.lx
-void RigidBodies::wall_collision(Particle& gr_i, const vector2& node, double dist, const vector2& normal, double dt){
-//Using the same linear elastic model as with particle collisions
-//"penetration" distance and unit normal are specified
-//////
-	vector2 Fn_i = -gr_i.k_n*dist*normal; //testing this
-	//std::cout << "wall collision" << Fn_i.transpose() << '\t' << '\t' << normal.transpose() << std::endl;
-	//std::cout << "wall collision" << node.transpose() << std::endl;
-	
-	//moment contribution on grain i and grain j respectively
-	//in 2d, this moment contribution lies in the z axis 
-	double Mn_i = Particle::cross(node-gr_i.centre, Fn_i);
-
-	//relative velocity v_a of node m_a to grain j is
-	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre);
-	//incremental shear displacement is given by relative tangential velocity*time
-	vector2 shear = (v_a - v_a.dot(normal)*normal)*dt;
-	//shear force on grain i due to node m_a is then updated using
-	vector2 dFs = shear*gr_i.k_s; 
-	//since the tangential force is limited by coulomb's law, where the shear force is capped by the normal force (static friction),
-	vector2 Fs_i = dFs/sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1))*fmin(sqrt(dFs(0)*dFs(0) + dFs(1)*dFs(1)), gr_i.miu*sqrt(Fn_i(0)*Fn_i(0) + Fn_i(1)*Fn_i(1)));
-	//vector2 Fs_j = -Fs_i;
-	//The moment contributed by the shear force of node m_a onto grain i is
-	double Ms_i = Particle::cross(node-gr_i.centre, Fs_i);
-
-	//Total contact force on grain i can be obtained by summing all nodal contact forces
-	gr_i.force += Fn_i + Fs_i;
-	gr_i.torque += Mn_i + Ms_i;
-
-}
+}*/
 
 void RigidBodies::newton_euler(const LevelSet& ls, Particle& gr, const Domain2D& domain, const vector2& force, double torque, double dt){
 //updates the velocities which are passed as arguments
@@ -758,13 +824,24 @@ void RigidBodies::newton_euler(const LevelSet& ls, Particle& gr, const Domain2D&
 	double m = Particle::mass(gr, domain); //mass
 	double J = Particle::moment_of_inertia(ls, gr, domain); //moment of inertia
 
-	gr.vc += dt/m*force;
-	gr.w += dt/J*torque;
+	double C1 = gr.damping_coefficient*dt/2.;
+	double C2 = 1/(1 + C1);
 
-	//std::cout << (dt/m*force).transpose() << '\t' << dt/J*torque << std::endl; 
-//----------------
-//NOTE this is wrong, need to use a leapfrog method for stability by considering half timestep
-//----------------
+	//gr.vc contains the translational velocity of the previous timestep - n-1/2
+	//double v_x_old = gr.vc(0);
+	//double v_y_old = gr.vc(1);
+	double v_x_new = C2*((1 - C1)*gr.vc(0) + dt/m*force);
+	double v_y_new = C2*((1 - C1)*gr.vc(1) + dt/m*force);
+	double w_new = C2*((1 - C1)*gr.w + dt/J*torque);
+
+	gr.vc = vector2(v_x_new, v_y_new);
+	gr.w = w_new;
+}
+
+void RigidBodies::update_displacements(Particle& gr, double dt){
+//Updates the displacements and rotation for the next timestep
+	gr.s += dt*gr.vc*dt; //total particle displacement
+	gr.theta += dt*gr.w*dt; //total rotation
 }
 
 void RigidBodies::initial_conditions(demTests& Test){
@@ -845,11 +922,12 @@ void RigidBodies::subcycling(Moving_RB &var, const Domain2D& domain, std::vector
 			//if (count%10==0) {std::cout << force.transpose() << '\t' << torque << std::endl;}
 			//calculate and update particle velocities
 			newton_euler(levelset_collection[a], var.particles[a], domain, var.particles[a].force, var.particles[a].torque, domain.dt);
+			update_displacements(var.particles[a], domain.dt);
 			//if (count%10==0) std::cout << "particle " << a << '\t' << var.particles[a].vc.transpose() << '\t' << var.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << var.particles[a].force.transpose() << '\t' << var.particles[a].torque << std::endl;
 //////////////ERROR///
 			//move the particles
-			levelset_collection[a] = var.particles[a].motion(domain, t);
+			levelset_collection[a] = var.particles[a].motion(domain);
 			//update particle with new centre of gravity
 			var.particles[a].centre = Particle::center_of_mass(levelset_collection[a], var.particles[a], domain);
 			//extrapolate ghost values
@@ -901,7 +979,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 
 	double faket = 0.1;
 	double t = 0.0;
-	double plot_time = 0.025; //0.05; //0.1;
+	double plot_time = 0.1; //0.05; //0.1;
 	int count = 0;
 	do{
 		//set timestep, taking maximum wavespeed in x or y directions
@@ -1052,7 +1130,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
-		RigidBodies::subcycling(var, domain, levelset_collection, t, 0.001);
+		RigidBodies::subcycling(var, domain, levelset_collection, t, 0.01);
 /*
 		//Perform contact detection, accumulating contact forces on the particles
 		//RigidBodies::contact_detection(domain, var.particles, levelset_collection, domain.dt);
@@ -1093,7 +1171,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		if (count == 1) t = domain.tstop;
+		//if (count == 60) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 		if (t == plot_time) {
 			std::cout << "plotting " << t << std::endl;
@@ -1102,7 +1180,7 @@ void RigidBodies::solver(Moving_RB &var, Domain2D &domain, double CFL){
 			output(var, domain, file, file2);
 			std::cout << "particle " << 0 << '\t' << var.particles[0].vc.transpose() << '\t' << var.particles[0].w << std::endl;
 			std::cout << "particle " << 1 << '\t' << var.particles[1].vc.transpose() << '\t' << var.particles[1].w << std::endl;
-			plot_time += 0.025;//0.1;
+			plot_time += 0.1;//0.1;
 			faket+=0.1;
 		}
 
@@ -1190,7 +1268,7 @@ void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
 	//	std::cout << var.particles[a].nodes[b].transpose() << std::endl;
 	//}
 	//std::cout << Test.var.particles[0].nodes.size() << std::endl;
-	//solver(Test.var, Test.domain, CFL);
+	solver(Test.var, Test.domain, CFL);
 	output(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
 	std::cout << "done: Rigid Body" << std::endl;
 }

@@ -282,8 +282,10 @@ struct Rotor2
 	//Rotor2 rotate_rotor(const Rotor2&);
 
 	//wrapper to rotate about point p with a given angular velocity and lapsed time
-	static vector2 rotate_about(const vector2&, const vector2&, double angularv, double t);
-	static vector2 rotate_reverse(const vector2&, const vector2&, double angularv, double t);
+	static vector2 rotate_about(const vector2&, const vector2&, double, double);
+		static vector2 rotate_about(const vector2&, const vector2&, double);
+	static vector2 rotate_reverse(const vector2&, const vector2&, double, double);
+	static vector2 rotate_reverse(const vector2&, const vector2&, double);
 };
 
 
