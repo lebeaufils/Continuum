@@ -432,18 +432,18 @@ Coordinates LevelSetMethods::translation_reverse(const Coordinates& p, const vec
 	//x(n+1) = x(n) + v(t)*t
 	//phi(x, t) = phi(x - vt, 0)
 
-	Coordinates originalpos(p.x - displacement(0), p.y - displacement(0)); //original position of the levelset
+	Coordinates originalpos(p.x - displacement(0), p.y - displacement(1)); //original position of the levelset
 	return originalpos;
 }
 
-Coordinates LevelSetMethods::rotation_reverse(const Coordinates& p, const vector2& centroid, rotation){
+Coordinates LevelSetMethods::rotation_reverse(const Coordinates& p, const vector2& centroid, double theta){
 	//ω is the angular velocity, which is a 'scalar' value in 2D,
 	//f is the frequency of rotation, given by w/2pi
 	//where a positive value corresponds to counter-clockwise rotation and negative clockwise.
 	//the linear velocity is spatially dependent
 	//vb = 2πω (r_rot × x)
 
-	vector2 v = Rotor2::rotate_about(vector2(p.x, p.y), centroid, rotation); 
+	vector2 v = Rotor2::rotate_about(vector2(p.x, p.y), centroid, theta); 
 	//by reversing the rotation at point i, j, the "original position" of the level set is retrieved
 	Coordinates originalpos(v(0), v(1)); //original position of the levelset
 	return originalpos;

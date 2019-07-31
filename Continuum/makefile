@@ -19,13 +19,16 @@ objectFiles/eulerTests.o : cppFiles/eulerTests.C headerFiles/eulerTests.h
 objectFiles/Variables.o : cppFiles/Variables.C headerFiles/Variables.h
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
+objectFiles/Particles.o : cppFiles/Particles.C headerfiles/Particles.h
+	${CXX} -c $< -o $@ ${CXXFLAGS}
+
 main.o : main.C
 	${CXX} -c $< -o $@ ${CXXFLAGS}
 
-main : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o objectFiles/Variables.o objectFiles/RigidBodies.o
+main : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o objectFiles/Variables.o objectFiles/RigidBodies.o objectFiles/Particles.o
 	g++ $^ -lm -o $@  
 
-memcheck : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o objectFiles/Variables.o objectFiles/RigidBodies.o
+memcheck : main.o   objectFiles/Solvers.o objectFiles/EOS.o objectFiles/eulerTests.o objectFiles/LevelSet.o objectFiles/Variables.o objectFiles/RigidBodies.o objectFiles/Particles.o
 	g++ -g  $^ -o $@
 
 

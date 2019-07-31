@@ -7,7 +7,7 @@
 int main(void){
 
 
-	demTests Tests(401);
+	demTests Tests(201);
 	Tests.test3();
 
 	//RigidBodies::initial_conditions(Tests);

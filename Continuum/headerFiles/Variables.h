@@ -237,7 +237,7 @@ struct Bresenham{
 struct Bivector2
 {
 	//in 2D, the bivector of two vectors is confined to a single plane in xy
-	double b12 = 0;
+	double b12;
 
 	Bivector2(double b) : b12(b) {}
 
@@ -249,13 +249,13 @@ struct Rotor2
 	//exponential form
 	// R = ab = cos(theta) + a^b
 	//magnitude of rotation
-	double a = 1; 
+	double a; 
 	//bivector
-	double b12 = 1; //unit bi-vector. in 2D, only one plane e12 exists and there is
+	double b12; //unit bi-vector. in 2D, only one plane e12 exists and there is
 	//only one choice for the unit plane
 
 	//constructors
-	Rotor2() {}
+	Rotor2() : a(1), b12(1) {}
 	Rotor2(double a, double b) : a(a), b12(b) {}
 	//Rotor2(double a, const Bivector2 &bv) : a(a), b12(bv.b12) {}
 	//advanced initialisation

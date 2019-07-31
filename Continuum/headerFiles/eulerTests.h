@@ -12,6 +12,7 @@
 #include "EOS.h"
 #include "Variables.h"
 #include "LevelSet.h"
+#include "Particles.h"
 
 typedef Eigen::Vector3d vector;
 typedef Eigen::Vector4d vector4;
