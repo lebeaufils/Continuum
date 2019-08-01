@@ -698,8 +698,11 @@ void RigidBodies::particle_collision(vector2& spring, Particle& gr_i, Particle& 
 	double force_n = compute_normal_force(gr_i, dist, v_n);
 	vector2 Fn_i = force_n*normal;
 	vector2 Fs_i = compute_tangential_force(spring, gr_i, force_n, dt, v_t, normal);
-	gr_i.force = Fn_i + Fs_i;
-	gr_i.torque = compute_torque(gr_i, node, Fn_i, Fs_i);
+	vector2 F_tot = Fn_i + Fs_i;
+	gr_i.force += F_tot; //total force on particle is the sum of forces from all nodes
+	gr_j.force += -F_tot; //by action and reaction
+	gr_i.torque += compute_torque(gr_i, node, Fn_i, Fs_i);
+	gr_j.torque += compute_torque(gr_j, node, Fn_i, Fs_i);
 
 	//std::cout << "particle forces " << gr_i.label << '\t' << Fn_i.transpose() << '\t' << Fs_i.transpose() << std::endl;
 }
@@ -723,8 +726,8 @@ void RigidBodies::wall_collision(vector2& spring, Particle& gr_i, const vector2&
 	double force_n = compute_normal_force(gr_i, dist, v_n);
 	vector2 Fn_i = force_n*normal;
 	vector2 Fs_i = compute_tangential_force(spring, gr_i, force_n, dt, v_t, normal);
-	gr_i.force = Fn_i + Fs_i;
-	gr_i.torque = compute_torque(gr_i, node, Fn_i, Fs_i);
+	gr_i.force += Fn_i + Fs_i;
+	gr_i.torque += compute_torque(gr_i, node, Fn_i, Fs_i);
 }
 
 std::unordered_map<int, vector2>::iterator RigidBodies::find_spring(std::unordered_map<int, vector2> springmap, int a){
@@ -772,13 +775,14 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 							vector2 grad_phi = LevelSetMethods::interpolation_gradient(system.particles[j].dynamicls, domain, node_a);
 							vector2 normal = grad_phi/(sqrt(grad_phi(0)*grad_phi(0) + grad_phi(1)*grad_phi(1)));
 							particle_collision(nspring->second, system.particles[i], system.particles[j], system.particles[i].nodes[a], dist, normal, dt);
+							//The force contribution by this node is added to the total force.
 						}
 						//if contact has ended, delete the relevant spring
 						else {
 							delete_spring(system.particles[i].springs[j], a);
 						}
 					}
-					for (int a=0; a<static_cast<int>(system.particles[j].nodes.size()); a++){
+					/*for (int a=0; a<static_cast<int>(system.particles[j].nodes.size()); a++){
 						//For each node of the particle
 						Coordinates node_a(system.particles[j].nodes[a]); //nodes have been rotated during particle motion		
 						//interpolate phi at the coordinates of the slave levelset
@@ -795,7 +799,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 						else {
 							delete_spring(system.particles[i].springs[j], a);
 						}
-					}
+					}*/
 				}
 				//do we need to check and delete springs here? or are those in close contact sufficient?
 			}
@@ -844,6 +848,18 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 	}
 }
 
+void RigidBodies::fluid_forces(std::vector<Particle>& particles){ //acts on all particles
+	for (int i=0; i<static_cast<int>(particles.size()); i++){
+		//reset forces to zero
+		particles[i].force = vector2(0, 0);
+		particles[i].torque = 0;
+		//calculate force from fluid pressure
+		//vector2 force_fluid = LevelSetMethods::force(system.fluid, levelset_collection[a], domain);
+		//double torque_fluid = LevelSetMethods::torque (system.fluid, levelset_collection[a], domain, system.particles[a].centre);
+		//particles[i].force += force_fluid;
+		//particles[i].torque += torque_fluid;
+	}
+}
 
 /*
 void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle>& particles, const std::vector<LevelSet>& levelset_collection, double dt){
@@ -1042,6 +1058,10 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, double t
 	do{
 		if (t + subdt > tstop) subdt = tstop - t;
 		t += subdt;
+
+		//First, reset the forces on each particle to zero, before recomputing forces from surrounding fluids for each timestep
+		fluid_forces(system.particles);
+
 		//update force and torque of each particle
 		contact_detection(domain, system, subdt);
 
@@ -1307,7 +1327,7 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//std::cout << domain.dt << std::endl;
-		if (count == 5) t = domain.tstop;
+		//if (count == 50) t = domain.tstop;
 		//if (count == 10) std::cout << t << std::endl;
 		if (t == plot_time) {
 			std::cout << "plotting " << t << std::endl;

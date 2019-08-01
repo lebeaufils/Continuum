@@ -723,7 +723,7 @@ void demTests::test3(){
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 2.0;
+	domain.tstop = 3.0;
 	domain.Lx = 2.0; domain.Ly = 2.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
@@ -768,7 +768,7 @@ void demTests::test3(){
 
 	Coordinates center(0.6,1.0);
 	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0.1, 0.0), 0.0);
+	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
 
 	Polygon poly2;
 	//Coordinates center2(1.0,1.0);
@@ -779,7 +779,7 @@ void demTests::test3(){
 		std::cout << c << std::endl;
 	}
 	var.add_particle(poly2, domain);
-	var.particles[1].set_velocity(vector2(0.0, 0.0), 0.0);
+	var.particles[1].set_velocity(vector2(-0.2, 0.0), 0.0);
 
 	//domain.display_grid();
 	//var.particles[0].ls.display_grid();

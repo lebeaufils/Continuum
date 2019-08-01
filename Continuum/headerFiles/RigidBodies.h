@@ -44,6 +44,7 @@ struct RigidBodies
 	static void wall_collision(vector2&, Particle&, const vector2&, double, const vector2&, double);
 	static void particle_collision(vector2&, Particle&, Particle&, const vector2&, double, const vector2&, double);
 	//
+	static void fluid_forces(std::vector<Particle>&);
 	static void newton_euler(Particle&, const Domain2D&, const vector2& torque, double force, double);
 	static void update_displacements(Particle&, const Domain2D&, Moving_RB&, double);
 	static void initial_conditions(demTests&);
