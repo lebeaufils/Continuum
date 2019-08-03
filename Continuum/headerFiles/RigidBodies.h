@@ -44,11 +44,11 @@ struct RigidBodies
 	static void wall_collision(vector2&, Particle&, const vector2&, double, const vector2&, double);
 	static void particle_collision(vector2&, Particle&, Particle&, const vector2&, double, const vector2&, double);
 	//
-	static void fluid_forces(std::vector<Particle>&);
+	static void fluid_forces(const Domain2D&, const Euler2D&, std::vector<Particle>&);
 	static void newton_euler(Particle&, const Domain2D&, const vector2& torque, double force, double);
 	static void update_displacements(Particle&, const Domain2D&, Moving_RB&, double);
 	static void initial_conditions(demTests&);
-	static void subcycling(Moving_RB&, const Domain2D&, double, double);
+	static void subcycling(Moving_RB&, const Domain2D&, const Euler2D&, double, double);
 	static void solver(Moving_RB&, Domain2D&, double);
 	static void output(const Moving_RB&, const Domain2D&, std::string, std::string);
 	static void output_levelset(const Moving_RB&, const Domain2D&, std::string, std::string);

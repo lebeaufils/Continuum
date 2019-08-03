@@ -8,7 +8,7 @@ int main(void){
 
 
 	demTests Tests(201);
-	Tests.test3();
+	Tests.test4();
 
 	//RigidBodies::initial_conditions(Tests);
 	RigidBodies::rigid_body_solver(Tests, 0.5);

@@ -723,7 +723,7 @@ void demTests::test3(){
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 3.0;
+	domain.tstop = 5.0;
 	domain.Lx = 2.0; domain.Ly = 2.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
@@ -766,10 +766,10 @@ void demTests::test3(){
 	var.particles[0].set_velocity(vector2(0.6, 0.0), 2);
 */
 
-	Coordinates center(0.6,1.0);
+	Coordinates center(0.5,1.0);
 	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
-
+	var.particles[0].set_velocity(vector2(0.5, 0.0), 0.0);
+/*
 	Polygon poly2;
 	//Coordinates center2(1.0,1.0);
 	try{
@@ -779,7 +779,12 @@ void demTests::test3(){
 		std::cout << c << std::endl;
 	}
 	var.add_particle(poly2, domain);
-	var.particles[1].set_velocity(vector2(-0.2, 0.0), 0.0);
+	var.particles[1].set_velocity(vector2(0.5, 0.0), 0.0);
+*/	
+
+	Coordinates center1(1.5,1.0);
+	var.add_sphere(domain, center1, 0.2);
+	var.particles[1].set_velocity(vector2(-0.5, 0.0), 0.0);
 
 	//domain.display_grid();
 	//var.particles[0].ls.display_grid();
@@ -787,6 +792,61 @@ void demTests::test3(){
 	//a single interface between rigid body and fluid
 	//essentially, this reduces the computational domain by bringing forward the boundary
 	//std::cout << interface << std::endl;
+}
+
+void demTests::test4(){
+
+	//Shock location
+	//double x_s = 0.3;
+
+	//------------------------------------------------------------
+	//initial conditions for shock and unshocked fluid
+	//vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
+	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
+
+	initialL = unshocked;
+	initialR = unshocked;
+
+	domain.tstop = 5.0;
+	domain.Lx = 2.0; domain.Ly = 2.0;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+	domain.X.resize(domain.Nx, domain.Ny);
+
+	var.fluid.state_function = StateFunctions::create(EOS_IG);
+	var.fluid.state_function->y = 1.4;
+	//------------------------------------------------------------
+	//	Domain
+	//------------------------------------------------------------
+	//assigning x values
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates point(i*domain.dx, j*domain.dy);
+			domain.X(i, j) = point;
+		}
+	}
+	interface.resize(domain.Nx, domain.Ny);
+	//------------------------------------------------------------
+	//	Fluid
+	//------------------------------------------------------------
+	//initial conditions of the fluid surrounding the levelset
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			interface(i, j) = false;
+		}
+	}
+	//------------------------------------------------------------
+	//	Rigid body (level set definition)
+	//------------------------------------------------------------
+
+	Coordinates center(0.5,1.0);
+	var.add_sphere(domain, center, 0.2);
+	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
+
+	Coordinates center1(1.5,1.0);
+	var.add_sphere(domain, center1, 0.2);
+	var.particles[1].set_velocity(vector2(0.0, 0.0), 0.0);
+
 }
 
 void demTests::test5(){

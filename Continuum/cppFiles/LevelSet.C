@@ -254,7 +254,8 @@ double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& 
 	//	return 1e6; //returns a large positive value if domain is out of bounds
 	//}
 
-	if (p.x > domain.Lx || p.x < 0 || p.y > domain.Ly || p.y < 0){
+	if (p.x > domain.Lx + (domain.buffer-2)*domain.dx || p.x < -(domain.buffer-2)*domain.dx || p.y > domain.Ly + (domain.buffer-2)*domain.dy || p.y < -(domain.buffer-2)*domain.dy){
+	//if (p.x > domain.Lx || p.x < 0 || p.y > domain.Ly || p.y < 0){
 		return 1e6; //returns a large positive value if domain is out of bounds
 	}
 
@@ -269,6 +270,12 @@ double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& 
 	double y = p.y - j*domain.dy;
 
 	//bilinear interpolation
+
+	if (i+domain.buffer+1 > ls.phi.rows() || j+domain.buffer+1 > ls.phi.cols()){
+		std::cout << "exceed boundary" << i << '\t' << j << std::endl;
+		throw "i and j are out of bounds - level set interpolation";
+	}
+
 	double phi_xy = 0;
 	for (int a=0; a<=1; a++){
 		for (int b=0; b<=1; b++){
@@ -443,7 +450,7 @@ Coordinates LevelSetMethods::rotation_reverse(const Coordinates& p, const vector
 	//the linear velocity is spatially dependent
 	//vb = 2πω (r_rot × x)
 
-	vector2 v = Rotor2::rotate_about(vector2(p.x, p.y), centroid, theta); 
+	vector2 v = Rotor2::rotate_about(vector2(p.x, p.y), centroid, -theta); 
 	//by reversing the rotation at point i, j, the "original position" of the level set is retrieved
 	Coordinates originalpos(v(0), v(1)); //original position of the levelset
 	return originalpos;
