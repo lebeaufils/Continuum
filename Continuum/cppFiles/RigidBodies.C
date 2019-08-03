@@ -880,91 +880,6 @@ void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std
 	}
 }
 
-/*
-void RigidBodies::contact_detection(const Domain2D& domain, std::vector<Particle>& particles, const std::vector<LevelSet>& levelset_collection, double dt){
-// TO BE IMPROVED ON, made parallel
-	int number_of_particles = static_cast<int>(particles.size());
-	//for each particle in the system
-	for (int i=0; i<number_of_particles; i++){ //master grain
-	//Loop through every other particle
-	//For each node of the particle
-		for (int a=0; a<static_cast<int>(particles[i].nodes.size()); a++){
-			Coordinates node_a(particles[i].nodes[a]);
-		//remember to rotate/translate the nodes in the main solver
-		//interpolate coordinates of nodes with slave levelset
-		//if this value is < 0, contact is determined.
-		//return a set of contact values // OR // calculate contact forces here?
-			for (int j=0; j<number_of_particles; j++){ //slave grain
-			//check for contact between grain i and slaves j
-				if (i!=j){
-					double dist = LevelSetMethods::interpolation_value(levelset_collection[j], domain, node_a);
-					if (dist < 0){
-						vector2 grad_phi = LevelSetMethods::interpolation_gradient(levelset_collection[j], domain, node_a);
-						vector2 normal = grad_phi/(sqrt(grad_phi(0)*grad_phi(0) + grad_phi(1)*grad_phi(1)));
-						particle_collision(particles[i], particles[j], particles[i].nodes[a], dist, normal, dt);
-					}
-				}
-			}
-*/
-		//after calculating position future position, check that it is not at the boundaries.
-		//if it crosses boundary, calvulate the extent of overlap and reflect the normal velocity?
-		//check if any nodes exceed domain boundary. Assumes domain origin at 0, 0
-		/*
-			if ((node_a.x < 0) != (node_a.x > domain.Lx)){
-				//std::cout << "contact with wall" << std::endl;
-				//if node is less than neither less than 0 nor greater than Lx, it will return false
-				vector2 normal(1, 0);
-				//since dist must always be negative,
-				double dist = (node_a.x < 0)*(node_a.x) + (node_a.x > domain.Lx)*(node_a.x - domain.Lx);
-					//On the right boundary, the normal points in the wrong direction but distance is positive	
-				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
-			}
-			//vertical boundaries
-			if ((node_a.y < 0) != (node_a.y > domain.Ly)){
-				//std::cout << "contact with wall" << std::endl;
-				//if node is less than neither less than 0 nor greater than Lx, it will return false
-				vector2 normal(0, 1);
-				//since dist must always be negative,
-				double dist = (node_a.y < 0)*(node_a.y) + (node_a.y > domain.Ly)*(node_a.y - domain.Ly);
-					//On the right boundary, the normal points in the wrong direction but distance is positive	
-				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
-			}
-		*/
-			//std::cout << "node = " << node_a.x << '\t' << node_a.y << std::endl;
-/*			if (node_a.x < 0){
-				vector2 normal(1, 0);
-				double dist = node_a.x;
-				//std::cout << "dist = " << dist << std::endl;
-				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
-			}
-
-			else if (node_a.x > domain.Lx){
-				vector2 normal(-1, 0);
-				double dist = domain.Lx - node_a.x;	
-				//std::cout << "dist = " << dist << std::endl;
-				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
-			}
-
-			if (node_a.y < 0){
-				vector2 normal(0, 1);
-				double dist = node_a.y;
-				//std::cout << "dist = " << dist << std::endl;
-				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
-			}
-
-			else if (node_a.y > domain.Ly){
-				vector2 normal(0, -1);
-				double dist = domain.Ly - node_a.y;	
-				//std::cout << "dist = " << dist << std::endl;
-				wall_collision(particles[i], particles[i].nodes[a], dist, normal, dt);
-			}
-
-		}
-	}
-	//std::cout << particles[0].centre.transpose() << '\t' << particles[1].centre.transpose() << std::endl;
-	//note that the first optimisation is to prevent double checking of collisions
-}*/
-
 void RigidBodies::newton_euler(Particle& gr, const Domain2D& domain, const vector2& force, double torque, double dt){
 //updates the velocities which are passed as arguments
 
@@ -1089,10 +1004,11 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Eu
 		//forces from fluid pressure can be incorporated here. calculate before and treat as constant?
 		//or calculate as particle moves along fluid, without moving the fluid?
 		for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-			//calculate forces from fluid pressure
-			//vector2 force = LevelSetMethods::force(system.fluid, levelset_collection[a], domain);
-			//double torque = LevelSetMethods::torque (system.fluid, levelset_collection[a], domain, system.particles[a].centre);
-			//if (count%10==0) {std::cout << force.transpose() << '\t' << torque << std::endl;}
+			//Add background friction
+			//double bg_damping = 0.24;
+			//system.particles[a].force -= bg_damping*system.particles[a].vc;
+			//system.particles[a].torque -= bg_damping*system.particle[a].w*size/2.;
+
 			//calculate and update particle velocities
 			newton_euler(system.particles[a], domain, system.particles[a].force, system.particles[a].torque, subdt);
 			update_displacements(system.particles[a], domain, system, subdt); //Particle& gr, const domain2D& domain, Moving_RB& system, double dt
@@ -1355,7 +1271,7 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 			output(system, domain, file, file2);
 			std::cout << "particle " << 0 << '\t' << system.particles[0].vc.transpose() << '\t' << system.particles[0].w << std::endl;
 			std::cout << "particle " << 1 << '\t' << system.particles[1].vc.transpose() << '\t' << system.particles[1].w << std::endl;
-			plot_time += 0.1;
+			plot_time += 0.05;
 			faket+=0.1;
 		}
 

@@ -394,7 +394,7 @@ void HierarchicalHashTable::add_particle(const std::vector<Particle>& particleli
 //Particles
 //--------------------------------------------------------------
 //circle constructor
-Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : density(3000), damping_coefficient(0.5), 
+Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : density(3000), damping_coefficient(0.24), 
 miu(0.26), k_n(1e5), k_s(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
 dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), torque(0) {
 	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
@@ -582,10 +582,10 @@ LevelSet Particle::motion(const Domain2D& domain, const vector2& s, double theta
 
 	vector2 newcentre = centroid + s;
 	//calculate levelset within bounding box
-	int min_i = floor((newcentre(0)-size/1.9)/domain.dx);
-	int max_i = floor((newcentre(0)+size/1.9)/domain.dx);
-	int min_j = floor((newcentre(1)-size/1.9)/domain.dy);
-	int max_j = floor((newcentre(1)+size/1.9)/domain.dy);
+	int min_i = floor((newcentre(0)-size/1.8)/domain.dx);
+	int max_i = ceil((newcentre(0)+size/1.8)/domain.dx);
+	int min_j = floor((newcentre(1)-size/1.8)/domain.dy);
+	int max_j = ceil((newcentre(1)+size/1.8)/domain.dy);
 
 	for(int i=0; i<domain.Nx+2*domain.buffer; i++){
 		for (int j=0; j<domain.Ny+2*domain.buffer; j++){

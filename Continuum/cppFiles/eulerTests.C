@@ -839,13 +839,26 @@ void demTests::test4(){
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
 
-	Coordinates center(0.5,1.0);
-	var.add_sphere(domain, center, 0.2);
+	var.add_sphere(domain, Coordinates(0.7,0.5), 0.1);
 	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	Coordinates center1(1.5,1.0);
-	var.add_sphere(domain, center1, 0.2);
+	var.add_sphere(domain, Coordinates(0.8, 1.0), 0.1);
 	var.particles[1].set_velocity(vector2(0.0, 0.0), 0.0);
+
+	var.add_sphere(domain, Coordinates(0.9, 0.5), 0.1);
+	var.particles[2].set_velocity(vector2(0.0, 0.0), 0.0);
+
+	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.1);
+	var.particles[3].set_velocity(vector2(0.0, 0.0), 0.0);
+
+	var.add_sphere(domain, Coordinates(1.1, 0.5), 0.1);
+	var.particles[4].set_velocity(vector2(0.0, 0.0), 0.0);
+
+	var.add_sphere(domain, Coordinates(1.2, 1.0), 0.1);
+	var.particles[5].set_velocity(vector2(0.0, 0.0), 0.0);
+
+	var.add_sphere(domain, Coordinates(1.3, 0.5), 0.1);
+	var.particles[6].set_velocity(vector2(0.0, 0.0), 0.0);
 
 }
 
