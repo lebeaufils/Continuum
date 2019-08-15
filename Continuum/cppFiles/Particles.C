@@ -249,7 +249,8 @@ void HierarchicalHashTable::add_particle_all(const Domain2D& domain, const std::
 	resolution--;
 	while (resolution>0){
 		//convert grid index to that of lower resolution
-		double res_ratio = tables[resolution].resolution_size/tables[resolution+1].resolution_size; //ratio of lengths of cells resolution-1/resolution
+		//double res_ratio = tables[resolution].resolution_size/tables[resolution+1].resolution_size; //ratio of lengths of cells resolution-1/resolution
+		double res_ratio = tables[resolution+1].resolution_size/tables[resolution].resolution_size;
 		int iminus = floor(gr.igrids.front().first*res_ratio); 
 		int iplus = floor(gr.igrids.back().first*res_ratio);
 		int jminus = floor(gr.igrids.front().second*res_ratio);
@@ -313,10 +314,11 @@ void HierarchicalHashTable::move_particle(const Domain2D& domain, const std::vec
 	remove_particle(particlelist, gr, resolution, remove_gr);
 	add_particle(particlelist, gr, resolution, add_gr);
 
-	//update the buckets of lower resolution, if applicable
+/////////////	//update the buckets of lower resolution, if applicable
 	resolution--;
-	while (resolution>0){
-		double res_ratio = tables[resolution].resolution_size/tables[resolution+1].resolution_size;
+	while (resolution>0){ //check this
+		//double res_ratio = tables[resolution].resolution_size/tables[resolution+1].resolution_size;
+		double res_ratio = tables[resolution+1].resolution_size/tables[resolution].resolution_size;
 		//reduce the removed grid keys to that of the lower resolution
 		std::vector<std::pair<int, int> > lowres_remove;
 		for (std::vector<std::pair<int, int> >::iterator it=remove_gr.begin(); it!=remove_gr.end(); it++){
@@ -394,8 +396,8 @@ void HierarchicalHashTable::add_particle(const std::vector<Particle>& particleli
 //Particles
 //--------------------------------------------------------------
 //circle constructor
-Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : density(3000), damping_coefficient(0.24), 
-miu(0.26), k_n(1e5), k_s(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
+Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : mass(1.0), density(1.0), damping_coefficient(0.0), 
+miu(0.3), k_n(50), k_s(50), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
 dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), torque(0) {
 	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
 	dynamicls = ls;
@@ -405,9 +407,11 @@ dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0,
 	//seeding nodes for the circle
 	//double circumference = 2*r*atan(1.0)*4;
 	//double spacing = 2*r/10.;
+	//vector2 surface_p(center.x + r, center.y);
+
 	vector2 surface_p(center.x + r, center.y);
 	//find the first point on the zeroth levelset contour
-	/*for (int i=0; i<domain.Nx; i++){
+	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			if (ls.phi(i+domain.buffer, j+domain.buffer) == 0){
 				surface_p(0) = domain.X(i, j).x;
@@ -415,7 +419,7 @@ dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0,
 				break;
 			}
 		}
-	}*/
+	}
 	ref_nodes.push_back(surface_p);
 	nodes.push_back(surface_p);
 	//find the frequency of rotation
@@ -436,8 +440,8 @@ dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0,
 	wall_springs.push_back(nodesprings);
 }
 //polygon constructor
-Particle::Particle(const Polygon& poly, const Domain2D& domain) : density(3000), damping_coefficient(0.24), 
-miu(0.26), k_n(1e5), k_s(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
+Particle::Particle(const Polygon& poly, const Domain2D& domain) : mass(1.0), density(1.0), damping_coefficient(0.2), 
+miu(0.3), k_n(20), k_s(20), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
 dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), torque(0) {
 	LevelSetMethods::initialise(ls, domain, poly);
 	dynamicls = ls;
@@ -471,12 +475,21 @@ dynamicls(gr.dynamicls), centre(gr.centre), nodes(gr.nodes), vc(gr.vc), w(gr.w),
 	 	ref_nodes.push_back(gr.ref_nodes[a]);
 	 }
 }
+
+void Particle::set_mass(double m){
+	mass = m;
+}
+
+void Particle::set_density(double d){
+	density = d;
+}
+
 void Particle::set_velocity(const vector2& trans_velocity, double angular_velocity){
 	vc = trans_velocity;
 	w = angular_velocity;
 }
 
-double Particle::mass(const Particle& gr, const Domain2D& domain){
+double Particle::compute_mass(const Particle& gr, const Domain2D& domain){
 
 	double m = 0;
 
@@ -504,7 +517,7 @@ vector2 Particle::center_of_mass(const LevelSet& ls, const Particle& gr, const D
 			c_y += LevelSetMethods::smoothed_heaviside(ls, domain, i+domain.buffer, j+domain.buffer)*(domain.X(i, j).y);
 		}
 	}
-	double m = mass(gr, domain);
+	double m = compute_mass(gr, domain);
 	c_x = (gr.density*domain.dx*domain.dy/m)*c_x;
 	c_y = (gr.density*domain.dx*domain.dy/m)*c_y;
 	vector2 c(c_x, c_y);
@@ -536,14 +549,8 @@ vector2 Particle::velocity(const Coordinates& p, const Particle& gr){
 
 LevelSet Particle::merge(const std::vector<Particle>& particles, const Domain2D& domain){
 	LevelSet ls;
-	ls.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
-
 	//initialise the levelset with a large positive number
-	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
-		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
-			ls.phi(i, j) = 1e6;
-		}
-	}
+	ls.phi = Eigen::MatrixXd::Constant(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer, 1e6);
 
 	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
 		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
@@ -564,21 +571,7 @@ LevelSet Particle::motion(const Domain2D& domain, const vector2& s, double theta
 	//Temporary storage for levelset values at time t
 	//The levelset can be updated using its initial values and current position
 	LevelSet ls_t; //ls at time t
-	ls_t.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
-
-	//simultaneous translation and rotation
-	//double pi = atan(1.0)*4;
-	//double frequency = w/(2*pi);
-
-	/*for(int i=0; i<domain.Nx+2*domain.buffer; i++){
-		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
-			Coordinates originalpos(i*domain.dx - domain.buffer*domain.dx, j*domain.dy - domain.buffer*domain.dy);
-			originalpos = LevelSetMethods::translation_reverse(originalpos, s); //translate the point
-			originalpos = LevelSetMethods::rotation_reverse(originalpos, centroid, theta); //rotate the point
-			ls_t.phi(i, j) = LevelSetMethods::interpolation_value(ls, domain, originalpos); //interpolate value from reference ls
-		}
-		//std::cout << std::endl;
-	}*/
+	ls_t.phi = Eigen::MatrixXd::Constant(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer, 1e6);//matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
 
 	vector2 newcentre = centroid + s;
 	//calculate levelset within bounding box
@@ -587,11 +580,7 @@ LevelSet Particle::motion(const Domain2D& domain, const vector2& s, double theta
 	int min_j = floor((newcentre(1)-size/1.8)/domain.dy);
 	int max_j = ceil((newcentre(1)+size/1.8)/domain.dy);
 
-	for(int i=0; i<domain.Nx+2*domain.buffer; i++){
-		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
-			ls_t.phi(i, j) = 1e6;		
-		}
-	}
+
 	for (int i=min_i; i<=max_i; i++){
 		for (int j=min_j; j<=max_j; j++){
 			Coordinates originalpos(i*domain.dx, j*domain.dy);

@@ -58,13 +58,8 @@ void LevelSetMethods::boundary_conditions(LevelSet &ls, const Domain2D &domain){
 }
 
 void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, const Polygon &poly){
-	ls.phi = matrix::Zero(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer);
-
-	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
-		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
-			ls.phi(i, j) = 1e6;
-		}
-	}
+	//initialise the levelset with a large positive number
+	ls.phi = Eigen::MatrixXd::Constant(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer, 1e6);
 
 	//Finding if the points are inside or outside the polygon
 	for (int i=0; i<domain.Nx; i++){
@@ -96,13 +91,7 @@ void LevelSetMethods::initialise(LevelSet &ls, const Domain2D &domain, const Pol
 
 void LevelSetMethods::initialise_circle(LevelSet &ls, const Domain2D &domain, double x0, double y0, double r){
 	//This provides an exact levelset function
-	ls.phi = matrix::Zero(domain.Nx + 2*domain.buffer, domain.Ny + 2*domain.buffer);
-
-	for (int i=0; i<domain.Nx+2*domain.buffer; i++){
-		for (int j=0; j<domain.Ny+2*domain.buffer; j++){
-			ls.phi(i, j) = 1e6;
-		}
-	}
+	ls.phi = Eigen::MatrixXd::Constant(domain.Nx+2*domain.buffer, domain.Ny+2*domain.buffer, 1e6);
 
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
@@ -254,7 +243,7 @@ double LevelSetMethods::interpolation_value(const LevelSet& ls, const Domain2D& 
 	//	return 1e6; //returns a large positive value if domain is out of bounds
 	//}
 
-	if (p.x > domain.Lx + (domain.buffer-2)*domain.dx || p.x < -(domain.buffer-2)*domain.dx || p.y > domain.Ly + (domain.buffer-2)*domain.dy || p.y < -(domain.buffer-2)*domain.dy){
+	if (p.x > domain.dx*domain.Nx + (domain.buffer-2)*domain.dx || p.x < -(domain.buffer-2)*domain.dx || p.y > domain.dx*domain.Ny + (domain.buffer-2)*domain.dy || p.y < -(domain.buffer-2)*domain.dy){
 	//if (p.x > domain.Lx || p.x < 0 || p.y > domain.Ly || p.y < 0){
 		return 1e6; //returns a large positive value if domain is out of bounds
 	}
@@ -334,15 +323,34 @@ double LevelSetMethods::smoothed_heaviside(const LevelSet &ls, const Domain2D &d
 }
 
 double LevelSetMethods::smoothed_delta(const LevelSet &ls, const Domain2D &domain, int i, int j){
-	const double e = 1.5*domain.dx;//(domain.dx*domain.dy); //smoothness parameter
-	const double pi = 3.14159265358979323846; //pi
+	//const double e = 1.5*domain.dx;//1.5*domain.dx;//(domain.dx*domain.dy); //smoothness parameter
+	double dphi_x = (ls.phi(i+1, j) - ls.phi(i-1, j))/(2*domain.dx);
+	double dphi_y = (ls.phi(i, j+1) - ls.phi(i, j-1))/(2*domain.dy);
+	double e = (abs(dphi_x) + abs(dphi_y))*domain.dx;
+
+	const double pi = boost::math::constants::pi<double>();
 
 	if (ls.phi(i, j) > e || ls.phi(i, j) < -e){ //inside rigid body
 		return 0;
 	}
 	else { //outside rigid body
-		return (1/(2*e) + 1/(2*e)*cos(pi*ls.phi(i, j)/e));
+		return 1./e*(1./2.)*(1 + cos(pi*ls.phi(i, j)/e)); //(1/(2*e) + 1/(2*e)*cos(pi*ls.phi(i, j)/e));
 	}
+	
+	/*
+	const double e = 1.5*domain.dx;
+	double phi = ls.phi(i, j);
+
+	if (abs(phi) > e){ //inside or outside rigid body
+		return 0;
+	}
+	else if (abs(phi) >= 0 && abs(phi) <= e/2.){
+		return 2. - abs(2*phi/e) - 2*pow((2*phi/e), 2) +  pow((2*phi/e), 3);
+	}
+	else { //middle zone
+		return 2. - 11./3.*(2*phi/e) + 2*pow((2*phi/e), 2) - 1./3.*pow((2*phi/e), 3);
+	}
+	*/
 }
 
 LevelSet LevelSetMethods::merge(const std::vector<LevelSet>& levelsets, const Domain2D& domain){
@@ -383,9 +391,12 @@ vector2 LevelSetMethods::force(const Euler2D& var, const LevelSet& ls, const Dom
 			vector2 n_i = LevelSetMethods::normal(ls, domain, i+domain.buffer, j+domain.buffer);
 			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+domain.buffer, j+domain.buffer);
 			double p = var.state_function->Pressure(var.U(i+2, j+2)); //fluid pressure in cell i, j
-			f += -(delta * p * n_i); //the normal direction is out of the rigid body
+			//f += -(delta * p * n_i); //the normal direction is out of the rigid body
+			f += -(delta * p * n_i * domain.dx*domain.dy);
 		}
 	}
+	//if (abs(f(0)) < 0.01) f(0) = 0;
+	//if (abs(f(1)) < 0.01) f(1) = 0;
 	return f;
 }
 
@@ -402,9 +413,11 @@ double LevelSetMethods::torque (const Euler2D& var, const LevelSet& ls, const Do
 			double p = var.state_function->Pressure(var.U(i+2, j+2)); //fluid pressure in cell i, j
 			
 			//(x-c) x pn
-			torque += -(delta * p * (r_i(0)*n_i(1) - r_i(1)*n_i(0)));//the normal direction is out of the rigid body
+			//torque += -(delta * p * (r_i(0)*n_i(1) - r_i(1)*n_i(0)));//the normal direction is out of the rigid body
+			torque += -(delta * p * (r_i(0)*n_i(1) - r_i(1)*n_i(0)))*domain.dx*domain.dy;
 		}
 	}
+	//if (abs(torque) < 0.001) torque = 0;
 	return torque;
 	//if this is combined with force into a subroutine, pressure can be computed only once
 }
@@ -455,7 +468,7 @@ Coordinates LevelSetMethods::rotation_reverse(const Coordinates& p, const vector
 	Coordinates originalpos(v(0), v(1)); //original position of the levelset
 	return originalpos;
 }
-
+/*
 LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, const vector2& centroid, const vector2& displacement, double rotation){
 	//Temporary storage for levelset values at time t
 	//The levelset can be updated using its initial values and current position
@@ -485,6 +498,7 @@ LevelSet LevelSetMethods::motion(const LevelSet& ls, const Domain2D& domain, con
 	//boundary_conditions(ls_t, domain);
 	return ls_t;
 }
+*/
 
 
 

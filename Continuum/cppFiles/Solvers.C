@@ -571,7 +571,7 @@ void MUSCL::boundary_conditions(Euler2D &var, const Domain2D& domain){
 		var.U(i+2, 1) = var.U(i+2, 2);
 		var.U(i+2, 0) = var.U(i+2, 1);
 		var.U(i+2, domain.Ny+2) = var.U(i+2, domain.Ny+1);
-		var.U(i+2, domain.Ny+3) = var.U(i+2, domain.Nx+2);
+		var.U(i+2, domain.Ny+3) = var.U(i+2, domain.Ny+2);
 	} 
 }
 
@@ -587,23 +587,23 @@ void MUSCL::boundary_conditions_reflective(Euler2D &var, const Domain2D& domain)
 		var.U(0, j+2) = var.U(1, j+2);
 		var.U(domain.Nx+2, j+2) = var.U(domain.Nx+1, j+2);
 		var.U(domain.Nx+3, j+2) = var.U(domain.Nx+2, j+2);
-		//reflecting the normal velocity
+		//reflecting the normal velocity //all except the left wall
 		var.U(1, j+2)(1) = -var.U(2, j+2)(1);
-		var.U(0, j+2)(1) = -var.U(1, j+2)(1);
+		var.U(0, j+2)(1) = var.U(1, j+2)(1);
 		var.U(domain.Nx+2, j+2)(1) = -var.U(domain.Nx+1, j+2)(1);
-		var.U(domain.Nx+3, j+2)(1) = -var.U(domain.Nx+2, j+2)(1);
+		var.U(domain.Nx+3, j+2)(1) = var.U(domain.Nx+2, j+2)(1);
 	} 
 	//assigning ghost values in the y-direction
 	for (int i=0; i<domain.Nx; i++){
 		var.U(i+2, 1) = var.U(i+2, 2);
 		var.U(i+2, 0) = var.U(i+2, 1);
 		var.U(i+2, domain.Ny+2) = var.U(i+2, domain.Ny+1);
-		var.U(i+2, domain.Ny+3) = var.U(i+2, domain.Nx+2);
+		var.U(i+2, domain.Ny+3) = var.U(i+2, domain.Ny+2);
 		//reflecting the normal velocity
 		var.U(i+2, 1)(3) = -var.U(i+2, 2)(3);
-		var.U(i+2, 0)(3) = -var.U(i+2, 1)(3);
+		var.U(i+2, 0)(3) = var.U(i+2, 1)(3);
 		var.U(i+2, domain.Ny+2)(3) = -var.U(i+2, domain.Ny+1)(3);
-		var.U(i+2, domain.Ny+3)(3) = -var.U(i+2, domain.Nx+2)(3);
+		var.U(i+2, domain.Ny+3)(3) = var.U(i+2, domain.Ny+2)(3);
 	} 
 }
 

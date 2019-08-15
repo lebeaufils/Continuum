@@ -325,7 +325,31 @@ void Polygon::create_from_file(Domain2D domain){
 	double x, y;
 	while (infile >> x >> y){
 		vertices.push_back(Vertex(x, y));
-		vertices.back().display();
+		//vertices.back().display();
+		n++;
+	}
+	infile.close();
+
+	generate_edges(vertices);
+	std::cout << n << '\t' << edges.size() << std::endl;
+	generate_surfacepoints(domain);
+	output(domain);
+}
+
+//for polygon files centered around (0, 0), translate them to their position in the domain.
+void Polygon::create_from_file(Domain2D domain, std::string filename, vector2 centre){
+	std::ifstream infile;
+
+	infile.open(filename);
+
+	if (!infile) {
+	    throw "Unable to open file";
+	}
+
+	double x, y;
+	while (infile >> x >> y){
+		vertices.push_back(Vertex(x + centre(0), y + centre(1)));
+		//vertices.back().display();
 		n++;
 	}
 	infile.close();

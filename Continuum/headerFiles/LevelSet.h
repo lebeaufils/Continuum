@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <Eigen/Dense>
 #include <map>
+#include <boost/math/constants/constants.hpp>
 
 //#include "eulerTests.h"
 #include "Variables.h"
@@ -77,7 +78,7 @@ public:
 	static Coordinates rotation(const Coordinates&, const vector2&, double);
 	static Coordinates translation_reverse(const Coordinates&, const vector2&);
 	static Coordinates rotation_reverse(const Coordinates&, const vector2&, double);
-	static LevelSet motion(const LevelSet&, const Domain2D&, const vector2&, const vector2&, double);
+	//static LevelSet motion(const LevelSet&, const Domain2D&, const vector2&, const vector2&, double);
 
 };
 

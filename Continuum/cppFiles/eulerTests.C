@@ -595,18 +595,15 @@ void rigidTests::test4(){
 //--------------------------------------------------------------------------------------------
 void demTests::test1(){
 
-	//Shock location
-	//double x_s = 0.3;
+	//Vaccuum
 
-	//------------------------------------------------------------
-	//initial conditions for shock and unshocked fluid
-	//vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
-	vector4 unshocked(1.0, 0.0, 0.0, 1.0);
+	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
 
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 0.25;
+	domain.tstop = 0.2;
+	domain.Lx = 1.0; domain.Ly = 1.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -636,32 +633,23 @@ void demTests::test1(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	Coordinates center(0.5,0.5);
-	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0, 2), 1);
+	var.add_sphere(domain, Coordinates(0.2,0.5), 0.1);
+	var.particles.back().set_velocity(vector2(2, 0), 0);
 
-	//domain.display_grid();
-	//var.particles[0].ls.display_grid();
-
-	//a single interface between rigid body and fluid
-	//essentially, this reduces the computational domain by bringing forward the boundary
-	//std::cout << interface << std::endl;
+	var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
+	var.particles.back().set_velocity(vector2(-2, 0), 0);
 }
 
 void demTests::test2(){
 
-	//Shock location
-	//double x_s = 0.3;
-
-	//------------------------------------------------------------
-	//initial conditions for shock and unshocked fluid
-	//vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
-	vector4 unshocked(1.0, 0.0, 0.0, 1.0);
+	//Vaccuum
+	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
 
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 2.0;
+	domain.tstop = 0.2;
+	domain.Lx = 0.5; domain.Ly = 0.2;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -691,23 +679,8 @@ void demTests::test2(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	Polygon poly;
-	Coordinates center(0.5,0.5);
-	try{
-		poly.create_square(domain, 0.3, center);
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-	var.add_particle(poly, domain);
-	var.particles[0].set_velocity(vector2(0, 0.6), 2);
-
-	//domain.display_grid();
-	//var.particles[0].ls.display_grid();
-
-	//a single interface between rigid body and fluid
-	//essentially, this reduces the computational domain by bringing forward the boundary
-	//std::cout << interface << std::endl;
+	var.add_sphere(domain, Coordinates(0.4,0.1), 0.1);
+	var.add_sphere(domain, Coordinates(0.2,0.1), 0.1);
 }
 
 void demTests::test3(){
@@ -723,7 +696,7 @@ void demTests::test3(){
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 5.0;
+	domain.tstop = 1.0;
 	domain.Lx = 2.0; domain.Ly = 2.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
@@ -768,7 +741,7 @@ void demTests::test3(){
 
 	Coordinates center(0.5,1.0);
 	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0.5, 0.0), 0.0);
+	var.particles.back().set_velocity(vector2(0.5, 0.0), 0.2);
 /*
 	Polygon poly2;
 	//Coordinates center2(1.0,1.0);
@@ -784,7 +757,7 @@ void demTests::test3(){
 
 	Coordinates center1(1.5,1.0);
 	var.add_sphere(domain, center1, 0.2);
-	var.particles[1].set_velocity(vector2(-0.5, 0.0), 0.0);
+	var.particles.back().set_velocity(vector2(-0.5, 0.0), -0.2);
 
 	//domain.display_grid();
 	//var.particles[0].ls.display_grid();
@@ -807,8 +780,8 @@ void demTests::test4(){
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 5.0;
-	domain.Lx = 2.0; domain.Ly = 2.0;
+	domain.tstop = 1.0;
+	domain.Lx = 2.0; domain.Ly = 1.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -839,38 +812,39 @@ void demTests::test4(){
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
 
-	var.add_sphere(domain, Coordinates(0.7,0.5), 0.1);
+	var.add_sphere(domain, Coordinates(0.7,0.2), 0.1);
 	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	var.add_sphere(domain, Coordinates(0.8, 1.0), 0.1);
+	var.add_sphere(domain, Coordinates(0.8, 0.3), 0.1);
 	var.particles[1].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	var.add_sphere(domain, Coordinates(0.9, 0.5), 0.1);
+	var.add_sphere(domain, Coordinates(0.9, 0.2), 0.1);
 	var.particles[2].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.1);
+	var.add_sphere(domain, Coordinates(1.0, 0.3), 0.1);
 	var.particles[3].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	var.add_sphere(domain, Coordinates(1.1, 0.5), 0.1);
+	var.add_sphere(domain, Coordinates(1.1, 0.2), 0.1);
 	var.particles[4].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	var.add_sphere(domain, Coordinates(1.2, 1.0), 0.1);
+	var.add_sphere(domain, Coordinates(1.2, 0.3), 0.1);
 	var.particles[5].set_velocity(vector2(0.0, 0.0), 0.0);
 
-	var.add_sphere(domain, Coordinates(1.3, 0.5), 0.1);
+	var.add_sphere(domain, Coordinates(1.3, 0.2), 0.1);
 	var.particles[6].set_velocity(vector2(0.0, 0.0), 0.0);
 
 }
 
 void demTests::test5(){
-
-	vector4 unshocked(1.0, 0.0, 0.0, 1.0);
+	//smooth acceleration (need to change subcycling to forced motion)
+	//vector4 unshocked(2.6069, 0.6944, 0.0, 2.4583);
+	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
 
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 2.0;
-	domain.Lx = 2.0; domain.Ly = 2.0;
+	domain.tstop = 12.0;
+	domain.Lx = 4.0; domain.Ly = 2.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -900,32 +874,146 @@ void demTests::test5(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-/*	Polygon poly1;
-	Coordinates center1(0.5,1.0);
+	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.5);
+	var.particles.back().set_velocity(vector2(0.0, 0.0), 0.0);
+	var.particles.back().set_density(3.75);
+}
+
+void demTests::test6(){
+	//2 particle shock
+
+	vector4 shocked(2.6069, 0.6944, 0.0, 2.4583);
+	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
+	//physical values
+	//vector4 shocked(1.3333, 0.3535*sqrt(1e5), 0.0, 1.5*1e5);
+	//vector4 unshocked(1.0, 0.0, 0.0, 1e5);
+
+	initialL = shocked;
+	initialR = unshocked;
+
+	//domain.tstop = 0.5;
+	domain.tstop = 1.0;
+	domain.Lx = 4.0; domain.Ly = 4.0;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+	domain.X.resize(domain.Nx, domain.Ny);
+
+	var.fluid.state_function = StateFunctions::create(EOS_IG);
+	var.fluid.state_function->y = 1.4;
+	//------------------------------------------------------------
+	//	Domain
+	//------------------------------------------------------------
+	//assigning x values
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates point(i*domain.dx, j*domain.dy);
+			domain.X(i, j) = point;
+		}
+	}
+	interface.resize(domain.Nx, domain.Ny);
+	//------------------------------------------------------------
+	//	Fluid
+	//------------------------------------------------------------
+	//initial conditions of the fluid surrounding the levelset
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			if (i*domain.dx >= 0.9) interface(i, j) = true;
+			else interface(i, j) = false;
+		}
+	}
+	//------------------------------------------------------------
+	//	Rigid body (level set definition)
+	//------------------------------------------------------------
+	//const double pi = boost::math::constants::pi<double>();
+	var.add_sphere(domain, Coordinates(1.5, 2.0), 0.5);
+	var.particles.back().set_velocity(vector2(0.0, 0.0), 0.0);
+	var.particles.back().set_density(1000);
+
+	var.add_sphere(domain, Coordinates(2.22, 2.0), 0.2);
+	var.particles.back().set_velocity(vector2(0.0, 0.0), 0.0);
+	var.particles.back().set_density(1000);
+}
+
+void demTests::test7(){
+	//2 particle shock
+
+	vector4 shocked(2.6069, 0.6944, 0.0, 2.4583);
+	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
+	//physical values
+	//vector4 shocked(1.3333, 0.3535*sqrt(1e5), 0.0, 1.5*1e5);
+	//vector4 shocked(1.8621, 0.6944, 0.0, 2.4583*1e5);
+	//vector4 unshocked(1.0, 0.0, 0.0, 1e5);
+
+	initialL = shocked;
+	initialR = unshocked;
+
+	//domain.tstop = 0.5;
+	domain.tstop = 2.0;
+	domain.Lx = 4.0; domain.Ly = 4.0;
+	domain.dx = domain.Lx/(domain.Nx-1);
+	domain.dy = domain.Ly/(domain.Ny-1);
+	domain.X.resize(domain.Nx, domain.Ny);
+
+	var.fluid.state_function = StateFunctions::create(EOS_IG);
+	var.fluid.state_function->y = 1.4;
+	//------------------------------------------------------------
+	//	Domain
+	//------------------------------------------------------------
+	//assigning x values
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			Coordinates point(i*domain.dx, j*domain.dy);
+			domain.X(i, j) = point;
+		}
+	}
+	interface.resize(domain.Nx, domain.Ny);
+	//------------------------------------------------------------
+	//	Fluid
+	//------------------------------------------------------------
+	//initial conditions of the fluid surrounding the levelset
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			interface(i, j) = false;
+			if (i*domain.dx >= 0.9) interface(i, j) = true;
+		}
+	}
+	//------------------------------------------------------------
+	//	Rigid body (level set definition)
+	//------------------------------------------------------------
+	/*Polygon poly;
 	try{
-		poly1.create_square(domain, 0.3, center1);
+		poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
 	}
 	catch (const char c){
 		std::cout << c << std::endl;
 	}
-	var.add_particle(poly1, domain);
-	var.particles[0].set_velocity(vector2(0.6, 0.0), 2);
+	var.add_particle(poly, domain);
+	*/
+/*
+	
+	var.add_sphere(domain, Coordinates(1.5, 2.0), 0.5);
+	var.particles.back().set_density(1./(0.5*pi));
+	var.particles.back().set_mass(0.5);
 
-
-	Coordinates center(0.5,1.0);
-	var.add_sphere(domain, center, 0.2);
-	var.particles[0].set_velocity(vector2(0.6, 0.0), 2);
+	var.add_sphere(domain, Coordinates(2.6, 2.0), 0.5);
+	var.particles.back().set_density(1./(0.5*pi));
+	var.particles.back().set_mass(0.5);
 */
-	Polygon poly2;
-	//Coordinates center2(1.0,1.0);
-	try{
-		poly2.create_from_file(domain);
+	const double pi = boost::math::constants::pi<double>();
+	//var.add_sphere(domain, Coordinates(0.51,0.51), 0.5);
+	//var.add_sphere(domain, Coordinates(1.01, 1.36), 0.5);
+	var.add_sphere(domain, Coordinates(1.49, 1.0), 0.5);
+	var.add_sphere(domain, Coordinates(2.01, 2.0), 0.4);
+	var.add_sphere(domain, Coordinates(3.01, 2.0), 0.4);
+	var.add_sphere(domain, Coordinates(3.49, 1.0), 0.5);
+	var.add_sphere(domain, Coordinates(1.49, 3.0), 0.5);
+	var.add_sphere(domain, Coordinates(3.49, 3.0), 0.5);
+
+	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
+		i->set_density(1./(0.5*pi));
+		i->set_mass(0.5);
 	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-	var.add_particle(poly2, domain);
-	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
+
 }
 //--------------------------------------------------------------------------------------------
 //	Ghost Fluid Tests

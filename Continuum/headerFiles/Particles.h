@@ -24,6 +24,7 @@ struct Particle //NEEDS WORK
 	//------------------------------------------
 	// Material Properties
 	//------------------------------------------
+	double mass;
 	double density;
 	double damping_coefficient; //Dampens the oscillation to simulate dissipation of energy
 	double miu; //interparticle friction coefficient
@@ -66,7 +67,7 @@ struct Particle //NEEDS WORK
 	//Tracking collisions? could be done with a global collision list?
 	//bool in_collision; 
 
-	Particle() : density(3000), damping_coefficient(0.24), miu(0.26), k_n(1e5), k_s(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(0), wall_springs(), torque(0) {}
+	Particle() : mass(1.0), density(3000), damping_coefficient(0.2), miu(0.26), k_n(1e5), k_s(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(0), wall_springs(), torque(0) {}
 	Particle(const Domain2D&, const Coordinates&, double);
 	Particle(const Polygon&, const Domain2D&);
 	//Particle(const Particle&) //copy constructor
@@ -77,13 +78,15 @@ struct Particle //NEEDS WORK
 	//Particle(double d); //no real need to specify density for rigid bodies
 	double diameter(); //estimated particle diameter, equidiv?;
 
+	void set_mass(double);
+	void set_density(double);
 	void set_velocity(const vector2&, double);
 	LevelSet motion(const Domain2D&, const vector2&, double);
 
 	//-----------------------------------------------------
 	//Inertial properties
 	//-----------------------------------------------------
-	static double mass(const Particle&, const Domain2D&);
+	static double compute_mass(const Particle&, const Domain2D&);
 	static vector2 center_of_mass(const LevelSet&, const Particle&, const Domain2D&);
 	static double moment_of_inertia(const LevelSet&, const Particle&, const Domain2D&);
 	static vector2 velocity(const Coordinates&, const Particle&); //vb

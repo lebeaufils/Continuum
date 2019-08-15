@@ -13,6 +13,7 @@
 #include "Variables.h"
 #include "LevelSet.h"
 #include "Particles.h"
+#include <boost/math/constants/constants.hpp>
 
 typedef Eigen::Vector3d vector;
 typedef Eigen::Vector4d vector4;
@@ -132,6 +133,8 @@ struct demTests : public virtual standardTests
 	void test3();
 	void test4();
 	void test5();
+	void test6();
+	void test7();
 };
 
 

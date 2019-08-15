@@ -210,6 +210,7 @@ struct Polygon
 	void create_square(Domain2D, double, Coordinates);
 	void create(Domain2D, double,int);
 	void create_from_file(Domain2D);
+	void create_from_file(Domain2D, std::string, vector2);
 
 	int point_in_polygon(Coordinates) const;
 

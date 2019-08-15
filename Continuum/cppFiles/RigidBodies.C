@@ -18,7 +18,7 @@ void RigidBodies::boundary_conditions(vecarray &U, const Domain2D& domain){
 		U(i+2, 1) = U(i+2, 2);
 		U(i+2, 0) = U(i+2, 1);
 		U(i+2, domain.Ny+2) = U(i+2, domain.Ny+1);
-		U(i+2, domain.Ny+3) = U(i+2, domain.Nx+2);
+		U(i+2, domain.Ny+3) = U(i+2, domain.Ny+2);
 	} 
 }
 
@@ -599,6 +599,11 @@ double RigidBodies::compute_normal_force(const Particle& gr_i, double dist, cons
 	return Fn_i;
 }
 
+double RigidBodies::compute_normal_force(const Particle& gr_i, double dist, const vector2& v_n, double damping_coefficient){ //v_a is the relative velocity of the particles in contact
+	double Fn_i = -gr_i.k_n*dist + damping_coefficient*norm(v_n); 
+	return Fn_i;
+}
+
 vector2 RigidBodies::compute_tangential_force(vector2& spring_old, Particle& gr_i, double Fn_i, double dt, const vector2& v_t, const vector2& normal){
 	//spring_old is gr_i.spring[j], and will be updated at the end of this computation for the next timestep
 //particle i --> gr_i's tangential force history will be updated
@@ -652,29 +657,41 @@ vector2 RigidBodies::compute_tangential_force(vector2& spring_old, Particle& gr_
 
 	return test_force_t; //Accumulated tangential force at current timestep
 }
-/*
-vector2 RigidBodies::compute_tangential_force(Particle& gr_i, const vector2& v_t, double Fn_i, double dist, double dt){
-	//particle i --> gr_i's tangential force history will be updated
-	//dependant on the normal force
-	//the incremental shear displacement s = vt*t
-	//tanmgential velocity vt is given by vt = v - vn*normal i.e. total velocity - normal velocity
-	//where vn = normal dot v //therefore vt = v_a - (va dot normal)normal
-	//incremental shear displacement is given by relative tangential velocity*time
 
-	vector2 shear_rate = (v_a - v_a.dot(normal)*normal);
-	vector2 dFs = gr_i.k_s*(shear_rate*dt + gr_i.damping_coefficient*shear_rate); 
-	//shear force on grain i due to node m_a is then updated using
-	//gr_i.force_t = F_s; //When accumulating, must Fs be reset everytime a new contact occurs?
+vector2 RigidBodies::compute_tangential_force(vector2& spring_old, Particle& gr_i, double Fn_i, double dt, const vector2& v_t, const vector2& normal, double damping_coefficient){
+	vector2 spring_new = spring_old - spring_old.dot(normal)*normal;
+	//We then need to enforce that |spring_new| = |spring_old|
+	double spring_size = norm(spring_new);
+	if (spring_size > 0){
+		spring_new = spring_new/norm(spring_new)*norm(spring_old);
+	}
 
-	double dFs_length = norm(dFs);
-	vector2 F_s = dFs/dFs_length*fmin(dFs_length, gr_i.miu*norm(Fn_i));
+	//Next, we need to compute a test force to determine if there is sliding
+	vector2 test_force_t = -gr_i.k_s*spring_new - damping_coefficient*v_t;
 
-	//since the tangential force is limited by coulomb's law, where the shear force is capped by the normal force (static friction),
-	//vector2 Fs_i = gr_i.force_t/sqrt(gr_i.force_t(0)*gr_i.force_t(0) + gr_i.force_t(1)*gr_i.force_t(1))*fmin(sqrt(gr_i.force_t(0)*gr_i.force_t(0) + gr_i.force_t(1)*gr_i.force_t(1)), gr_i.miu*sqrt(Fn_i(0)*Fn_i(0) + Fn_i(1)*Fn_i(1)));
-	
-	return F_s;
+	//By Coulomb's law, the static friction is related to normal force by
+	double force_c_s = gr_i.miu*Fn_i;
+	if (force_c_s < 0) {
+		std::cout << "Contact force is less than zero, check?" << std::endl;
+		throw "Contact force is less than zero, check?";
+	}
+	double test_force = norm(test_force_t);
+
+	//case: static friction
+	//If the tangential force does not exceed the static Coulomb friction
+	if (test_force <= force_c_s){
+		//The tangential spring is incremented for use in the next timestep
+		spring_old = spring_new + v_t*dt; 
+	}
+
+	//case: dynamic friction - sliding
+	else {
+		vector2 t = test_force_t/norm(test_force_t); //tangential unit vector
+		spring_old = -(1./gr_i.k_s)*(force_c_s*t + damping_coefficient*v_t);
+	}
+
+	return test_force_t; //Accumulated tangential force at current timestep
 }
-*/
 
 double RigidBodies::compute_torque(const Particle& gr_i, const vector2& node, const vector2& Fn_i, const vector2& Fs_i){
 	//where node is the position vector of the seed on the level set boundary
@@ -693,6 +710,7 @@ void RigidBodies::particle_collision(vector2& spring, Particle& gr_i, Particle& 
 	//relative velocity v_a of node m_a to grain j is
 	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre) - gr_j.vc - Particle::cross(gr_j.w, node-gr_j.centre);
 	vector2 v_n = v_a.dot(normal)*normal; //normal must be a unit vector
+	//this is potentially v_n = -v_a.dot(normal)*normal;
 	vector2 v_t = v_a - v_n;
 
 	double force_n = compute_normal_force(gr_i, dist, v_n);
@@ -762,7 +780,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 			if (j<i){ //accessing only the lower triangle
 				//if the close tracker shows that the particles are close, perform the contect detection
 				if (system.hashedgrid.close_tracker[i][j] > 0){
-					//std::cout << "close alert" << std::endl;
+					std::cout << "close alert" << std::endl;
 				//perform collision check for both particles
 					for (int a=0; a<static_cast<int>(system.particles[i].nodes.size()); a++){
 						//For each node of the particle
@@ -771,7 +789,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 						//if this value is negative, contact is determined
 						double dist  = LevelSetMethods::interpolation_value(system.particles[j].dynamicls, domain, node_a);
 						if (dist < 0){
-							//std::cout << "contact detected, " << std::endl;
+							std::cout << "contact detected, " << std::endl;
 							std::unordered_map<int, vector2>::iterator nspring = find_spring(system.particles[i].springs[j], a);
 						//calculate normal vector and gradient using the levelset function
 							vector2 grad_phi = LevelSetMethods::interpolation_gradient(system.particles[j].dynamicls, domain, node_a);
@@ -874,23 +892,30 @@ void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std
 		//calculate force from fluid pressure
 		vector2 force_fluid = LevelSetMethods::force(fluid, particles[i].dynamicls, domain);
 		double torque_fluid = LevelSetMethods::torque (fluid, particles[i].dynamicls, domain, particles[i].centre);
-		vector2 g(0, -9.81); //gravitational acceleration
-		particles[i].force += force_fluid + Particle::mass(particles[i], domain)*g;
+		particles[i].force = force_fluid;
+		particles[i].torque = torque_fluid;
+
+		//std::cout << "fluid forces = " << force_fluid.transpose() << '\t' << torque_fluid << std::endl;
+	}
+}
+//to include gravity. Alternatively, store gravity in the system class
+void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std::vector<Particle>& particles, double gravity){ //acts on all particles
+	for (int i=0; i<static_cast<int>(particles.size()); i++){
+		//reset forces to zero
+		particles[i].force = vector2(0, 0);
+		particles[i].torque = 0;
+		//calculate force from fluid pressure
+		vector2 force_fluid = LevelSetMethods::force(fluid, particles[i].dynamicls, domain);
+		double torque_fluid = LevelSetMethods::torque (fluid, particles[i].dynamicls, domain, particles[i].centre);
+		vector2 g(0, -gravity); //gravitational acceleration
+		particles[i].force += force_fluid + Particle::compute_mass(particles[i], domain)*g;
 		particles[i].torque += torque_fluid;
 	}
 }
 
 void RigidBodies::newton_euler(Particle& gr, const Domain2D& domain, const vector2& force, double torque, double dt){
 //updates the velocities which are passed as arguments
-
-	//std::cout << "particle " << gr.label << '\t' << force.transpose() << '\t' << torque << std::endl;
-
-//translational velocity, angular velocity, start and stop time. 
-//the velocities provided need to be 'initial' values at tstart.
-	//const vector2 force = LevelSetMethods::force(var, gr.ls, domain);
-	//const double torque = LevelSetMethods::torque(var, gr.ls, domain, gr.centroid);;
-
-	double m = Particle::mass(gr, domain); //mass
+	double m = Particle::compute_mass(gr, domain); //mass
 	double J = Particle::moment_of_inertia(gr.dynamicls, gr, domain); //moment of inertia
 
 	double C1 = gr.damping_coefficient*dt/2.;
@@ -906,6 +931,7 @@ void RigidBodies::newton_euler(Particle& gr, const Domain2D& domain, const vecto
 	gr.vc = vector2(v_x_new, v_y_new);
 	gr.w = w_new;
 
+	//std::cout << "particle mass " << m << std::endl;
 	//std::cout << "particle " << gr.label << '\t' << m << '\t' <<  J << '\t' << v_x_new << '\t' << v_y_new << '\t' << w_new << std::endl;
 }
 
@@ -952,7 +978,8 @@ void RigidBodies::initial_conditions(demTests& Test){
 		}
 	}
 
-	MUSCL::boundary_conditions_reflective(Test.var.fluid, Test.domain);
+	//MUSCL::boundary_conditions_reflective(Test.var.fluid, Test.domain);
+	MUSCL::boundary_conditions(Test.var.fluid, Test.domain);
 
 	//compute the normal vector using the levelset function
 	std::vector<Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> > normal;
@@ -978,9 +1005,6 @@ void RigidBodies::initial_conditions(demTests& Test){
 
 	//generate hierarchical hash table
 	Test.var.generate_hht(Test.domain);
-	//std::cout << Test.var.particles[0].size << std::endl;
-	//std::cout << Test.var.hashedgrid.tables[0].resolution << '\t' << Test.var.hashedgrid.tables[0].resolution_size << std::endl;
-	//std::cout << Test.var.hashedgrid.tables[0].map.size() << std::endl;
 }
 
 //can subcycling work? what of the fluid forces on particles during the contact phase?
@@ -1005,12 +1029,13 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Eu
 		//or calculate as particle moves along fluid, without moving the fluid?
 		for (int a=0; a<static_cast<int>(system.particles.size()); a++){
 			//Add background friction
-			//double bg_damping = 0.24;
+			//double bg_damping = 2;
 			//system.particles[a].force -= bg_damping*system.particles[a].vc;
-			//system.particles[a].torque -= bg_damping*system.particle[a].w*size/2.;
+			//system.particles[a].torque -= bg_damping*system.particles[a].w*system.particles[a].size/2.;
 
 			//calculate and update particle velocities
 			newton_euler(system.particles[a], domain, system.particles[a].force, system.particles[a].torque, subdt);
+			std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].force.transpose() << " time = " << tstop << std::endl;
 			update_displacements(system.particles[a], domain, system, subdt); //Particle& gr, const domain2D& domain, Moving_RB& system, double dt
 			//if (count%10==0) std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << system.particles[a].force.transpose() << '\t' << system.particles[a].torque << std::endl;
@@ -1033,6 +1058,49 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Eu
 
 		//std::cout << system.particles[0].force.transpose() << '\t' << system.particles[1].force.transpose() << std::endl;
 	}while(t < tstop);
+}
+
+//externally forced particle motion with one way coupling
+void RigidBodies::update_displacements_forced_motion(Particle& gr, const Domain2D& domain, Moving_RB& system, double time){
+//Updates the displacements and rotation for the next timestep
+	const double pi = boost::math::constants::pi<double>();
+	gr.s = vector2(2*pow(sin(pi*time/24.), 4), 0);; //total particle displacement
+	gr.theta = 0; //total rotation
+	//std::cout << "new displacement = " << gr.s << '\t' << gr.theta << std::endl;
+
+	//mpve the particles in the hierarchical hash table
+	system.hashedgrid.move_particle(domain, system.particles, gr);
+}
+
+void RigidBodies::forced_motion(Moving_RB &system, const Domain2D& domain, const Euler2D& fluid, double time){ 
+	fluid_forces(domain, fluid, system.particles);
+
+	//update force and torque of each particle
+	//contact_detection(domain, system, subdt);
+
+	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+		//calculate and update particle velocities
+		//newton_euler(system.particles[a], domain, system.particles[a].force, system.particles[a].torque, subdt);
+		const double pi = boost::math::constants::pi<double>();
+		system.particles[a].vc = vector2(2*pi/3.*pow(sin(pi*time/24.), 3)*cos(pi*time/24.), 0);
+		system.particles[a].w = 0;
+		update_displacements_forced_motion(system.particles[a], domain, system, time); //Particle& gr, const domain2D& domain, Moving_RB& system, double dt
+
+		//move the particles
+		system.particles[a].dynamicls = system.particles[a].motion(domain, system.particles[a].s, system.particles[a].theta);
+		//update particle with new centre of gravity
+		system.particles[a].centre = Particle::center_of_mass(system.particles[a].dynamicls, system.particles[a], domain);
+		//extrapolate ghost values
+			//compute the normal vector using the levelset function
+			Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
+			for (int i=0; i<domain.Nx; i++){
+				for (int j=0; j<domain.Ny; j++){
+					normal(i, j) = LevelSetMethods::normal(system.particles[a].dynamicls, domain, i+1, j+1);
+				}
+			}
+		//update the ghost values in new level set position
+		fast_sweep(system.particles[a].dynamicls, system.particles[a], system, domain, normal);
+	}
 }
 
 void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
@@ -1070,8 +1138,19 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 
 	double faket = 0.1;
 	double t = 0.0;
-	double plot_time = 0.1; //0.05; //0.1;
+	double plot_time = 0.001; //0.05; //0.1;
+	double plot_dt = 0.001;
 	int count = 0;
+
+	std::ofstream particledata[static_cast<int>(system.particles.size())];
+	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+		std::string file = "Data/Particle_" + std::to_string(a) + ".txt";
+		particledata[a].open(file);
+		particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+		<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
+	}
+	output(system, domain, "dataeuler_0.000000.txt", "datapoints_0.000000.txt");
+
 	do{
 		//set timestep, taking maximum wavespeed in x or y directions
 		//looping through the entire domain, find the maximum possible wavespeed in both directions
@@ -1142,11 +1221,6 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 			}
 		}
 
-	//for (int i=0; i<domain.Nx; i++){
-	//	for (int j=0; j<domain.Ny; j++){
-			//std::cout << system.fluid.F(i+1, j+1).transpose() << std::endl;
-	//	}
-	//}
 
 		//sweeping in the y-direction for each x row
 		for (int i=0; i<domain.Nx; i++){
@@ -1170,28 +1244,6 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 				}		
 			}
 		}
-/*
-		if (count >= 100){
-			for (int i=0; i<domain.Nx; i++){
-				for (int j=0; j<domain.Nx; j++){
-					//std::cout << system.fluid.F(i+1, j+1).transpose() << '\t' << '(' << i << ", " << j << ')' << std::endl;
-					if (i==35 && j==55) {
-						std::cout << "count = " << count << std::endl;
-						std::cout << system.fluid.U(i+2, j+2).transpose() << " ( " << i << ", " << j << " ) " << system.combinedls.phi(i+1, j+1) << std::endl;
-						std::cout << system.fluid.U(i+1, j+2).transpose() << " ( " << i-1 << ", " << j << " ) " << system.combinedls.phi(i, j+1) << std::endl;
-						std::cout << system.fluid.U(i+3, j+2).transpose() << " ( " << i+1 << ", " << j << " ) " << system.combinedls.phi(i+2, j+1) << std::endl;
-						std::cout << system.fluid.U(i+2, j+1).transpose() << " ( " << i << ", " << j-1 << " ) " << system.combinedls.phi(i+1, j) << std::endl;
-						std::cout << system.fluid.U(i+2, j+3).transpose() << " ( " << i << ", " << j+1 << " ) " << system.combinedls.phi(i+1, j+2) << std::endl;
-						std::cout << system.fluid.F(i+1, j+1).transpose() << '\t' << '(' << i << ", " << j << ')' << std::endl;
-					}
-					//std::cout << system.fluid.state_function->primitivesystem(system.fluid.U(i+2, j+2)).transpose() << " ( " << i << ", " << j << " ) " << std::endl;
-					//if (system.fluid.state_function->primitivesystem(system.fluid.U(i+2, j+2))(3) < 0 || system.fluid.state_function->primitivesystem(system.fluid.U(i+2, j+2))(3) > 5) {
-					//	std::cout << system.fluid.state_function->primitivesystem(system.fluid.U(i+2, j+2)).transpose() << " ( " << i << ", " << j << " ) " << std::endl;
-					//}
-				}
-			}
-		}
-*/
 
 		//updating U with Strand splitting -- X(0.5dt)Y(dt)X(0.5dt)
 		for (int j=0; j<domain.Ny; j++){
@@ -1216,69 +1268,43 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 				}
 			}
 		}
-		MUSCL::boundary_conditions_reflective(system.fluid, domain);
+		//MUSCL::boundary_conditions_reflective(system.fluid, domain);
+		MUSCL::boundary_conditions(system.fluid, domain);
 
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
-		RigidBodies::subcycling(system, domain, system.fluid, t, 0.001);
-/*
-		//Perform contact detection, accumulating contact forces on the particles
-		//RigidBodies::contact_detection(domain, system.particles, levelset_collection, domain.dt);
-		//reset the levelset collection 
-		
-		//Forces from fluids
-		for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-			//calculate forces from fluid pressure
-			//vector2 force = LevelSetMethods::force(system.fluid, levelset_collection[a], domain);
-			//double torque = LevelSetMethods::torque (system.fluid, levelset_collection[a], domain, system.particles[a].centre);
-			//if (count%10==0) {std::cout << force.transpose() << '\t' << torque << std::endl;}
-			//calculate and update particle velocities
-//////////////ERROR///
-//unstable unless low cfl is used.. tiomestep issues
-			newton_euler(levelset_collection[a], system.particles[a], domain, system.particles[a].force, system.particles[a].torque, domain.dt);
-			//if (count%10==0) std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
-			//if (count%10==0) std::cout << system.particles[a].force.transpose() << '\t' << system.particles[a].torque << std::endl;
-//////////////ERROR///
-			//move the particles
-			levelset_collection[a] = system.particles[a].motion(domain, t);
-			//update particle with new centre of gravity
-			system.particles[a].centre = Particle::center_of_mass(levelset_collection[a], system.particles[a], domain);
-			//extrapolate ghost values
-				//compute the normal vector using the levelset function
-				Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal(domain.Nx, domain.Ny);
-				for (int i=0; i<domain.Nx; i++){
-					for (int j=0; j<domain.Ny; j++){
-						normal(i, j) = LevelSetMethods::normal(levelset_collection[a], domain, i+1, j+1);
-					}
-				}
-			fast_sweep(levelset_collection[a], system.particles[a], system, domain, normal);
-		}
-*/
+		RigidBodies::subcycling(system, domain, system.fluid, t, domain.dt);
+		//RigidBodies::forced_motion(system, domain, system.fluid, t);
+
 
 		//Merge the new level sets
 		system.combinedls = Particle::merge(system.particles, domain);
 		
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
-		//std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
-		//std::cout << domain.dt << std::endl;
 		//if (count == 10) t = domain.tstop;
-		//if (count == 10) std::cout << t << std::endl;
 		if (t == plot_time) {
-			std::cout << "plotting " << t << std::endl;
-			std::string file = "Data/dataeuler_" + std::to_string(faket) + ".txt";
-			std::string file2 = "Data/datapoints_" + std::to_string(faket) + ".txt";
-			output(system, domain, file, file2);
-			std::cout << "particle " << 0 << '\t' << system.particles[0].vc.transpose() << '\t' << system.particles[0].w << std::endl;
-			std::cout << "particle " << 1 << '\t' << system.particles[1].vc.transpose() << '\t' << system.particles[1].w << std::endl;
-			plot_time += 0.05;
+			//std::cout << "plotting " << t << std::endl;
+			//std::string file = "Data/dataeuler_" + std::to_string(faket) + ".txt";
+			//std::string file2 = "Data/datapoints_" + std::to_string(faket) + ".txt";
+			//output(system, domain, file, file2);
+			//std::cout << "particle " << 0 << '\t' << system.particles[0].vc.transpose() << '\t' << system.particles[0].w << std::endl;
+			//std::cout << "particle " << 1 << '\t' << system.particles[1].vc.transpose() << '\t' << system.particles[1].w << std::endl;
+			plot_time += plot_dt;
 			faket+=0.1;
+			//update particle properties
+			for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+				particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+				<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
+			}
 		}
 
 	}while (t < domain.tstop);
+
+	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+		particledata[a].close();
+	}
 	std::cout << "count = "  << count << std::endl;
-	//std::cout << "displacement = " << system.particles[0].s <<std::endl;
-	//std::cout << system.particles[1].nodes.size() << '\t' << system.particles[1].nodes.size() << std::endl;
 }
 
 void RigidBodies::output(const Moving_RB &system, const Domain2D &domain, std::string filename, std::string filename2){
@@ -1289,11 +1315,11 @@ void RigidBodies::output(const Moving_RB &system, const Domain2D &domain, std::s
 	outfile.open(filename);
 	outfile2.open(filename2);
 
-	for (int z=0; z<static_cast<int>(system.particles[1].nodes.size()); z++){
+	for (int z=0; z<static_cast<int>(system.particles.back().nodes.size()); z++){
 		//std::cout << system.particles[0].nodes[z].transpose() << std::endl;
 		//outfile2 << system.particles[0].nodes[z].transpose() << std::endl<< std::endl;
 		//outfile2 << system.particles[1].nodes[z].transpose() << std::endl<< std::endl;
-		outfile2 << system.particles[1].nodes[z].transpose() << std::endl<< std::endl;
+		outfile2 << system.particles.back().nodes[z].transpose() << std::endl<< std::endl;
 	}
 
 	double u=0;
@@ -1340,9 +1366,9 @@ void RigidBodies::output_levelset(const Moving_RB &system, const Domain2D &domai
 	outfile.open(filename, std::ofstream::out | std::ofstream::trunc);
 	outfile2.open(filename2, std::ofstream::out | std::ofstream::trunc);
 
-	for (int z=0; z<static_cast<int>(system.particles[0].nodes.size()); z++){
+	for (int z=0; z<static_cast<int>(system.particles.back().nodes.size()); z++){
 		//std::cout << system.particles[0].nodes[z].transpose() << std::endl;
-		outfile2 << system.particles[0].nodes[z].transpose() << std::endl<< std::endl;
+		outfile2 << system.particles.back().nodes[z].transpose() << std::endl<< std::endl;
 	}
 
 
