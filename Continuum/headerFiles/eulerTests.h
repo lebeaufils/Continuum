@@ -135,6 +135,7 @@ struct demTests : public virtual standardTests
 	void test5();
 	void test6();
 	void test7();
+	void test8();
 };
 
 

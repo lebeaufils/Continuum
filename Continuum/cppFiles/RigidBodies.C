@@ -584,7 +584,6 @@ void RigidBodies::fast_sweep(const LevelSet& ls, const Particle& gr, Moving_RB &
 //-------------------
 //Collision
 //-------------------
-//INCOMPLETE//
 double norm(const vector2& v){
 		return sqrt(pow(v(0), 2) + pow(v(1), 2));
 }
@@ -706,7 +705,7 @@ double RigidBodies::compute_torque(const Particle& gr_i, const vector2& node, co
 	return Mn_i + Ms_i;
 }
 
-void RigidBodies::particle_collision(vector2& spring, Particle& gr_i, Particle& gr_j, const vector2& node, double dist, const vector2& normal, double dt){
+void RigidBodies::particle_collision(double overlap, vector2& spring, Particle& gr_i, Particle& gr_j, const vector2& node, double dist, const vector2& normal, double dt){
 	//relative velocity v_a of node m_a to grain j is
 	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre) - gr_j.vc - Particle::cross(gr_j.w, node-gr_j.centre);
 	vector2 v_n = v_a.dot(normal)*normal; //normal must be a unit vector
@@ -714,6 +713,16 @@ void RigidBodies::particle_collision(vector2& spring, Particle& gr_i, Particle& 
 	vector2 v_t = v_a - v_n;
 
 	double force_n = compute_normal_force(gr_i, dist, v_n);
+////////
+	if (dist > overlap){
+		//unloading
+		//double minoverlap = 0.5*overlap;
+		force_n = 2*gr_i.k_n*(dist - 0.5*overlap);
+		if (force_n <= -gr_i.k_c*dist){ //if forces are negative
+			force_n = -gr_i.k_c*dist;
+		}
+	}
+///////
 	vector2 Fn_i = force_n*normal;
 	vector2 Fs_i = compute_tangential_force(spring, gr_i, force_n, dt, v_t, normal);
 	vector2 F_tot = Fn_i + Fs_i;
@@ -726,7 +735,7 @@ void RigidBodies::particle_collision(vector2& spring, Particle& gr_i, Particle& 
 }
 
 //if position.x > domain.Lx or < 0, ls = position.x - domain.lx
-void RigidBodies::wall_collision(vector2& spring, Particle& gr_i, const vector2& node, double dist, const vector2& normal, double dt){
+void RigidBodies::wall_collision(double overlap, vector2& spring, Particle& gr_i, const vector2& node, double dist, const vector2& normal, double dt){
 //Using the same linear elastic model as with particle collisions
 //"penetration" distance and unit normal are specified
 //////
@@ -742,6 +751,16 @@ void RigidBodies::wall_collision(vector2& spring, Particle& gr_i, const vector2&
 	vector2 v_t = v_a - v_n;
 
 	double force_n = compute_normal_force(gr_i, dist, v_n);
+////////
+	if (dist > overlap){
+		//unloading
+		//double minoverlap = 0.5*overlap;
+		force_n = 2*gr_i.k_n*(dist - 0.5*overlap);
+		if (force_n <= -gr_i.k_c*dist){ //if forces are negative
+			force_n = -gr_i.k_c*dist;
+		}
+	}
+///////
 	vector2 Fn_i = force_n*normal;
 	vector2 Fs_i = compute_tangential_force(spring, gr_i, force_n, dt, v_t, normal);
 	gr_i.force += Fn_i + Fs_i;
@@ -761,12 +780,34 @@ std::unordered_map<int, vector2>::iterator RigidBodies::find_spring(std::unorder
 	}
 }
 
+std::unordered_map<int, double>::iterator RigidBodies::find_spring(std::unordered_map<int, double> overlap, int a){
+	//check if a spring is already generated (contact continuation)
+	std::unordered_map<int, double>::iterator findspring = overlap.find(a);
+	if (findspring != overlap.end()){
+		//if the contact is new, generate a spring of size 0
+		return findspring;
+	}
+	else {
+		overlap.insert({a, 0});
+		return overlap.find(a);
+	}
+}
+
 void RigidBodies::delete_spring(std::unordered_map<int, vector2> springmap, int a){
 	//find and delete a spring belonging to an old contact
 	std::unordered_map<int, vector2>::iterator findspring = springmap.find(a);
 	if (findspring != springmap.end()){
 		//if an old spring exists, delete it
 		springmap.erase(findspring);
+	}
+}
+
+void RigidBodies::delete_spring(std::unordered_map<int, double> overlap, int a){
+	//find and delete a spring belonging to an old contact
+	std::unordered_map<int, double>::iterator findspring = overlap.find(a);
+	if (findspring != overlap.end()){
+		//if an old spring exists, delete it
+		overlap.erase(findspring);
 	}
 }
 
@@ -780,7 +821,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 			if (j<i){ //accessing only the lower triangle
 				//if the close tracker shows that the particles are close, perform the contect detection
 				if (system.hashedgrid.close_tracker[i][j] > 0){
-					std::cout << "close alert" << std::endl;
+					//std::cout << "close alert" << std::endl;
 				//perform collision check for both particles
 					for (int a=0; a<static_cast<int>(system.particles[i].nodes.size()); a++){
 						//For each node of the particle
@@ -789,17 +830,21 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 						//if this value is negative, contact is determined
 						double dist  = LevelSetMethods::interpolation_value(system.particles[j].dynamicls, domain, node_a);
 						if (dist < 0){
-							std::cout << "contact detected, " << std::endl;
+							//std::cout << "contact detected, " << std::endl;
+							std::unordered_map<int, double>::iterator maxoverlap = find_spring(system.particles[i].overlap[j], a);
+							if (dist < maxoverlap->second) maxoverlap->second = dist;
+
 							std::unordered_map<int, vector2>::iterator nspring = find_spring(system.particles[i].springs[j], a);
 						//calculate normal vector and gradient using the levelset function
 							vector2 grad_phi = LevelSetMethods::interpolation_gradient(system.particles[j].dynamicls, domain, node_a);
 							vector2 normal = grad_phi/(sqrt(grad_phi(0)*grad_phi(0) + grad_phi(1)*grad_phi(1)));
-							particle_collision(nspring->second, system.particles[i], system.particles[j], system.particles[i].nodes[a], dist, normal, dt);
+							particle_collision(maxoverlap->second, nspring->second, system.particles[i], system.particles[j], system.particles[i].nodes[a], dist, normal, dt);
 							//The force contribution by this node is added to the total force.
 						}
 						//if contact has ended, delete the relevant spring
 						else {
 							delete_spring(system.particles[i].springs[j], a);
+							delete_spring(system.particles[i].overlap[j], a);
 						}
 					}
 					/*for (int a=0; a<static_cast<int>(system.particles[j].nodes.size()); a++){
@@ -841,13 +886,21 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 						vector2 normal(1, 0);
 						//since dist must always be negative,
 						double dist = node_a.x;
-						wall_collision(nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);
+						//
+						std::unordered_map<int, double>::iterator maxoverlap = find_spring(system.particles[i].wall_overlap[0], a);
+						if (dist < maxoverlap->second) maxoverlap->second = dist;
+
+						wall_collision(maxoverlap->second, nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);
 					}
 					else if (node_a.x > domain.Lx){
 						vector2 normal(-1, 0);
 						//since dist must always be negative,
 						double dist = domain.Lx - node_a.x;
-						wall_collision(nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);						
+						//
+						std::unordered_map<int, double>::iterator maxoverlap = find_spring(system.particles[i].wall_overlap[0], a);
+						if (dist < maxoverlap->second) maxoverlap->second = dist;
+
+						wall_collision(maxoverlap->second, nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);						
 					}
 				}
 				else {
@@ -867,13 +920,21 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 						vector2 normal(0, 1);
 						//since dist must always be negative,
 						double dist = node_a.y;
-						wall_collision(nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);
+						//
+						std::unordered_map<int, double>::iterator maxoverlap = find_spring(system.particles[i].wall_overlap[1], a);
+						if (dist < maxoverlap->second) maxoverlap->second = dist;
+
+						wall_collision(maxoverlap->second, nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);
 					}
 					else if (node_a.y > domain.Lx){
 						vector2 normal(0, -1);
 						//since dist must always be negative,
 						double dist = domain.Ly - node_a.y;
-						wall_collision(nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);						
+						//
+						std::unordered_map<int, double>::iterator maxoverlap = find_spring(system.particles[i].wall_overlap[1], a);
+						if (dist < maxoverlap->second) maxoverlap->second = dist;
+
+						wall_collision(maxoverlap->second, nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);						
 					}
 				}
 				else {
@@ -883,7 +944,7 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 		}
 	}
 }
-
+/*
 void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std::vector<Particle>& particles){ //acts on all particles
 	for (int i=0; i<static_cast<int>(particles.size()); i++){
 		//reset forces to zero
@@ -898,6 +959,7 @@ void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std
 		//std::cout << "fluid forces = " << force_fluid.transpose() << '\t' << torque_fluid << std::endl;
 	}
 }
+*/
 //to include gravity. Alternatively, store gravity in the system class
 void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std::vector<Particle>& particles, double gravity){ //acts on all particles
 	for (int i=0; i<static_cast<int>(particles.size()); i++){
@@ -910,6 +972,7 @@ void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std
 		vector2 g(0, -gravity); //gravitational acceleration
 		particles[i].force += force_fluid + Particle::compute_mass(particles[i], domain)*g;
 		particles[i].torque += torque_fluid;
+		std::cout << "fluid forces = " << force_fluid.transpose() << '\t' << torque_fluid << std::endl;
 	}
 }
 
@@ -1008,7 +1071,7 @@ void RigidBodies::initial_conditions(demTests& Test){
 }
 
 //can subcycling work? what of the fluid forces on particles during the contact phase?
-void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Euler2D& fluid, double tstop, double subdt){
+void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Euler2D& fluid, double gravity, double tstop, double subdt){
 	//t refers to the current timestep, tstop the timestep at the end of subcycling
 	//tstop is the current timestep
 	//start subcycling from the previous timestep t - dt
@@ -1018,7 +1081,7 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Eu
 		t += subdt;
 
 		//First, reset the forces on each particle to zero, before recomputing forces from surrounding fluids for each timestep
-		fluid_forces(domain, fluid, system.particles);
+		fluid_forces(domain, fluid, system.particles, gravity);
 
 		//update force and torque of each particle
 		contact_detection(domain, system, subdt);
@@ -1035,7 +1098,7 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Eu
 
 			//calculate and update particle velocities
 			newton_euler(system.particles[a], domain, system.particles[a].force, system.particles[a].torque, subdt);
-			std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].force.transpose() << " time = " << tstop << std::endl;
+			std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << " time = " << tstop << std::endl;
 			update_displacements(system.particles[a], domain, system, subdt); //Particle& gr, const domain2D& domain, Moving_RB& system, double dt
 			//if (count%10==0) std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << system.particles[a].force.transpose() << '\t' << system.particles[a].torque << std::endl;
@@ -1073,7 +1136,7 @@ void RigidBodies::update_displacements_forced_motion(Particle& gr, const Domain2
 }
 
 void RigidBodies::forced_motion(Moving_RB &system, const Domain2D& domain, const Euler2D& fluid, double time){ 
-	fluid_forces(domain, fluid, system.particles);
+	fluid_forces(domain, fluid, system.particles, system.gravity);
 
 	//update force and torque of each particle
 	//contact_detection(domain, system, subdt);
@@ -1274,7 +1337,9 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
-		RigidBodies::subcycling(system, domain, system.fluid, t, domain.dt);
+		double subdt = 0.001;
+		if (domain.dt < subdt) subdt = domain.dt;
+		RigidBodies::subcycling(system, domain, system.fluid, system.gravity, t, subdt);
 		//RigidBodies::forced_motion(system, domain, system.fluid, t);
 
 
@@ -1282,21 +1347,23 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		system.combinedls = Particle::merge(system.particles, domain);
 		
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
-		//if (count == 10) t = domain.tstop;
+		//if (count == 1) t = domain.tstop;
 		if (t == plot_time) {
-			//std::cout << "plotting " << t << std::endl;
-			//std::string file = "Data/dataeuler_" + std::to_string(faket) + ".txt";
-			//std::string file2 = "Data/datapoints_" + std::to_string(faket) + ".txt";
-			//output(system, domain, file, file2);
+			/*std::cout << "plotting " << t << std::endl;
+			std::string file = "Data/dataeuler_" + std::to_string(faket) + ".txt";
+			std::string file2 = "Data/datapoints_" + std::to_string(faket) + ".txt";
+			output(system, domain, file, file2);
 			//std::cout << "particle " << 0 << '\t' << system.particles[0].vc.transpose() << '\t' << system.particles[0].w << std::endl;
 			//std::cout << "particle " << 1 << '\t' << system.particles[1].vc.transpose() << '\t' << system.particles[1].w << std::endl;
+			*/
 			plot_time += plot_dt;
 			faket+=0.1;
-			//update particle properties
-			for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-				particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
-				<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
-			}
+		
+		}
+		//update particle properties
+		for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+			particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+			<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
 		}
 
 	}while (t < domain.tstop);

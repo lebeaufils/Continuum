@@ -324,13 +324,15 @@ double LevelSetMethods::smoothed_heaviside(const LevelSet &ls, const Domain2D &d
 
 double LevelSetMethods::smoothed_delta(const LevelSet &ls, const Domain2D &domain, int i, int j){
 	//const double e = 1.5*domain.dx;//1.5*domain.dx;//(domain.dx*domain.dy); //smoothness parameter
-	double dphi_x = (ls.phi(i+1, j) - ls.phi(i-1, j))/(2*domain.dx);
-	double dphi_y = (ls.phi(i, j+1) - ls.phi(i, j-1))/(2*domain.dy);
-	double e = (abs(dphi_x) + abs(dphi_y))*domain.dx;
+	
+	//double dphi_x = (ls.phi(i+1, j) - ls.phi(i-1, j))/(2*domain.dx);
+	//double dphi_y = (ls.phi(i, j+1) - ls.phi(i, j-1))/(2*domain.dy);
+	//double e = (abs(dphi_x) + abs(dphi_y))*domain.dx;
 
 	const double pi = boost::math::constants::pi<double>();
-
-	if (ls.phi(i, j) > e || ls.phi(i, j) < -e){ //inside rigid body
+	const double e = 1.5*domain.dx;
+	double phi = ls.phi(i, j);
+	if (phi > e || phi < -e){ //inside rigid body
 		return 0;
 	}
 	else { //outside rigid body
@@ -395,8 +397,8 @@ vector2 LevelSetMethods::force(const Euler2D& var, const LevelSet& ls, const Dom
 			f += -(delta * p * n_i * domain.dx*domain.dy);
 		}
 	}
-	//if (abs(f(0)) < 0.01) f(0) = 0;
-	//if (abs(f(1)) < 0.01) f(1) = 0;
+	//if (abs(f(0)) < 1e-2) f(0) = 0;
+	//if (abs(f(1)) < 1e-2) f(1) = 0;
 	return f;
 }
 
@@ -417,7 +419,7 @@ double LevelSetMethods::torque (const Euler2D& var, const LevelSet& ls, const Do
 			torque += -(delta * p * (r_i(0)*n_i(1) - r_i(1)*n_i(0)))*domain.dx*domain.dy;
 		}
 	}
-	//if (abs(torque) < 0.001) torque = 0;
+	//if (abs(torque) < 1e-2) torque = 0;
 	return torque;
 	//if this is combined with force into a subroutine, pressure can be computed only once
 }

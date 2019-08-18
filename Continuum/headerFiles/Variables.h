@@ -164,6 +164,7 @@ struct Vertex : public Coordinates
 	Vertex() : Coordinates(0, 0) {}
 	Vertex(const Coordinates& xy) : Coordinates(xy) {} //constructor to copy base class
 	Vertex(double x, double y) : Coordinates(x, y) {}
+	Vertex(const vector2& v) : Coordinates(v) {}
 	~Vertex() {}
 
 	//generate random polygons in the future.
@@ -213,6 +214,8 @@ struct Polygon
 	void create_from_file(Domain2D, std::string, vector2);
 
 	int point_in_polygon(Coordinates) const;
+
+	void rotate_poly(double);
 
 	//void translate(double, double);
 

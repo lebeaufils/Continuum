@@ -397,8 +397,8 @@ void HierarchicalHashTable::add_particle(const std::vector<Particle>& particleli
 //--------------------------------------------------------------
 //circle constructor
 Particle::Particle(const Domain2D& domain, const Coordinates& center, double r) : mass(1.0), density(1.0), damping_coefficient(0.0), 
-miu(0.3), k_n(50), k_s(50), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
-dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), torque(0) {
+miu(0.3), k_n(50), k_s(50), k_c(50), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
+dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), overlap(), wall_overlap(), torque(0) {
 	LevelSetMethods::initialise_circle(ls, domain, center.x, center.y, r);
 	dynamicls = ls;
 	centroid = center_of_mass(ls, *this, domain);
@@ -436,13 +436,16 @@ dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0,
 
 	//initialise the horizontal and vertical wall springs to 0
 	std::unordered_map<int, vector2> nodesprings;
+	std::unordered_map<int, double> nodedist;
 	wall_springs.push_back(nodesprings);
 	wall_springs.push_back(nodesprings);
+	wall_overlap.push_back(nodedist);
+	wall_overlap.push_back(nodedist);
 }
 //polygon constructor
 Particle::Particle(const Polygon& poly, const Domain2D& domain) : mass(1.0), density(1.0), damping_coefficient(0.2), 
-miu(0.3), k_n(20), k_s(20), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
-dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), torque(0) {
+miu(0.3), k_n(20), k_s(20), k_c(50), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), 
+dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(), wall_springs(), overlap(), wall_overlap(), torque(0) {
 	LevelSetMethods::initialise(ls, domain, poly);
 	dynamicls = ls;
 	centroid = center_of_mass(ls, *this, domain);
@@ -459,17 +462,20 @@ dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0,
 	}
 
 	//calculate the size of the bounding box
-	size = AABB_extent(*this);	
+	size = 1.5*AABB_extent(*this);	
 
 	//initialise the horizontal and vertical wall springs to 0
 	std::unordered_map<int, vector2> nodesprings;
 	wall_springs.push_back(nodesprings);
 	wall_springs.push_back(nodesprings);
+	wall_overlap.push_back(nodedist);
+	wall_overlap.push_back(nodedist);
 }
 //copy constructor
 Particle::Particle(const Particle& gr) : density(gr.density), damping_coefficient(gr.damping_coefficient), 
-miu(gr.miu), k_n(gr.k_n), k_s(gr.k_s), label(gr.label), size(gr.size), resolution(gr.resolution), igrids(gr.igrids), ls(gr.ls), centroid(gr.centroid), ref_nodes(gr.ref_nodes), 
-dynamicls(gr.dynamicls), centre(gr.centre), nodes(gr.nodes), vc(gr.vc), w(gr.w), s(gr.s), theta(gr.theta), force(gr.force), springs(gr.springs), wall_springs(gr.wall_springs), torque(gr.torque) {
+miu(gr.miu), k_n(gr.k_n), k_s(gr.k_s), k_c(gr.k_c), label(gr.label), size(gr.size), resolution(gr.resolution), igrids(gr.igrids), ls(gr.ls), centroid(gr.centroid), ref_nodes(gr.ref_nodes), 
+dynamicls(gr.dynamicls), centre(gr.centre), nodes(gr.nodes), vc(gr.vc), w(gr.w), s(gr.s), theta(gr.theta), force(gr.force), springs(gr.springs), 
+wall_springs(gr.wall_springs), overlap(gr.overlap), wall_overlap(gr.wall_overlap), torque(gr.torque) {
 	 for (int a=0; a<static_cast<int>(gr.nodes.size()); a++){
 	 	nodes.push_back(gr.nodes[a]);
 	 	ref_nodes.push_back(gr.ref_nodes[a]);
@@ -564,6 +570,33 @@ LevelSet Particle::merge(const std::vector<Particle>& particles, const Domain2D&
 	//LevelSetMethods::boundary_conditions(ls, domain);
 
 	return ls;
+}
+
+vector2 Particle::normal_sum(const LevelSet& ls, const Domain2D& domain){
+	vector2 n(0,0);
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			vector2 n_i = LevelSetMethods::normal(ls, domain, i+domain.buffer, j+domain.buffer);
+			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+domain.buffer, j+domain.buffer);
+			//std::cout << delta << '\t';
+			n += n_i*delta*domain.dx*domain.dy;
+		}
+		//std::cout << std::endl;
+	}
+	return n;
+}
+
+double Particle::length_sum(const LevelSet& ls, const Domain2D& domain){
+	double s=0;
+	for (int i=0; i<domain.Nx; i++){
+		for (int j=0; j<domain.Ny; j++){
+			double delta = LevelSetMethods::smoothed_delta(ls, domain, i+domain.buffer, j+domain.buffer);
+			//std::cout << delta << '\t';
+			s += domain.dx*domain.dy*delta;
+		}
+		//std::cout << std::endl;
+	}
+	return s;
 }
 ////////////////////////////////////////////////
 ////////////////////////////////////////////////
@@ -667,7 +700,9 @@ void Moving_RB::generate_hht(const Domain2D& domain){ //generate hierarchical ha
 	for (it = particles.begin(); it != particles.end(); it++){
 		for (int i=0; i<n; i++){
 			std::unordered_map<int, vector2> nodesprings;
+			std::unordered_map<int, double> nodedist;
 			it->springs.push_back(nodesprings);
+			it->overlap.push_back(nodedist);
 		}
 	}
 }

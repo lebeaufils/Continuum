@@ -30,6 +30,7 @@ struct Particle //NEEDS WORK
 	double miu; //interparticle friction coefficient
 	double k_n; //normal contact stiffness
 	double k_s; //shear contact stiffness
+	double k_c;
 
 	//------------------------------------------
 	// Location information //NOT IMPLEMENTED?
@@ -62,12 +63,15 @@ struct Particle //NEEDS WORK
 	//One spring for EACH node!!
 	std::vector<std::unordered_map<int, vector2> > springs; //Tangential spring that accumulates strain for each collision //analogous to the rows of close_tracker
 	std::vector<std::unordered_map<int, vector2> > wall_springs; //Tangential spring that accumulates strain for wall collisions
+	std::vector<std::unordered_map<int, double> > overlap;
+	std::vector<std::unordered_map<int, double> > wall_overlap;
 	double torque; //Accumuluator for torque
 
 	//Tracking collisions? could be done with a global collision list?
 	//bool in_collision; 
 
-	Particle() : mass(1.0), density(3000), damping_coefficient(0.2), miu(0.26), k_n(1e5), k_s(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(0), wall_springs(), torque(0) {}
+	Particle() : mass(1.0), density(3000), damping_coefficient(0.2), miu(0.26), k_n(1e5), k_s(1e5), k_c(1e5), label(0), size(0), resolution(0), igrids(0), ls(), centroid(0, 0), ref_nodes(0), dynamicls(), centre(0, 0), nodes(0), 
+	vc(0, 0), w(0), s(0, 0), theta(0), force(0, 0), springs(0), wall_springs(), overlap(), wall_overlap(), torque(0) {}
 	Particle(const Domain2D&, const Coordinates&, double);
 	Particle(const Polygon&, const Domain2D&);
 	//Particle(const Particle&) //copy constructor
@@ -94,6 +98,8 @@ struct Particle //NEEDS WORK
 	static vector2 cross(double, const vector2&);
 	static double cross(const vector2&, const vector2&);
 	static LevelSet merge(const std::vector<Particle>&, const Domain2D&);
+	static vector2 normal_sum(const LevelSet&, const Domain2D&);
+	static double length_sum(const LevelSet&, const Domain2D&);
 	//-----------------------------------------------------
 	////Size of bounding box
 	//-----------------------------------------------------
@@ -181,70 +187,6 @@ struct HierarchicalHashTable //HHT
 	//When adding particle X, the bounding box is checked for intersection with the grid at resolution of X
 };
 
-/*
-struct Particle //NEEDS WORK
-{
-	//RB_2D should store particles rather than levelsets.
-	//each particle can have its reference levelset and nodes
-	double density = 3000;
-
-	LevelSet ls; //reference levelset
-	vector2 centroid; //initial, fixed
-	vector2 centre;
-	double size; //size of AABB, length of box
-
-	vector2 vc; //translational velocity
-	double w; //angular velocity
-	vector2 s; //total displacement
-	double theta; //total rotation
-	std::vector<vector2> nodes;
-	std::vector<vector2> ref_nodes;
-	//???If the mass of the Particle is nott important
-
-	//Stiffness
-	double damping_coefficient; //Dampens the oscillation to simulate dissipation of energy
-	double miu; //interparticle friction coefficient
-	double k_n; //normal contact stiffness
-	double k_s; //shear contact stiffness
-	//Forces
-	vector2 force; //Linear force
-	std::map <int, vector2> springs; //Tangential spring that accumulates strain for each collision
-	double torque; //Accumuluator for torque
-
-	bool in_collision; 
-
-	Particle() : ls(), centroid(0, 0), centre(0, 0), size(0), vc(0, 0), w(0), s(0, 0), theta(0), nodes(0), ref_nodes(0), damping_coefficient(0.24), miu(0.26), k_n(1e5), k_s(1e5), force(0, 0), force_t(0, 0), torque(0), in_collision(false) {}
-	Particle(const Domain2D&, const Coordinates&, double);
-	Particle(const Polygon&, const Domain2D&);
-	//Particle(const Particle&) //copy constructor
-	Particle(const Particle& gr);
-	~Particle() {};
-
-	//void initialise(const Polygon&, const Domain2D&);
-	//Particle(double d); //no real need to specify density for rigid bodies
-	double diameter(); //estimated particle diameter, equidiv?;
-
-	void set_velocity(const vector2&, double);
-	LevelSet motion(const Domain2D&, const vector2&, double);
-
-	//-----------------------------------------------------
-	//Inertial properties
-	//-----------------------------------------------------
-	static double mass(const Particle&, const Domain2D&);
-	static vector2 center_of_mass(const LevelSet&, const Particle&, const Domain2D&);
-	static double moment_of_inertia(const LevelSet&, const Particle&, const Domain2D&);
-	static vector2 velocity(const Coordinates&, const Particle&); //vb
-
-	static vector2 cross(double, const vector2&);
-	static double cross(const vector2&, const vector2&);
-	static LevelSet merge(const std::vector<Particle>&, const Domain2D&);
-	//-----------------------------------------------------
-	////Size of bounding box
-	//-----------------------------------------------------
-	//static double AABB_extent(const Polygon&); //using the vertices, for problems where polygons are generated by vertices
-	static double AABB_extent(const LevelSet&); //using the level set function
-};
-*/
 struct Moving_RB
 {
 	//Rigid body system of moving particles
@@ -252,13 +194,15 @@ struct Moving_RB
 	std::vector<Particle> particles; //A particle's label is its position in this vector, sorted by its size
 	Euler2D fluid;
 
+	double gravity;
+
 	//hash table to store particles
 	HierarchicalHashTable hashedgrid;
 
 	LevelSet combinedls;
 	//Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> normal;
 
-	Moving_RB() : particles(0), fluid(), combinedls() {} //, normal(0, 0) {}
+	Moving_RB() : particles(0), fluid(), gravity(0), combinedls() {} //, normal(0, 0) {}
 	~Moving_RB() {};
 
 	void add_sphere(const Domain2D&, const Coordinates&, double); //center and radius

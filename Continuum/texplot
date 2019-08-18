@@ -1,0 +1,41 @@
+#!/bin/bash
+
+#set terminal png
+#set view map
+#set size ratio -1
+set terminal epslatex color colortext
+set output "../../Scientific\ Computing/Thesis/thesis-master/Data/t1vertical.tex"
+# Line style for grid
+# Define a new linestyle (81)
+# linetype = 0 (dashed line)
+# linecolor = gray
+# lw = lineweight, make it half as wide as the axes lines
+set style line 81 lt 0 lc rgb "#808080" lw 0.5
+
+# Put the grid behind anything drawn and use the linestyle 81
+set grid back ls 81
+
+# Create some linestyles for our data
+# pt = point type (triangles, circles, squares, etc.)
+# ps = point size
+set style line 1 lt 1 lc rgb "#A00000" lw 1 pt 7 ps 0.5
+set style line 2 lt 1 lc rgb "#00A000" lw 2 pt 11 ps 0.5
+set style line 3 lt 1 lc rgb "#5060D0" lw 2 pt 9 ps 0.5
+set style line 4 lt 1 lc rgb "#0000A0" lw 2 pt 8 ps 0.5
+set style line 5 lt 1 lc rgb "#D0D000" lw 2 pt 13 ps 0.5
+set style line 6 lt 1 lc rgb "#00D0D0" lw 2 pt 12 ps 0.5
+set style line 7 lt 1 lc rgb "#B200B2" lw 2
+set style line 8 lc rgb "black" pt 65 ps 0.5
+set style line 9 lc rgb "blue" pt 7 ps 0.5
+set style line 10 lc rgb "black" pt 9 ps 0.5
+set style line 11 lc rgb "blue" pt 10 ps 0.5
+
+#set title "FORCE_LA (step)"
+
+set xlabel "Time (s)"
+
+#set title "Horizontal axis"
+plot  "Data/particle_0.txt" using 1:2 title "force" w p ls 8,\
+"Data/Particle_0.txt" using 1:5 title "velocity" w p ls 9
+set key
+set output
