@@ -590,8 +590,8 @@ void MUSCL::boundary_conditions_reflective(Euler2D &var, const Domain2D& domain)
 		//reflecting the normal velocity //all except the left wall
 		//var.U(1, j+2)(1) = -var.U(2, j+2)(1);
 		//var.U(0, j+2)(1) = var.U(1, j+2)(1);
-		var.U(domain.Nx+2, j+2)(1) = -var.U(domain.Nx+1, j+2)(1);
-		var.U(domain.Nx+3, j+2)(1) = var.U(domain.Nx+2, j+2)(1);
+		//var.U(domain.Nx+2, j+2)(1) = -var.U(domain.Nx+1, j+2)(1);
+		//var.U(domain.Nx+3, j+2)(1) = var.U(domain.Nx+2, j+2)(1);
 	} 
 	//assigning ghost values in the y-direction
 	for (int i=0; i<domain.Nx; i++){

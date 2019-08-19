@@ -973,6 +973,7 @@ void RigidBodies::fluid_forces(const Domain2D& domain, const Euler2D& fluid, std
 		particles[i].force += force_fluid + Particle::compute_mass(particles[i], domain)*g;
 		particles[i].torque += torque_fluid;
 		std::cout << "fluid forces = " << force_fluid.transpose() << '\t' << torque_fluid << std::endl;
+		//std::cout << Particle::compute_mass(particles[i], domain) << std::endl;
 	}
 }
 
@@ -1041,8 +1042,8 @@ void RigidBodies::initial_conditions(demTests& Test){
 		}
 	}
 
-	//MUSCL::boundary_conditions_reflective(Test.var.fluid, Test.domain);
-	MUSCL::boundary_conditions(Test.var.fluid, Test.domain);
+	MUSCL::boundary_conditions_reflective(Test.var.fluid, Test.domain);
+	//MUSCL::boundary_conditions(Test.var.fluid, Test.domain);
 
 	//compute the normal vector using the levelset function
 	std::vector<Eigen::Array<vector2, Eigen::Dynamic, Eigen::Dynamic> > normal;
@@ -1098,7 +1099,7 @@ void RigidBodies::subcycling(Moving_RB &system, const Domain2D& domain, const Eu
 
 			//calculate and update particle velocities
 			newton_euler(system.particles[a], domain, system.particles[a].force, system.particles[a].torque, subdt);
-			std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << " time = " << tstop << std::endl;
+			std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << " time = " << tstop << " dt = " << subdt << std::endl;
 			update_displacements(system.particles[a], domain, system, subdt); //Particle& gr, const domain2D& domain, Moving_RB& system, double dt
 			//if (count%10==0) std::cout << "particle " << a << '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
 			//if (count%10==0) std::cout << system.particles[a].force.transpose() << '\t' << system.particles[a].torque << std::endl;
@@ -1136,7 +1137,7 @@ void RigidBodies::update_displacements_forced_motion(Particle& gr, const Domain2
 }
 
 void RigidBodies::forced_motion(Moving_RB &system, const Domain2D& domain, const Euler2D& fluid, double time){ 
-	fluid_forces(domain, fluid, system.particles, system.gravity);
+	//fluid_forces(domain, fluid, system.particles, system.gravity);
 
 	//update force and torque of each particle
 	//contact_detection(domain, system, subdt);
@@ -1201,18 +1202,18 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 
 	double faket = 0.1;
 	double t = 0.0;
-	double plot_time = 0.001; //0.05; //0.1;
-	double plot_dt = 0.001;
+	double plot_time = 0.1; //0.05; //0.1;
+	double plot_dt = 0.1;
 	int count = 0;
 
-	std::ofstream particledata[static_cast<int>(system.particles.size())];
-	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-		std::string file = "Data/Particle_" + std::to_string(a) + ".txt";
-		particledata[a].open(file);
-		particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
-		<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
-	}
-	output(system, domain, "dataeuler_0.000000.txt", "datapoints_0.000000.txt");
+	//std::ofstream particledata[static_cast<int>(system.particles.size())];
+	//for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+	//	std::string file = "Data/Particle_" + std::to_string(a) + ".txt";
+	//	particledata[a].open(file);
+	//	particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+	//	<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
+	//}
+	//output(system, domain, "dataeuler_0.000000.txt", "datapoints_0.000000.txt");
 
 	do{
 		//set timestep, taking maximum wavespeed in x or y directions
@@ -1243,6 +1244,9 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		else {
 				domain.dt = CFL*fmin((domain.dx/Smax), (domain.dy/Smax));
 		}
+		//
+		//domain.dt = 0.001;
+		//
 		if (t + domain.dt > plot_time) {
 			domain.dt = plot_time - t;
 			t = plot_time;
@@ -1331,14 +1335,14 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 				}
 			}
 		}
-		//MUSCL::boundary_conditions_reflective(system.fluid, domain);
-		MUSCL::boundary_conditions(system.fluid, domain);
+		MUSCL::boundary_conditions_reflective(system.fluid, domain);
+		//MUSCL::boundary_conditions(system.fluid, domain);
 
 		//---------------------------------------------
 		//	Forces and Torque on the Particle, DEM
 		//---------------------------------------------
-		double subdt = 0.001;
-		if (domain.dt < subdt) subdt = domain.dt;
+		//double subdt = 0.001;
+		//if (domain.dt < subdt) subdt = domain.dt;
 		RigidBodies::subcycling(system, domain, system.fluid, system.gravity, t, subdt);
 		//RigidBodies::forced_motion(system, domain, system.fluid, t);
 
@@ -1349,28 +1353,28 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		if (count%50==0) std::cout << "count = " << count << '\t' << t << "s" << '\t' << domain.dt << std::endl;
 		//if (count == 1) t = domain.tstop;
 		if (t == plot_time) {
-			/*std::cout << "plotting " << t << std::endl;
+			std::cout << "plotting " << t << std::endl;
 			std::string file = "Data/dataeuler_" + std::to_string(faket) + ".txt";
 			std::string file2 = "Data/datapoints_" + std::to_string(faket) + ".txt";
 			output(system, domain, file, file2);
 			//std::cout << "particle " << 0 << '\t' << system.particles[0].vc.transpose() << '\t' << system.particles[0].w << std::endl;
 			//std::cout << "particle " << 1 << '\t' << system.particles[1].vc.transpose() << '\t' << system.particles[1].w << std::endl;
-			*/
+			
 			plot_time += plot_dt;
 			faket+=0.1;
 		
 		}
 		//update particle properties
-		for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-			particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
-			<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
-		}
+		//for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+		//	particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+		//	<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
+		//}
 
 	}while (t < domain.tstop);
 
-	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-		particledata[a].close();
-	}
+	//for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+	//	particledata[a].close();
+	//}
 	std::cout << "count = "  << count << std::endl;
 }
 

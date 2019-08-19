@@ -466,6 +466,7 @@ dynamicls(), centre(0, 0), nodes(0), vc(0, 0), w(0), s(0, 0), theta(0), force(0,
 
 	//initialise the horizontal and vertical wall springs to 0
 	std::unordered_map<int, vector2> nodesprings;
+	std::unordered_map<int, double> nodedist;
 	wall_springs.push_back(nodesprings);
 	wall_springs.push_back(nodesprings);
 	wall_overlap.push_back(nodedist);

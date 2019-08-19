@@ -603,7 +603,7 @@ void demTests::test1(){
 	initialR = unshocked;
 
 	domain.tstop = 0.2;
-	domain.Lx = 4.0; domain.Ly = 4.0;
+	domain.Lx = 1.0; domain.Ly = 1.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -637,15 +637,23 @@ void demTests::test1(){
 	//var.particles.back().set_velocity(vector2(2, 0), 0);
 	//var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
 	//var.particles.back().set_velocity(vector2(-2, 0), 0);
+	/*
 	Polygon poly;
 	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
 	var.add_particle(poly, domain);
-	var.particles.back().set_velocity(vector2(4, 0), 0);
+	var.particles.back().set_velocity(vector2(2, 0), 0);
 
 	Polygon poly1;
 	poly1.create_from_file(domain,"vertices_zero.txt", vector2(2.5, 2.0));
 	var.add_particle(poly1, domain);
-	var.particles.back().set_velocity(vector2(-4, 0), 0);
+	var.particles.back().set_velocity(vector2(-2, 0), 0);
+	*/
+
+	var.add_sphere(domain, Coordinates(0.2,0.5), 0.1);
+	var.particles.back().set_velocity(vector2(2, 0), 0);
+
+	var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
+	var.particles.back().set_velocity(vector2(-2, 0), 0);
 
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
@@ -821,38 +829,24 @@ void demTests::test4(){
 	//------------------------------------------------------------
 
 	var.add_sphere(domain, Coordinates(0.7,0.2), 0.1);
-	var.particles[0].set_velocity(vector2(0.0, 0.0), 0.0);
-
 	var.add_sphere(domain, Coordinates(0.8, 0.3), 0.1);
-	var.particles[1].set_velocity(vector2(0.0, 0.0), 0.0);
-
 	var.add_sphere(domain, Coordinates(0.9, 0.2), 0.1);
-	var.particles[2].set_velocity(vector2(0.0, 0.0), 0.0);
-
 	var.add_sphere(domain, Coordinates(1.0, 0.3), 0.1);
-	var.particles[3].set_velocity(vector2(0.0, 0.0), 0.0);
-
 	var.add_sphere(domain, Coordinates(1.1, 0.2), 0.1);
-	var.particles[4].set_velocity(vector2(0.0, 0.0), 0.0);
-
 	var.add_sphere(domain, Coordinates(1.2, 0.3), 0.1);
-	var.particles[5].set_velocity(vector2(0.0, 0.0), 0.0);
-
 	var.add_sphere(domain, Coordinates(1.3, 0.2), 0.1);
-	var.particles[6].set_velocity(vector2(0.0, 0.0), 0.0);
 
 }
 
 void demTests::test5(){
 	//smooth acceleration (need to change subcycling to forced motion)
-	//vector4 unshocked(2.6069, 0.6944, 0.0, 2.4583);
 	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
 
 	initialL = unshocked;
 	initialR = unshocked;
 
-	domain.tstop = 12.0;
-	domain.Lx = 4.0; domain.Ly = 2.0;
+	domain.tstop = 8.0;
+	domain.Lx = 3.0; domain.Ly = 2.5;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -882,9 +876,8 @@ void demTests::test5(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.5);
-	var.particles.back().set_velocity(vector2(0.0, 0.0), 0.0);
-	var.particles.back().set_density(3.75);
+	var.add_sphere(domain, Coordinates(1.0, 1.25), 0.5);
+	var.particles.back().set_density(0.625);
 }
 
 void demTests::test6(){
@@ -998,32 +991,14 @@ void demTests::test7(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	/*Polygon poly;
-	try{
-		poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-	var.add_particle(poly, domain);
-	*/
-/*
-	
+	const double pi = boost::math::constants::pi<double>();
 	var.add_sphere(domain, Coordinates(1.5, 2.0), 0.5);
 	var.particles.back().set_density(1./(0.5*pi));
 	var.particles.back().set_mass(0.5);
 
-	var.add_sphere(domain, Coordinates(2.6, 2.0), 0.5);
+	var.add_sphere(domain, Coordinates(2.5, 2.0), 0.5);
 	var.particles.back().set_density(1./(0.5*pi));
 	var.particles.back().set_mass(0.5);
-*/
-	const double pi = boost::math::constants::pi<double>();
-
-	for (int i=1; i<4; i++){
-		for (int j=0; j<2; j++){
-			var.add_sphere(domain, Coordinates(0.98*i+0.5, 0.98*j+0.49), 0.5);
-		}
-	}
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
 		i->damping_coefficient = 0.0;
@@ -1035,7 +1010,7 @@ void demTests::test7(){
 
 }
 
-void demTests::test8(){
+void demTests::test9(){
 	//2 particle shock
 
 	vector4 shocked(2.6069, 0.6944, 0.0, 2.4583);
