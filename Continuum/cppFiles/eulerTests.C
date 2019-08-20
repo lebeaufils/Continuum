@@ -603,7 +603,7 @@ void demTests::test1(){
 	initialR = unshocked;
 
 	domain.tstop = 0.2;
-	domain.Lx = 1.0; domain.Ly = 1.0;
+	domain.Lx = 4.0; domain.Ly = 4.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -637,7 +637,7 @@ void demTests::test1(){
 	//var.particles.back().set_velocity(vector2(2, 0), 0);
 	//var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
 	//var.particles.back().set_velocity(vector2(-2, 0), 0);
-	/*
+	
 	Polygon poly;
 	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
 	var.add_particle(poly, domain);
@@ -647,13 +647,13 @@ void demTests::test1(){
 	poly1.create_from_file(domain,"vertices_zero.txt", vector2(2.5, 2.0));
 	var.add_particle(poly1, domain);
 	var.particles.back().set_velocity(vector2(-2, 0), 0);
-	*/
+	
 
-	var.add_sphere(domain, Coordinates(0.2,0.5), 0.1);
-	var.particles.back().set_velocity(vector2(2, 0), 0);
+	//var.add_sphere(domain, Coordinates(0.2,0.5), 0.1);
+	//var.particles.back().set_velocity(vector2(2, 0), 0);
 
-	var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
-	var.particles.back().set_velocity(vector2(-2, 0), 0);
+	//var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
+	//var.particles.back().set_velocity(vector2(-2, 0), 0);
 
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
@@ -804,6 +804,7 @@ void demTests::test4(){
 
 	var.fluid.state_function = StateFunctions::create(EOS_IG);
 	var.fluid.state_function->y = 1.4;
+	var.gravity = 9.81;
 	//------------------------------------------------------------
 	//	Domain
 	//------------------------------------------------------------
@@ -828,13 +829,29 @@ void demTests::test4(){
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
 
-	var.add_sphere(domain, Coordinates(0.7,0.2), 0.1);
-	var.add_sphere(domain, Coordinates(0.8, 0.3), 0.1);
-	var.add_sphere(domain, Coordinates(0.9, 0.2), 0.1);
-	var.add_sphere(domain, Coordinates(1.0, 0.3), 0.1);
-	var.add_sphere(domain, Coordinates(1.1, 0.2), 0.1);
-	var.add_sphere(domain, Coordinates(1.2, 0.3), 0.1);
-	var.add_sphere(domain, Coordinates(1.3, 0.2), 0.1);
+	var.add_sphere(domain, Coordinates(0.6, 0.1), 0.1);
+	var.add_sphere(domain, Coordinates(0.8, 0.1), 0.1);
+	var.add_sphere(domain, Coordinates(1.0, 0.1), 0.1);
+	var.add_sphere(domain, Coordinates(1.2, 0.1), 0.1);
+	var.add_sphere(domain, Coordinates(1.4, 0.1), 0.1);
+
+	var.add_sphere(domain, Coordinates(0.7, 0.32), 0.1);
+	var.add_sphere(domain, Coordinates(0.9, 0.32), 0.1);
+	var.add_sphere(domain, Coordinates(1.1, 0.32), 0.1);
+	var.add_sphere(domain, Coordinates(1.3, 0.32), 0.1);
+
+	var.add_sphere(domain, Coordinates(0.8, 0.55), 0.1);
+	var.add_sphere(domain, Coordinates(1.0, 0.55), 0.1);
+	var.add_sphere(domain, Coordinates(1.2, 0.55), 0.1);
+
+
+	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
+		i->damping_coefficient = 10.0;
+		i->k_n = 1e6;
+		i->k_s = 7e5;
+		i->k_c = 1e6;
+		i->density = 1000;
+	}
 
 }
 
@@ -916,28 +933,24 @@ void demTests::test6(){
 	//	Fluid
 	//------------------------------------------------------------
 	//initial conditions of the fluid surrounding the levelset
-	for (int i=0; i<domain.Nx; i++){
+	for (int i=0; i<domain.Nx; i++){//
 		for (int j=0; j<domain.Ny; j++){
-			if (i*domain.dx >= 0.4) interface(i, j) = true;
+			if (i*domain.dx >= 0.5) interface(i, j) = true;
 			else interface(i, j) = false;
 		}
 	}
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	//const double pi = boost::math::constants::pi<double>();
-	//var.add_sphere(domain, Coordinates(1.0, 2.0), 0.5);
-	//var.particles.back().set_density(1./(0.5*pi));
+	const double pi = boost::math::constants::pi<double>();
+	//var.add_sphere(domain, Coordinates(1.5, 2.0), 0.5);
+	//
 
 	Polygon poly;
-	try{
-		poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
-		//poly.create_square(domain, 1.0, vector2(1.5, 2.0));
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
+	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
+	//poly.create_square(domain, 1.0, vector2(1.5, 2.0));
 	var.add_particle(poly, domain);
+	var.particles.back().set_density(1./(0.5*pi));
 	
 
 	//var.add_sphere(domain, Coordinates(2.22, 2.0), 0.2);
@@ -959,7 +972,7 @@ void demTests::test7(){
 	initialR = unshocked;
 
 	//domain.tstop = 0.5;
-	domain.tstop = 2.0;
+	domain.tstop = 1.5;
 	domain.Lx = 4.0; domain.Ly = 4.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
@@ -985,20 +998,32 @@ void demTests::test7(){
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			interface(i, j) = false;
-			if (i*domain.dx >= 0.9) interface(i, j) = true;
+			if (i*domain.dx >= 0.8) interface(i, j) = true;
 		}
 	}
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
 	const double pi = boost::math::constants::pi<double>();
-	var.add_sphere(domain, Coordinates(1.5, 2.0), 0.5);
+	/*
+	var.add_sphere(domain, Coordinates(1.38, 2.0), 0.5);
 	var.particles.back().set_density(1./(0.5*pi));
 	var.particles.back().set_mass(0.5);
 
-	var.add_sphere(domain, Coordinates(2.5, 2.0), 0.5);
+	var.add_sphere(domain, Coordinates(2.4, 2.0), 0.5);
 	var.particles.back().set_density(1./(0.5*pi));
 	var.particles.back().set_mass(0.5);
+	*/
+
+	Polygon poly;
+	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.38, 2.0));
+	var.add_particle(poly, domain);
+
+	Polygon poly1;
+	poly1.create_from_file(domain,"vertices_zero.txt", vector2(2.4, 2.0));
+	var.add_particle(poly1, domain);
+
+	
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
 		i->damping_coefficient = 0.0;
@@ -1024,7 +1049,7 @@ void demTests::test9(){
 	initialR = unshocked;
 
 	//domain.tstop = 0.5;
-	domain.tstop = 2.0;
+	domain.tstop = 1.5;
 	domain.Lx = 4.0; domain.Ly = 4.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
@@ -1050,7 +1075,7 @@ void demTests::test9(){
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			interface(i, j) = false;
-			if (i*domain.dx >= 0.9) interface(i, j) = true;
+			if (i*domain.dx >= 0.2) interface(i, j) = true;
 		}
 	}
 	//------------------------------------------------------------
@@ -1077,18 +1102,26 @@ void demTests::test9(){
 */
 	const double pi = boost::math::constants::pi<double>();
 
-	for (int i=1; i<4; i++){
-		for (int j=0; j<2; j++){
-			var.add_sphere(domain, Coordinates(0.98*i+0.5, 0.98*j+0.49), 0.5);
-		}
-	}
+	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.5);
+	var.add_sphere(domain, Coordinates(2.0, 3.0), 0.4);
+	var.add_sphere(domain, Coordinates(3.0, 1.0), 0.8);
+
+	Polygon poly;
+	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
+	var.add_particle(poly, domain);
+	Polygon poly1;
+	poly1.create_from_file(domain,"vertices_zero1.txt", vector2(1.0, 3.0));
+	var.add_particle(poly1, domain);
+	Polygon poly2;
+	poly2.create_from_file(domain,"vertices_zero2.txt", vector2(3.0, 2.5));
+	var.add_particle(poly2, domain);
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
 		i->damping_coefficient = 0.0;
 		i->k_n = 100;
 		i->k_s = 100;
 		i->k_c = 100;
-		i->density = 1./(0.5*pi);
+		i->density = 1./(0.5*pi);//1./(0.5*pi);
 	}
 
 }

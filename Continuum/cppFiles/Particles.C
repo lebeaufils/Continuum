@@ -541,7 +541,7 @@ double Particle::moment_of_inertia(const LevelSet& ls, const Particle& gr, const
 			inertia += LevelSetMethods::smoothed_heaviside(ls, domain, i+domain.buffer, j+domain.buffer)*(pow((i*domain.dx - c(0)),2) + pow((j*domain.dy - c(1)),2));
 		}
 	}
-	inertia = -gr.density*domain.dx*domain.dy*inertia;
+	inertia = gr.density*domain.dx*domain.dy*inertia;
 	return inertia;
 }
 
@@ -707,6 +707,7 @@ void Moving_RB::generate_hht(const Domain2D& domain){ //generate hierarchical ha
 		}
 	}
 }
+
 //during contact collision, for each particle loop through the close counter and only perform the collision detection on particles > 0 in the close counter
 //if there is contact, calculate the tangential spring and store it in the array under the respective label.
 

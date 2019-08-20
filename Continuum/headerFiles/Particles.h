@@ -195,6 +195,8 @@ struct Moving_RB
 	Euler2D fluid;
 
 	double gravity;
+	//tolerance for level set
+	double tol;
 
 	//hash table to store particles
 	HierarchicalHashTable hashedgrid;

@@ -96,7 +96,7 @@ void LevelSetMethods::initialise_circle(LevelSet &ls, const Domain2D &domain, do
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			//ls.phi(i, j) = pow(domain.X[i + j*domain.Nx][0] - x0, 2) + pow(domain.X[i + j*domain.Nx][1] - y0, 2) - pow(r, 2);
-			ls.phi(i+domain.buffer, j+domain.buffer) = pow(domain.X(i, j).x - x0, 2) + pow(domain.X(i, j).y - y0, 2) - pow(r, 2);
+			ls.phi(i+domain.buffer, j+domain.buffer) = pow(i*domain.dx - x0, 2) + pow(j*domain.dy - y0, 2) - pow(r, 2);
 		}
 	}
 

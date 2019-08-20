@@ -8,14 +8,14 @@ set size ratio -1
 #set cbrange [1.2:5.0]
 #set title "density"
 j = 0.1
-k = 0.1
-do for [i=0:79]{
+k = 0.01
+do for [i=0:145]{
 	set output sprintf('Plots/collision_%d.png', i)
 	set title sprintf("time %.2f s", k)
     #splot 'Data/dataeuler_'.i.'00000.txt' using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31
     splot sprintf('Data/dataeuler_%f.txt', j) using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31
     j = j+0.1
-    k = k+0.1
+    k = k+0.01
 #	splot 'Data/dataeuler_0.400000.txt' using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31
 #	'Data/datapoints_0.300000.txt' using 1:2:(0) notitle w p lc rgb "light-turquoise" ps 1 pt 7
 }

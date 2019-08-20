@@ -744,6 +744,9 @@ void RigidBodies::wall_collision(double overlap, vector2& spring, Particle& gr_i
 		//vertical = 1
 	//this assumes no particle can collide with both horizontal walls (a particle bigger than the whole domain)
 
+	//damping ratio
+	//double y_wall = 40;
+
 	//relative velocity v_a of node m_a to the wall is,
 	//taking the wall as a stationary object:
 	vector2 v_a = gr_i.vc + Particle::cross(gr_i.w, node-gr_i.centre);
@@ -1192,28 +1195,21 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 	//---------------------
 	//When solving for the fluid values, we can consider all the levelsets at once by taking their union
 	system.combinedls = Particle::merge(system.particles, domain);
-	//storing the initial collection of levelsets
-	/*
-	std::vector<LevelSet> levelset_collection;
-	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-		levelset_collection.push_back(system.particles[a].ls);
-	}
-	*/
 
 	double faket = 0.1;
 	double t = 0.0;
-	double plot_time = 0.1; //0.05; //0.1;
-	double plot_dt = 0.1;
+	double plot_time = 0.01; //0.05; //0.1;
+	double plot_dt = 0.01;
 	int count = 0;
 
-	//std::ofstream particledata[static_cast<int>(system.particles.size())];
-	//for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-	//	std::string file = "Data/Particle_" + std::to_string(a) + ".txt";
-	//	particledata[a].open(file);
-	//	particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
-	//	<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
-	//}
-	//output(system, domain, "dataeuler_0.000000.txt", "datapoints_0.000000.txt");
+	std::ofstream particledata[static_cast<int>(system.particles.size())];
+	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+		std::string file = "Data/Particle_" + std::to_string(a) + ".txt";
+		particledata[a].open(file);
+		particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+		<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << '\t' << system.particles[a].centre.transpose() << std::endl;
+	}
+	output(system, domain, "Data/dataeuler_0.000000.txt", "Data/datapoints_0.000000.txt");
 
 	do{
 		//set timestep, taking maximum wavespeed in x or y directions
@@ -1244,9 +1240,11 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		else {
 				domain.dt = CFL*fmin((domain.dx/Smax), (domain.dy/Smax));
 		}
-		//
-		//domain.dt = 0.001;
-		//
+
+		////
+		domain.dt = 0.001;
+		///
+
 		if (t + domain.dt > plot_time) {
 			domain.dt = plot_time - t;
 			t = plot_time;
@@ -1343,7 +1341,7 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		//---------------------------------------------
 		//double subdt = 0.001;
 		//if (domain.dt < subdt) subdt = domain.dt;
-		RigidBodies::subcycling(system, domain, system.fluid, system.gravity, t, subdt);
+		RigidBodies::subcycling(system, domain, system.fluid, system.gravity, t, domain.dt);
 		//RigidBodies::forced_motion(system, domain, system.fluid, t);
 
 
@@ -1365,16 +1363,16 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		
 		}
 		//update particle properties
-		//for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-		//	particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
-		//	<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << std::endl;
-		//}
+		for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+			particledata[a] << t << '\t' << system.particles[a].force.transpose() << '\t' << system.particles[a].torque 
+			<< '\t' << system.particles[a].vc.transpose() << '\t' << system.particles[a].w << '\t' << system.particles[a].centre.transpose() << std::endl;
+		}
 
 	}while (t < domain.tstop);
 
-	//for (int a=0; a<static_cast<int>(system.particles.size()); a++){
-	//	particledata[a].close();
-	//}
+	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
+		particledata[a].close();
+	}
 	std::cout << "count = "  << count << std::endl;
 }
 
@@ -1400,7 +1398,7 @@ void RigidBodies::output(const Moving_RB &system, const Domain2D &domain, std::s
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
-			if (system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) >= 0){
+			if (system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) > 0){
 				vector4 Ux = system.fluid.U(i, j);
 				if (Ux(0)!=0){
 					u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
@@ -1445,9 +1443,9 @@ void RigidBodies::output_levelset(const Moving_RB &system, const Domain2D &domai
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
-			if (system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) >= 0){
+			//if (system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) >= 0){
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) << '\t' << std::endl;
-			}
+			//}
 		}
 		outfile << std::endl;
 	}
