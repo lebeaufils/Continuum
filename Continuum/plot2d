@@ -9,7 +9,7 @@ set size ratio -1
 #set title "density"
 j = 0.1
 k = 0.01
-do for [i=0:145]{
+do for [i=0:149]{
 	set output sprintf('Plots/collision_%d.png', i)
 	set title sprintf("time %.2f s", k)
     #splot 'Data/dataeuler_'.i.'00000.txt' using 1:2:3 notitle with points palette pointsize 0.5 pointtype 31

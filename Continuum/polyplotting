@@ -1,8 +1,0 @@
-#!/bin/bash
-
-gnuplot plotpoly
-ps2pdf Plots/polygon.ps Plots/polygon.pdf
-open Plots/polygon.pdf
-#gnuplot ploteuler
-#ps2pdf Plots/eulerTests.ps Plots/eulerTests.pdf
-#open Plots/eulerTests.pdf

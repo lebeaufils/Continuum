@@ -237,19 +237,19 @@ std::vector<Coordinates> Polygon::random_points(double min, double max, int N){
 
 void Polygon::output(Domain2D domain){
 	std::ofstream outfile;
-	//std::ofstream outfile_2;
+	std::ofstream outfile_2;
 
 	outfile.open("polygon.txt");
-	//outfile_2.open("edgepoints.txt");
+	outfile_2.open("edgepoints.txt");
 
 	for (int i=0; i<n; i++){
 		outfile << vertices[i].x << '\t' << vertices[i].y << std::endl;
 	}
 
-	//for (int i=0; i<static_cast<int>(surfacepoints.size()); i++){
-	//	outfile_2 << domain.X(surfacepoints[i].i, surfacepoints[i].j).x <<
-	//	'\t' << domain.X(surfacepoints[i].i, surfacepoints[i].j).y << std::endl;
-	//}
+	for (int i=0; i<static_cast<int>(surfacepoints.size()); i++){
+		outfile_2 << domain.X(surfacepoints[i].i, surfacepoints[i].j).x <<
+		'\t' << domain.X(surfacepoints[i].i, surfacepoints[i].j).y << std::endl;
+	}
 
 	/*boost::ptr_map<std::pair<int, int>, Edge>::iterator it = edges.begin();
 	while (it != edges.end()){
@@ -261,7 +261,7 @@ void Polygon::output(Domain2D domain){
 	}*/
 
 	outfile.close();
-	//outfile_2.close();
+	outfile_2.close();
 }
 
 void Polygon::create_square(Domain2D domain, double length, Coordinates center){

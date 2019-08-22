@@ -596,14 +596,14 @@ void rigidTests::test4(){
 void demTests::test1(){
 
 	//Vaccuum
-
+	//2 particles collision
 	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
 
 	initialL = unshocked;
 	initialR = unshocked;
 
 	domain.tstop = 0.2;
-	domain.Lx = 4.0; domain.Ly = 4.0;
+	domain.Lx = 1.0; domain.Ly = 1.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -633,11 +633,11 @@ void demTests::test1(){
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	//var.add_sphere(domain, Coordinates(0.2,0.5), 0.1);
-	//var.particles.back().set_velocity(vector2(2, 0), 0);
-	//var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
-	//var.particles.back().set_velocity(vector2(-2, 0), 0);
-	
+	var.add_sphere(domain, Coordinates(0.3,0.5), 0.1);
+	var.particles.back().set_velocity(vector2(2, 0), 0);
+	var.add_sphere(domain, Coordinates(0.7,0.5), 0.1);
+	var.particles.back().set_velocity(vector2(-2, 0), 0);
+	/*
 	Polygon poly;
 	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
 	var.add_particle(poly, domain);
@@ -647,150 +647,22 @@ void demTests::test1(){
 	poly1.create_from_file(domain,"vertices_zero.txt", vector2(2.5, 2.0));
 	var.add_particle(poly1, domain);
 	var.particles.back().set_velocity(vector2(-2, 0), 0);
+	*/
 	
-
-	//var.add_sphere(domain, Coordinates(0.2,0.5), 0.1);
-	//var.particles.back().set_velocity(vector2(2, 0), 0);
-
-	//var.add_sphere(domain, Coordinates(0.8,0.5), 0.1);
-	//var.particles.back().set_velocity(vector2(-2, 0), 0);
-
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
 		i->damping_coefficient = 0.0;
-		i->k_n = 100;//1e6;
-		i->k_s = 100;//1e6;
-		i->k_c = 100;//1e6;
+		i->k_n = 1000;//1e6;
+		i->k_s = 1000;//1e6;
+		i->k_c = 1000;//1e6;
 		i->density = 0.625; //3000;
 	}
 }
 
 void demTests::test2(){
 
-	//Vaccuum
-	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
-
-	initialL = unshocked;
-	initialR = unshocked;
-
-	domain.tstop = 0.5;
-	domain.Lx = 4.0; domain.Ly = 4.0;
-	domain.dx = domain.Lx/(domain.Nx-1);
-	domain.dy = domain.Ly/(domain.Ny-1);
-	domain.X.resize(domain.Nx, domain.Ny);
-
-	var.fluid.state_function = StateFunctions::create(EOS_IG);
-	var.fluid.state_function->y = 1.4;
-	//------------------------------------------------------------
-	//	Domain
-	//------------------------------------------------------------
-	//assigning x values
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			Coordinates point(i*domain.dx, j*domain.dy);
-			domain.X(i, j) = point;
-		}
-	}
-	interface.resize(domain.Nx, domain.Ny);
-	//------------------------------------------------------------
-	//	Fluid
-	//------------------------------------------------------------
-	//initial conditions of the fluid surrounding the levelset
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			interface(i, j) = false;
-		}
-	}
-	//------------------------------------------------------------
-	//	Rigid body (level set definition)
-	//------------------------------------------------------------
-
-	var.add_sphere(domain, Coordinates(0.5,0.5), 0.5);
-	var.add_sphere(domain, Coordinates(1.5, 0.5), 0.5);
-	var.add_sphere(domain, Coordinates(2.5, 0.5), 0.5);
-	var.add_sphere(domain, Coordinates(3.5, 0.5), 0.5);
-
-	var.gravity = 10.0;
-	var.add_sphere(domain, Coordinates(2.0, 2.0), 0.5);
-	var.particles.back().set_velocity(vector2(0.0, -2.0), 0.0);
-	//var.add_sphere(domain, Coordinates(1.2, 0.3), 0.2);
-	//var.add_sphere(domain, Coordinates(1.5, 0.11), 0.2);
-	
-	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
-		i->damping_coefficient = 0.0;
-		i->k_n = 1e6;
-		i->k_s = 1e6;
-		i->k_c = 1e6;
-		i->density = 3000;
-	}
-}
-
-void demTests::test3(){
-
-	//Vaccuum
-	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
-
-	initialL = unshocked;
-	initialR = unshocked;
-
-	domain.tstop = 0.2;
-	domain.Lx = 4.0; domain.Ly = 4.0;
-	domain.dx = domain.Lx/(domain.Nx-1);
-	domain.dy = domain.Ly/(domain.Ny-1);
-	domain.X.resize(domain.Nx, domain.Ny);
-
-	var.fluid.state_function = StateFunctions::create(EOS_IG);
-	var.fluid.state_function->y = 1.4;
-	//------------------------------------------------------------
-	//	Domain
-	//------------------------------------------------------------
-	//assigning x values
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			Coordinates point(i*domain.dx, j*domain.dy);
-			domain.X(i, j) = point;
-		}
-	}
-	interface.resize(domain.Nx, domain.Ny);
-	//------------------------------------------------------------
-	//	Fluid
-	//------------------------------------------------------------
-	//initial conditions of the fluid surrounding the levelset
-	for (int i=0; i<domain.Nx; i++){
-		for (int j=0; j<domain.Ny; j++){
-			interface(i, j) = false;
-		}
-	}
-	//------------------------------------------------------------
-	//	Rigid body (level set definition)
-	//------------------------------------------------------------
-	//var.add_sphere(domain, Coordinates(0.5,0.5), 0.5);
-	var.add_sphere(domain, Coordinates(1.5, 0.5), 0.5);
-	var.add_sphere(domain, Coordinates(2.5, 0.5), 0.5);
-	var.add_sphere(domain, Coordinates(3.5, 0.5), 0.5);
-
-	var.gravity = 10.0;
-	var.add_sphere(domain, Coordinates(2.0, 2.0), 0.5);
-	var.particles.back().set_velocity(vector2(0.0, -2.0), 0.0);
-	//var.add_sphere(domain, Coordinates(1.2, 0.3), 0.2);
-	//var.add_sphere(domain, Coordinates(1.5, 0.11), 0.2);
-	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
-		i->damping_coefficient = 0.0;
-		i->k_n = 100;
-		i->k_s = 100;
-		i->k_c = 100;
-		i->density = 0.625;
-	}
-}
-
-void demTests::test4(){
-
-	//Shock location
-	//double x_s = 0.3;
-
-	//------------------------------------------------------------
-	//initial conditions for shock and unshocked fluid
-	//vector4 shocked(1.3764, 0.394, 0.0, 1.5698); //density, velocity, pressure
+	//vaccuum
+	//12 particles with gravity
 	vector4 unshocked(0.0, 0.0, 0.0, 0.0);
 
 	initialL = unshocked;
@@ -855,7 +727,9 @@ void demTests::test4(){
 
 }
 
-void demTests::test5(){
+void demTests::test3(){
+
+	//flow
 	//smooth acceleration (need to change subcycling to forced motion)
 	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
 
@@ -897,8 +771,8 @@ void demTests::test5(){
 	var.particles.back().set_density(0.625);
 }
 
-void demTests::test6(){
-	//2 particle shock
+void demTests::test4(){
+	//Flow around polygon
 
 	vector4 shocked(2.6069, 0.6944, 0.0, 2.4583);
 	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
@@ -958,7 +832,8 @@ void demTests::test6(){
 	//var.particles.back().set_density(1./(0.5*pi));
 }
 
-void demTests::test7(){
+void demTests::test5(){
+	//flow
 	//2 particle shock
 
 	vector4 shocked(2.6069, 0.6944, 0.0, 2.4583);
@@ -1035,8 +910,8 @@ void demTests::test7(){
 
 }
 
-void demTests::test9(){
-	//2 particle shock
+void demTests::test6(){
+	//System of particles
 
 	vector4 shocked(2.6069, 0.6944, 0.0, 2.4583);
 	vector4 unshocked(1.4, 0.0, 0.0, 1.0);
@@ -1049,8 +924,8 @@ void demTests::test9(){
 	initialR = unshocked;
 
 	//domain.tstop = 0.5;
-	domain.tstop = 1.5;
-	domain.Lx = 4.0; domain.Ly = 4.0;
+	domain.tstop = 2.0;
+	domain.Lx = 4.0; domain.Ly = 2.0;
 	domain.dx = domain.Lx/(domain.Nx-1);
 	domain.dy = domain.Ly/(domain.Ny-1);
 	domain.X.resize(domain.Nx, domain.Ny);
@@ -1075,408 +950,51 @@ void demTests::test9(){
 	for (int i=0; i<domain.Nx; i++){
 		for (int j=0; j<domain.Ny; j++){
 			interface(i, j) = false;
-			if (i*domain.dx >= 0.2) interface(i, j) = true;
+			if (i*domain.dx >= 0.5) interface(i, j) = true;
 		}
 	}
 	//------------------------------------------------------------
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
-	/*Polygon poly;
-	try{
-		poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
-	}
-	catch (const char c){
-		std::cout << c << std::endl;
-	}
-	var.add_particle(poly, domain);
-	*/
-/*
-	
-	var.add_sphere(domain, Coordinates(1.5, 2.0), 0.5);
-	var.particles.back().set_density(1./(0.5*pi));
-	var.particles.back().set_mass(0.5);
 
-	var.add_sphere(domain, Coordinates(2.6, 2.0), 0.5);
-	var.particles.back().set_density(1./(0.5*pi));
-	var.particles.back().set_mass(0.5);
-*/
 	const double pi = boost::math::constants::pi<double>();
 
-	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.5);
-	var.add_sphere(domain, Coordinates(2.0, 3.0), 0.4);
-	var.add_sphere(domain, Coordinates(3.0, 1.0), 0.8);
+	var.add_sphere(domain, Coordinates(1.0, 1.0), 0.2);
+	var.add_sphere(domain, Coordinates(0.8, 0.6), 0.15);
+
+	//var.add_sphere(domain, Coordinates(1.2, 1.5), 0.3); //polygon
+
+	var.add_sphere(domain, Coordinates(1.4, 1.2), 0.18);
+
+	//var.add_sphere(domain, Coordinates(1.9, 1.5), 0.2);
+	//var.add_sphere(domain, Coordinates(2.3, 1.1), 0.3); //polygon
+	var.add_sphere(domain, Coordinates(1.2, 0.4), 0.25);
+
+	//var.add_sphere(domain, Coordinates(1.7, 0.7), 0.3); //polygon
+	var.add_sphere(domain, Coordinates(2.2, 0.4), 0.2);
+	var.add_sphere(domain, Coordinates(2.6, 1.0), 0.3);
+	
 
 	Polygon poly;
-	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.5, 2.0));
+	poly.create_from_file(domain,"vertices_zero.txt", vector2(1.0, 1.5));
 	var.add_particle(poly, domain);
 	Polygon poly1;
-	poly1.create_from_file(domain,"vertices_zero1.txt", vector2(1.0, 3.0));
+	poly1.create_from_file(domain,"vertices_zero1.txt", vector2(2.0, 1.2));
 	var.add_particle(poly1, domain);
 	Polygon poly2;
-	poly2.create_from_file(domain,"vertices_zero2.txt", vector2(3.0, 2.5));
+	poly2.create_from_file(domain,"vertices_zero2.txt", vector2(1.7, 0.7));
 	var.add_particle(poly2, domain);
 
-	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
+
+for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
 		i->damping_coefficient = 0.0;
 		i->k_n = 100;
 		i->k_s = 100;
 		i->k_c = 100;
-		i->density = 1./(0.5*pi);//1./(0.5*pi);
+		i->density = 5./(0.5*pi);//1./(0.5*pi);
 	}
 
 }
-//--------------------------------------------------------------------------------------------
-//	Ghost Fluid Tests
-//--------------------------------------------------------------------------------------------
-/*void gfmTests::test1(){
-	vector Left(1.0, 0.0, 1.0); //density, velocity, pressure
-	vector Right(0.125, 0.0, 0.1);
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.5;
-	tstop = 0.25;
-	L = 1.0;
-
-	var1.N = N;
-	var1.dx = domain.L/domain.N;
-	//var1.x0 = x0; //The GFM class has its own initial condition method
-		//that deals directly with the gfm test struct
-	//var1.tstop = tstop;
-	var1.state_function = StateFunctions::create(EOS_IG);
-	var1.state_function->y = 1.4;
-
-	var2.N = N;
-	var2.dx = domain.L/domain.N;
-	//var2.x0 = x0;
-	//var2.tstop = tstop;
-	var2.state_function = StateFunctions::create(EOS_IG);
-	var2.state_function->y = 1.4;
-}
-
-void gfmTests::test2(){ //Two rarefraction waves, vaccum test
-	vector Left(1.0, -2.0, 0.4);
-	vector Right(1.0, 2.0, 0.4);
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.5;
-	tstop = 0.15;
-	L = 1.0;
-	yL = 1.4;
-	yR = 1.4;
-}
-
-void gfmTests::test3(){ //strong shock wave of shock Mach number 198
-	vector Left(1.0, 0.0, 1000.0);
-	vector Right(1.0, 0.0, 0.01);
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.5;
-	tstop = 0.012;
-	L = 1.0;
-	yL = 1.4;
-	yR = 1.4;
-}
-
-void gfmTests::test4(){ //Three strong discontinuities travelling to the right.
-	vector Left(5.99924, 19.5975, 460.894);
-	vector Right(5.99242, -6.19633, 46.0950);
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.4;
-	tstop = 0.035;
-	L = 1.0;
-	yL = 1.4;
-	yR = 1.4;
-}
-
-void gfmTests::test5(){ //slowly moving contact discontinuities
-	vector Left(1.0, -19.59745, 1000.0);
-	vector Right(1.0, -19.59745, 0.01);
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.8;
-	tstop = 0.012;
-	L = 1.0;
-	yL = 1.4;
-	yR = 1.4;
-}
-
-void gfmTests::test_example_1(){
-	vector Left(2.0, 0.0, 9.8e5);
-	vector Right(1.0, 0.0, 2.45e5);
-
-	initialL = Left;
-	initialR = Right;
-
-	L = 4.0;
-	x0 = 0.5;
-	tstop = 0.0022;
-
-	yL = 1.4;
-	yR = 1.4;
-}
-
-void gfmTests::testA(){
-	vector Left(1.0, 0.0, 1e5);
-	vector Right(0.125, 0.0, 1e4);
-
-	initialL = Left;
-	initialR = Right;
-
-	L = 1.0;
-	x0 = 0.5;
-	tstop = 0.0007;
-	//tstop = 0;
-
-	yL = 1.4;
-	yR = 1.2;
-}
-
-
-void gfmTests::testB(){ //FedKiw 2002 test B
-	number_of_materials = 3;
-	vector Left(1.3333, 0.3535*sqrt(1e5), 1.5e5);
-	vector Middle(1.0, 0.0, 1e5);
-	vector Right(0.1379, 0.0, 1e5);
-
-	initialL = Left;
-	initialM1 = Middle;
-	initialR = Right;
-
-	L = 1.0;
-	//N = 100;
-	x0 = 0.05; //Right going shock between 5th ans 6th grid point (on a 100 grid)
-	x1 = 0.5; //Material discontinuity between 50 and 51st point
-	tstop = 0.0012;
-
-	yL = 1.4;
-	yR = 1.67;
-	yM1 = 1.4;
-}
-
-void gfmTests::testC(){
-	number_of_materials = 3;
-	vector Left(1.3333, 0.3535*sqrt(1e5), 1.5e5);
-	vector Middle(1.0, 0.0, 1e5);
-	vector Right(3.1538, 0, 1e5);
-
-	initialL = Left;
-	initialM1 = Middle;
-	initialR = Right;
-
-	L = 1.0;
-	x0 = 0.05; 
-	x1 = 0.5; 
-	tstop = 0.0017;
-
-	yL = 1.4;
-	yR = 1.249;
-	yM1 = 1.4;
-}
-
-void gfmTests::testB_Wang(){
-	number_of_materials = 4;
-	vector Left(1.3333, 0.3535*sqrt(1e5), 1.5e5);
-	vector MiddleLeft(1.0, 0.0, 1e5);
-	vector MiddleRight(0.1379, 0, 1e5);
-	vector Right(1.0, 0.0, 1e5);
-
-	initialL = Left;
-	initialM1 = MiddleLeft;
-	initialM2 = MiddleRight;
-	initialR = Right;
-
-	L = 1.0;
-	x0 = 0.05; 
-	x1 = 0.4; 
-	x2 = 0.6;
-	tstop = 0.0014;
-
-
-	yL = 1.4;
-	yM1 = 1.4;
-	yM2 = 1.67;
-	yR = 1.4;
-}
-
-void gfmTests::testSG(){ //Water - Air shock tube
-	stiffgas = true;
-	vector Left(1000, 0.0, 1e9); //Water
-	vector Right(50, 0.0, 1e5); //Air
-
-	initialL = Left;
-	initialR = Right;
-
-	x0 = 0.7;
-	tstop = 0.00023744;
-
-	yL = 4.4;
-	yR = 1.4;
-
-	Pref1 = 6e8;
-	Pref2 = 0.0; 
-}
-
-void gfmTests::testMach10(){
-	//Wang test B with a mach 10 shock propagating right
-	number_of_materials = 4;
-
-	vector Left(5.92593, 6220.51, 4.665e7);
-	vector MiddleLeft(1.0, 0.0, 1e5);
-	vector MiddleRight(0.1379, 0, 1e5);
-	vector Right(1.0, 0.0, 1e5);
-
-	initialL = Left;
-	initialM1 = MiddleLeft;
-	initialM2 = MiddleRight;
-	initialR = Right;
-
-	L = 1.0;
-	x0 = 0.05; 
-	x1 = 0.4; 
-	x2 = 0.6;
-
-	tstop = 0.0001;
-
-	yL = 1.4;
-	yM1 = 1.4;
-	yM2 = 1.67;
-	yR = 1.4;
-}
-
-void gfmTests::testMach10_2(){ //testing it in Fedkiw's case
-
-	number_of_materials = 3;
-	vector Left(5.92593, 6220.51, 4.665e7);
-	vector Middle(1.0, 0.0, 1e5);
-	vector Right(0.1379, 0.0, 1e5);
-
-	initialL = Left;
-	initialM1 = Middle;
-	initialR = Right;
-
-	L = 1.0;
-	//N = 100;
-	x0 = 0.05; //Right going shock between 5th ans 6th grid point (on a 100 grid)
-	x1 = 0.5; //Material discontinuity between 50 and 51st point
-	tstop = 0.0002;
-
-	yL = 1.4;
-	yR = 1.67;
-	yM1 = 1.4;
-}
-
-void gfmTests::testcase2(){
-	number_of_materials = 2;
-	yL = 5./3.;
-	yR = 1.2;
-	double yratio = (yL+1)/(yL-1);
-
-	double d2 = (yratio*100+1)/(yratio+100)*0.82369077;
-	vector Left(d2, 9.94949, 100.0);
-	vector Right(1.0, 0.0, 1.0);
-
-	initialL = Left;
-	initialR = Right;
-
-	L = 1.0;
-	x0 = 0.2;
-	tstop = 0.06;
-}
-
-//selecting the tests
-void gfmTests::switch_resolution(){
-	std::cout << "Resolution options" << std::endl
-		<< "1. Low (100 Cells)" << std::endl
-		<< "2. Mediumn (200 Cells)" << std::endl
-		<< "3. High (400 Cells)" << std::endl
-		<< "4. Very High (1000 Cells)" << std::endl
-		<< "5. Exit" << std::endl;
-
-	int a = Get_Switch();
-
-	switch(a){
-		case 0:
-		case 1:
-			N = 100;
-			break;
-		case 2:
-			N = 200;
-			break;
-		case 3:
-			N = 400;
-			break;
-		case 4:
-			N = 1000;
-			break;
-		case 5:
-		case 6:
-		case 7:
-		case 8:
-		case 9:
-			exit(0);
-	}
-}
-
-void gfmTests::switch_test(){
-	std::cout << "Test options" << std::endl << std::endl
-		<< "Single Material Shock-Tube Tests" << std::endl
-		<< "1. Test 1" << std::endl
-		<< "2. Test 2" << std::endl
-		<< "3. Test 3" << std::endl
-		<< "Multimaterial Tests" << std::endl
-		<< "4. Test B (Fedkiw 2002)" << std::endl
-		<< "5. Test B (Wang 2004)" << std::endl
-		<< "6. Mach 10 Test" << std::endl
-		<< "7. Water-Air Test" << std::endl
-		//<< "8. Test Problem 2" << std::endl
-		<< "8. Exit" << std::endl;
-
-	int a = Get_Switch();
-
-	switch(a){
-		case 0:
-		case 1:
-			test1();
-			break;
-		case 2:
-			test2();
-			break;
-		case 3:
-			test3();
-			break;
-		case 4:
-			testB();
-			break;
-		case 5:
-			testB_Wang();
-			break;
-		case 6:
-			testMach10();
-			break;
-		case 7:
-			testSG();
-			break;
-		case 8:
-			//testcase2();
-			//break;
-		case 9:
-			exit(0);
-	}
-}
-*/
-
-
 
 
 

@@ -90,8 +90,8 @@ struct Domain2D
 	Eigen::Array<Coordinates, Eigen::Dynamic, Eigen::Dynamic> X; //coordinate pairs (x,y)
 
 	Domain2D() : Nx(0), Ny(0), buffer(0), Lx(0), Ly(0), dt(0), dx(0), tstop(0), X(0, 0) {}
-	Domain2D(int N) : Nx(N), Ny(N), buffer(1+floor(N/20)), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
-	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), buffer(1+floor((Nx+Ny)/40)), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
+	Domain2D(int N) : Nx(N), Ny(N), buffer(1+floor(N/10)), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(N, N) {}
+	Domain2D(int Nx, int Ny) : Nx(Nx), Ny(Ny), buffer(1+floor((Nx+Ny)/20)), Lx(1.0), Ly(1.0), dt(0), dx(0), tstop(0), X(Nx, Ny) {}
 
 	void display_grid() const;
 };

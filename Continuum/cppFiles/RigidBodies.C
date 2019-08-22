@@ -824,7 +824,6 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 			if (j<i){ //accessing only the lower triangle
 				//if the close tracker shows that the particles are close, perform the contect detection
 				if (system.hashedgrid.close_tracker[i][j] > 0){
-					//std::cout << "close alert" << std::endl;
 				//perform collision check for both particles
 					for (int a=0; a<static_cast<int>(system.particles[i].nodes.size()); a++){
 						//For each node of the particle
@@ -881,7 +880,6 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 			for (int a=0; a<static_cast<int>(system.particles[i].nodes.size()); a++){
 				Coordinates node_a(system.particles[i].nodes[a]);
 				if ((node_a.x < 0) != (node_a.x > domain.Lx)){
-					//std::cout << "contact detected, " << std::endl;
 					//find the tangential spring
 					std::unordered_map<int, vector2>::iterator nspring = find_spring(system.particles[i].wall_springs[0], a);
 					//if node is less than neither less than 0 nor greater than Lx, it will return false
@@ -914,12 +912,13 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 		//vertical boundaries
 		if (system.hashedgrid.wall_tracker[i][1] > 0){
 			for (int a=0; a<static_cast<int>(system.particles[i].nodes.size()); a++){
+				//std::cout << "close alert" << std::endl;
 				Coordinates node_a(system.particles[i].nodes[a]);
 				if ((node_a.y < 0) != (node_a.y > domain.Ly)){
-					//std::cout << "contact detected, " << std::endl;
 					std::unordered_map<int, vector2>::iterator nspring = find_spring(system.particles[i].wall_springs[1], a);
 					//if node is less than neither less than 0 nor greater than Lx, it will return false
 					if (node_a.y < 0){
+						//std::cout << "bot wall" << std::endl;
 						vector2 normal(0, 1);
 						//since dist must always be negative,
 						double dist = node_a.y;
@@ -929,7 +928,8 @@ void RigidBodies::contact_detection(const Domain2D& domain, Moving_RB& system, d
 
 						wall_collision(maxoverlap->second, nspring->second, system.particles[i], system.particles[i].nodes[a], dist, normal, dt);
 					}
-					else if (node_a.y > domain.Lx){
+					else if (node_a.y > domain.Ly){
+						//std::cout << "top wall" << std::endl;
 						vector2 normal(0, -1);
 						//since dist must always be negative,
 						double dist = domain.Ly - node_a.y;
@@ -1242,7 +1242,7 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		}
 
 		////
-		domain.dt = 0.001;
+		if (domain.dt > 0.001) domain.dt = 0.001;
 		///
 
 		if (t + domain.dt > plot_time) {
@@ -1395,6 +1395,31 @@ void RigidBodies::output(const Moving_RB &system, const Domain2D &domain, std::s
 	double P=0;
 	double e=0;
 	double schlieren=0;
+	
+	std::vector<double> grad_rho;
+
+	for (int i=2; i<domain.Nx+2; i++){
+		for (int j=2; j<domain.Ny+2; j++){
+			if (system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) > 0){
+				vector4 Ux = system.fluid.U(i, j);
+				if (Ux(0)!=0){
+					//central difference to calculate partial derivatives in x, y for density
+					double grad_density_x = (system.fluid.U(i+1, j)(0) - system.fluid.U(i-1, j)(0))/(2*domain.dx);
+					double grad_density_y = (system.fluid.U(i, j+1)(0) - system.fluid.U(i, j-1)(0))/(2*domain.dy);
+					double grad_density = sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2));
+					grad_rho.push_back(grad_density);
+				}
+			}
+		}
+	}
+	std::vector<double>::const_iterator it_rho = grad_rho.begin();
+	double min_rho =0;
+	double max_rho =1;
+
+	if (it_rho != grad_rho.end()){
+		min_rho = *std::min_element(grad_rho.begin(), grad_rho.end());
+		max_rho = *std::max_element(grad_rho.begin(), grad_rho.end());
+	}
 
 	for (int i=2; i<domain.Nx+2; i++){
 		for (int j=2; j<domain.Ny+2; j++){
@@ -1404,24 +1429,21 @@ void RigidBodies::output(const Moving_RB &system, const Domain2D &domain, std::s
 					u = sqrt(pow(Ux(1)/Ux(0), 2) + pow(Ux(3)/Ux(0), 2));
 					P = system.fluid.state_function->Pressure(Ux);
 					e = system.fluid.state_function->internalE(Ux);
-
-					//central difference to calculate partial derivatives in x, y for density
-					double grad_density_x = (system.fluid.U(i+1, j)(0) - system.fluid.U(i-1, j)(0))/(2*domain.dx);
-					double grad_density_y = (system.fluid.U(i, j+1)(0) - system.fluid.U(i, j-1)(0))/(2*domain.dy);
-					//calculating the numerical schlieren
-					schlieren = exp((-20*sqrt(pow(grad_density_x, 2) + pow(grad_density_y, 2)))/(1000*Ux(0)));
+					if (it_rho != grad_rho.end()) {
+						double gamma = (abs(*it_rho) - min_rho)/(max_rho - min_rho);
+						schlieren = exp(-15*gamma);
+					}
+					it_rho++;
 				}
 
 				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << Ux(0) << '\t' << u
 				<< '\t' << P << '\t' << e << '\t' << schlieren << '\t' << '\t' << '\t' << system.combinedls.phi(i+domain.buffer-2, j+domain.buffer-2) << '\t' << std::endl;
 			}
-			/*else {
-				outfile << domain.dx*(i-2) << '\t' << domain.dy*(j-2) << '\t' << 0 << '\t' << 0
-				<< '\t' << 0 << '\t' << 0 << '\t' << 0 << std::endl;
-			}*/
 		}
 		outfile << std::endl;
 	}
+
+	
 
 	outfile.close();
 	outfile2.close();
