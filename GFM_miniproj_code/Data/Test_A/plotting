@@ -1,5 +1,0 @@
-#!/bin/bash
-
-gnuplot plotresolution
-ps2pdf Test4.ps Test4.pdf 
-open Test4.pdf

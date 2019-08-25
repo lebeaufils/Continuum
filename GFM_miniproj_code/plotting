@@ -1,5 +1,0 @@
-#!/bin/bash
-
-gnuplot plotexact
-ps2pdf Plots/eulerTests.ps Plots/eulerTests.pdf 
-open Plots/eulerTests.pdf
