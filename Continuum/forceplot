@@ -1,5 +1,5 @@
 #!/bin/bash
 
-gnuplot plotforce
+gnuplot Plot_scripts/plotforce
 ps2pdf Plots/forceplot.ps Plots/forceplot.pdf
 open Plots/forceplot.pdf

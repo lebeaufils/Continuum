@@ -7,9 +7,9 @@
 int main(void){
 
 	//Generate the domain with the demTests constructor.
-	demTests Tests(801,401);
-	Tests.test6(); //initialise the test case (1-6)
+	demTests Tests(401); 
+	Tests.test1(); //initialise the test case (1-6)
 	//Call the solver using parameters (Test, CFL)
-	RigidBodies::rigid_body_solver(Tests, 0.5);
+	RigidBodies::rigid_body_solver(Tests, 0.5, 0.1, 0.002);
 }
 

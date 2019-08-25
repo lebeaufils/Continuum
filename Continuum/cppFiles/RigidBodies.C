@@ -1139,12 +1139,8 @@ void RigidBodies::update_displacements_forced_motion(Particle& gr, const Domain2
 	system.hashedgrid.move_particle(domain, system.particles, gr);
 }
 
-void RigidBodies::forced_motion(Moving_RB &system, const Domain2D& domain, const Euler2D& fluid, double time){ 
-	//fluid_forces(domain, fluid, system.particles, system.gravity);
-
-	//update force and torque of each particle
-	//contact_detection(domain, system, subdt);
-
+void RigidBodies::forced_motion(Moving_RB &system, const Domain2D& domain, double time){ 
+//This function was created solely for the one-way coupling, forced motion problem of demTests Test3
 	for (int a=0; a<static_cast<int>(system.particles.size()); a++){
 		//calculate and update particle velocities
 		//newton_euler(system.particles[a], domain, system.particles[a].force, system.particles[a].torque, subdt);
@@ -1170,7 +1166,7 @@ void RigidBodies::forced_motion(Moving_RB &system, const Domain2D& domain, const
 	}
 }
 
-void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
+void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL, double plot_interval, double max_dt){
 	//In addition to the fluid solver of the stationary rigid body problem,
 	//Forces on the rigid body are to be calculated at everytime step
 	//This is an ODE problem which is solved to obtain the velocity (translational and rotational) of the rigid body
@@ -1198,8 +1194,8 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 
 	double faket = 0.1;
 	double t = 0.0;
-	double plot_time = 0.01; //0.05; //0.1;
-	double plot_dt = 0.01;
+	double plot_time = plot_interval; //0.05; //0.1;
+	double plot_dt = plot_interval;
 	int count = 0;
 
 	std::ofstream particledata[static_cast<int>(system.particles.size())];
@@ -1242,7 +1238,7 @@ void RigidBodies::solver(Moving_RB &system, Domain2D &domain, double CFL){
 		}
 
 		////
-		if (domain.dt > 0.001) domain.dt = 0.001;
+		if (domain.dt > max_dt) domain.dt = max_dt;
 		///
 
 		if (t + domain.dt > plot_time) {
@@ -1476,13 +1472,13 @@ void RigidBodies::output_levelset(const Moving_RB &system, const Domain2D &domai
 	outfile2.close();
 }
 
-void RigidBodies::rigid_body_solver(demTests &Test, double CFL){
+void RigidBodies::rigid_body_solver(demTests &Test, double CFL, double plot_interval, double max_dt){
 	initial_conditions(Test);
 	//for (int b=0; b<static_cast<int>(system.particles[a].nodes.size()); b++){
 	//	std::cout << system.particles[a].nodes[b].transpose() << std::endl;
 	//}
 	//std::cout << Test.system.particles[0].nodes.size() << std::endl;
-	solver(Test.var, Test.domain, CFL);
+	solver(Test.var, Test.domain, CFL, plot_interval, max_dt);
 	output(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
 	//output_levelset(Test.var, Test.domain, "dataeuler.txt", "datapoints.txt");
 	std::cout << "done: Rigid Body" << std::endl;

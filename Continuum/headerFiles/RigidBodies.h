@@ -56,11 +56,11 @@ struct RigidBodies
 	static void update_displacements_forced_motion(Particle&, const Domain2D&, Moving_RB&, double);
 	static void initial_conditions(demTests&);
 	static void subcycling(Moving_RB&, const Domain2D&, const Euler2D&, double, double, double);
-	static void forced_motion(Moving_RB&, const Domain2D&, const Euler2D&, double);
-	static void solver(Moving_RB&, Domain2D&, double);
+	static void forced_motion(Moving_RB&, const Domain2D&, double);
+	static void solver(Moving_RB&, Domain2D&, double, double, double);
 	static void output(const Moving_RB&, const Domain2D&, std::string, std::string);
 	static void output_levelset(const Moving_RB&, const Domain2D&, std::string, std::string);
-	static void rigid_body_solver(demTests&, double);
+	static void rigid_body_solver(demTests&, double, double, double);
 };
 
 #endif /* RIGIDBODIES_H_ */

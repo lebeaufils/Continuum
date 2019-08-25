@@ -634,7 +634,7 @@ void demTests::test1(){
 	//	Rigid body (level set definition)
 	//------------------------------------------------------------
 	var.add_sphere(domain, Coordinates(0.3,0.5), 0.1);
-	var.particles.back().set_velocity(vector2(2, 0), 0);
+	var.particles.back().set_velocity(vector2(0, 4), 0);
 	var.add_sphere(domain, Coordinates(0.7,0.5), 0.1);
 	var.particles.back().set_velocity(vector2(-2, 0), 0);
 	/*
@@ -652,9 +652,9 @@ void demTests::test1(){
 
 	for (std::vector<Particle>::iterator i = var.particles.begin(); i!=var.particles.end(); i++){
 		i->damping_coefficient = 0.0;
-		i->k_n = 1000;//1e6;
-		i->k_s = 1000;//1e6;
-		i->k_c = 1000;//1e6;
+		i->k_n = 200;//1e6;
+		i->k_s = 200;//1e6;
+		i->k_c = 200;//1e6;
 		i->density = 0.625; //3000;
 	}
 }

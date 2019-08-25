@@ -2,7 +2,7 @@
 
 load '~/Documents/CSCcodes/Continuum/Data/gnuplot_palettes/viridis.pal'
 
-set output "Plots/2Dplot.png"
+set output "~/Documents/CSCcodes/Continuum/Plots/2Dplot.png"
 set terminal png
 set view map
 set size ratio -1
