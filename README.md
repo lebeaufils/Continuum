@@ -39,7 +39,7 @@ For example, to run the configured test1, in main.C,
 ## Examples
 Here are some results that can be generated using this code.
 
-A simple simulation of twelve particles i a vaccuum under the effects of gravity:
+A simple simulation of twelve particles in a vaccuum under the effects of gravity:
 ![](https://github.com/lebeaufils/Continuum/blob/master/Continuum/Results/DEM12.gif "Particles under gravity")
 
 Schlieren (greyscale plot of density gradient) evolution of a system of nine particles in air, hit by a Mach 1.5 shockwave:
